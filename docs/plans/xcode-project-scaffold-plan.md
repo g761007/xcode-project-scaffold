@@ -276,12 +276,14 @@ public enum UnitTestFramework: String, Codable, CaseIterable, Sendable {
 ```swift
 public struct ValidationIssue: Codable, Sendable {
     public let severity: ValidationSeverity   // error | warning
-    public let code: String
+    public let code: ValidationCode           // encodes as its raw value, e.g. "XS1001"
     public let message: String
     public let path: String?
     public let suggestion: String?
 }
 ```
+
+**驗證必須是純函式。** 不讀檔案、不呼叫子行程、不看環境。理由：同一份 `scaffold.yml` 在任何機器上都必須得到相同的驗證結果，否則 §1 的可重現性主張就有洞。凡是需要查詢「這台機器裝了什麼」的檢查，一律歸 `doctor`。
 
 ### 6.1 錯誤碼分兩群
 
@@ -290,29 +292,62 @@ public struct ValidationIssue: Codable, Sendable {
 **`XS0xxx` — 能力邊界（這個版本還沒支援）**
 
 ```text
-XS0001  Platform 'macos' is not supported in this version.
-XS0003  Product type 'framework' is not supported in this version.
+XS0001  Platform '<name>' is not supported in this version.
+XS0003  Product type '<name>' is not supported in this version.
 XS0004  Architecture '<name>' is not supported in this version.
-XS0005  Generator 'tuist' is not supported in this version.
-XS0006  Interface 'appkit' is not supported in this version.
+XS0005  Generator '<name>' is not supported in this version.
+XS0006  Interface '<name>' is not supported in this version.
+XS0007  Deployment target '<v>' is below <min>, the minimum supported in this version.
 ```
 
-**`XS1xxx` — 相容性（這個組合永遠不合法）**
+`XS0007` 原本編為 `XS1303`，是錯的。它的下限是 **xscaffold 自己**的支援下限，不是 Apple SDK 的——日後模板支援更低版本時它就會降。可變 = 能力邊界。分在 `XS1xxx` 會告訴使用者「永遠不行」，但那不是事實。
+
+**`XS1xxx` — 永遠不合法（`permanently-invalid`）**
+
+分三個子區段：
 
 ```text
+XS10xx  平台與介面組合
 XS1001  UIKit is only available for iOS projects.
 XS1002  AppKit is only available for macOS projects.
+
+XS11xx  Lifecycle
 XS1101  Lifecycle 'swiftui' requires SwiftUI as the primary interface.
 XS1102  Lifecycle 'app-delegate-scene-delegate' requires UIKit as the primary interface.
 XS1103  Lifecycle 'app-delegate' requires AppKit as the primary interface.
-XS1201  Swift Testing requires Swift as the primary language.
-XS1301  Bundle identifier must be a valid reverse-DNS string.
-XS1302  Deployment target is below the minimum supported by the installed SDK.
-XS1401  Environment names must be unique.
-XS1402  Build configuration names must be unique.
+
+XS13xx  欄位值
+XS1301  Bundle identifier '<id>' is not a valid reverse-DNS string.
+XS1302  Deployment target '<v>' is not a version number.
+XS1304  Project name is not usable as an Xcode target name.
+
+XS14xx  環境
+XS1401  Environment name '<name>' is used more than once.
+XS1402  Build configuration '<name>' is used by more than one environment.
 ```
 
-每條規則都必須有正反兩個測試案例。
+`XS1201`（Swift Testing 需要 Swift）已移除：`ProgrammingLanguage` 只有 `swift` 一個值，這條規則永遠不可能成立。與 `XS0002` 同樣理由。
+
+`XS0007` 的下限是**靜態值**——iOS 15.0、macOS 11.0，取自 Xcode 26.4 SDK 自報的 `RecommendedDeploymentTarget`。它刻意不去查詢當前機器安裝了什麼；「你這台機器的 SDK 支不支援這個 deployment target」是 `doctor` 的職責。
+
+一個格式錯誤的 deployment target **不會**同時回報 `XS0007`——讓使用者去追一個不存在的第二個問題是沒有意義的。
+
+`XS1304`（專案名稱）是 M3 相對原始規格新增的一條。理由與其他兩項同級：一個會放行 `name: ""` 的驗證器不算驗證器，而專案名稱同時要當 Xcode target 名稱與目錄名稱，`""`、`"."`、`".."`、含 `/` 或控制字元的名稱都會在生成階段（M6）才炸開——那時錯誤訊息會指向檔案系統，與真正的原因相距甚遠。
+
+`XS1301` 也涵蓋 `environments[].bundleIdentifierSuffix`：後綴會串接到 bundle identifier 上，只檢查基底等於只檢查一半。
+
+### 6.2 必須測試的不變式
+
+每條規則都必須有**專屬的**正反兩個測試案例——反例不得只靠「整份設定沒有任何問題」這種共用斷言，否則規則被誤刪時不會有人發現。
+
+此外有四條跨規則的不變式：
+
+1. 錯誤碼格式一律為 `XS` 加四位數字。（「不得重複」不需要測試：raw value 重複在 Swift enum 是編譯錯誤，寫成測試會是一條永遠不會失敗的裝飾。）
+2. `code.category` 由 `switch` 明確指定，而非從前綴推導；測試驗證它與前綴一致，所以歸錯組的 case 是測試失敗而不是靜默重新分類。
+3. **每個宣告的錯誤碼都必須至少能被某個設定觸發。** `XS0002` 與 `XS1201` 這兩個死碼能一路留在規格裡，正是因為少了這條。
+4. **只有** `XS0xxx` 的訊息可以出現「in this version」。那是使用者判斷「還沒做」與「永遠不行」的唯一線索：一條 `XS1xxx` 若說了「in this version」，使用者會坐等一個永遠不會修好它的版本。
+
+上面清單裡的訊息是**格式示意**。確切文字由 `ValidationMessageTests` 的 golden 表鎖定——沒有那張表時，`XS1101` 曾一度輸出 `requires swiftui`（rawValue）而非規格寫的 `requires SwiftUI`，且無人察覺。
 
 ---
 
