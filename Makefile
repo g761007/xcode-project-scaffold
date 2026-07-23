@@ -5,7 +5,7 @@ BINDIR := $(PREFIX)/bin
 
 .PHONY: help
 help: ## Show this help
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: templates
@@ -19,6 +19,10 @@ build: ## Build in debug
 .PHONY: test
 test: ## Run the test suite
 	swift test
+
+.PHONY: e2e
+e2e: ## Generate, build and test both variants (requires xcodegen and Xcode)
+	Scripts/e2e.sh
 
 .PHONY: lint
 lint: ## Check formatting and lint rules (requires swiftformat and swiftlint)

@@ -11,12 +11,11 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 ## ⚠️ Status: early — all four commands work
 
 `init`, `validate`, `plan` and `doctor` are implemented, with `--output json`
-and the exit codes below. Both v0.1 variants — UIKit and SwiftUI — have been
-checked by hand to lint, build and test after generation, on Xcode 26.4.1; CI
-does not run that check yet.
+and the exit codes below. Both v0.1 variants — UIKit and SwiftUI — are
+generated, built and tested against a simulator on every push; a separate job
+checks that generated sources pass the linters they ship with.
 
-What is left for v0.1 is CI coverage of both variants end to end, and the
-bundled Skill with its schema reference.
+What is left for v0.1 is the bundled Skill with its schema reference.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -229,6 +228,7 @@ or toolchain version.
 ```bash
 make build            # swift build
 make test             # swift test
+make e2e              # generate, build and test both variants
 make lint             # swiftformat --lint and swiftlint --strict
 make format           # apply formatting in place
 make install          # release build, installed to $PREFIX/bin
@@ -237,8 +237,10 @@ make install          # release build, installed to $PREFIX/bin
 `make lint` needs `swiftlint` and `swiftformat` on the PATH
 (`brew install swiftlint swiftformat`). CI installs them itself.
 
-Integration tests *(planned)* will generate both variants and run
-`xcodegen generate`, `xcodebuild build` and `xcodebuild test` against them.
+`make e2e` creates a project from each preset with the freshly built binary —
+which runs XcodeGen as part of `init` — then builds and tests it against a
+simulator. It needs `xcodegen` on the PATH and a git identity, and it prints
+which simulator it chose, for the reason below. CI runs it on every push.
 
 When invoking `xcodebuild` locally, **always pass an unambiguous destination.**
 A device name alone matches several simulators across installed runtimes, and
