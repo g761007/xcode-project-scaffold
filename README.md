@@ -13,9 +13,11 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 `init`, `validate`, `plan` and `doctor` are implemented, with `--output json`
 and the exit codes below. Both v0.1 variants — UIKit and SwiftUI — are
 generated, built and tested against a simulator on every push; a separate job
-checks that generated sources pass the linters they ship with.
+checks that generated sources pass the linters they ship with. The Skill an
+agent drives all of this with is in
+[`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/).
 
-What is left for v0.1 is the bundled Skill with its schema reference.
+Every milestone planned for v0.1 is now implemented.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -264,6 +266,7 @@ A device name alone matches several simulators across installed runtimes, and
 | [`CONTEXT.md`](CONTEXT.md) | Project glossary. Read before introducing new terminology. |
 | [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md) | Scope, schema, milestones, and what is explicitly excluded. |
 | [`docs/adr/`](docs/adr/) | Architecture decision records. |
+| [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/) | The bundled Skill, and the `scaffold.yml` field reference it points at. |
 
 ## License
 
