@@ -202,4 +202,4 @@ A device name alone matches several simulators across installed runtimes, and
 
 ## License
 
-Not yet chosen.
+[MIT](LICENSE) © 2026 Daniel Hsieh
