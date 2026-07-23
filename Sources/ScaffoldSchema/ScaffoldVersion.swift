@@ -1,7 +1,9 @@
-/// The version of `xscaffold` itself.
+/// The version of `xscaffold` itself, as `--version` reports it.
 ///
-/// Reported by `--version`, embedded in `scaffold.yml` when a project is
-/// generated, and included in every `--output json` payload.
+/// It is not stamped into anything the tool produces. A generated
+/// `scaffold.yml` describes the project and not the thing that wrote it, and
+/// `--output json` carries what a caller branches on — neither has a use for a
+/// version that would then have to be kept meaningful across releases.
 public enum ScaffoldVersion {
-    public static let current = "0.1.0-dev"
+    public static let current = "0.1.0"
 }
