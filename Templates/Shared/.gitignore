@@ -1,0 +1,17 @@
+## macOS
+.DS_Store
+
+## Xcode
+# Generated from project.yml by XcodeGen. Run `make generate` after cloning.
+{{PROJECT_NAME}}.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+
+## Generated from project.yml
+App/Info.plist
+
+## Swift Package Manager
+.build/
+.swiftpm/

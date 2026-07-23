@@ -19,7 +19,9 @@ struct XcodeGenSpecBuilder: Sendable {
     static let infoPlistPath = "App/Info.plist"
 
     func makeSpec(for project: ProjectConfiguration) -> XcodeGenSpec {
-        XcodeGenSpec(
+        let schemes = makeSchemes(for: project)
+
+        return XcodeGenSpec(
             name: project.project.name,
             platform: xcodeGenPlatform(project.product.platform),
             deploymentTarget: project.product.deploymentTarget,
@@ -28,7 +30,11 @@ struct XcodeGenSpecBuilder: Sendable {
             configurations: makeConfigurations(for: project),
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
-            schemes: makeSchemes(for: project)
+            schemes: schemes,
+            // The bare-named scheme when there is one, which is the same rule
+            // `schemeName(for:in:)` applies; otherwise simply the first.
+            defaultSchemeName: schemes.first { $0.name == project.project.name }?.name
+                ?? schemes[0].name
         )
     }
 }

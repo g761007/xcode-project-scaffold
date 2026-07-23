@@ -52,6 +52,11 @@ struct ValidationContractTests {
             configuration: .validBaseline.with { $0.product.deploymentTarget = "12.0" }
         ),
         ValidationTrigger(
+            code: .testFrameworkNotSupported,
+            message: "Test framework 'xctest' is not supported in this version.",
+            configuration: .validBaseline.with { $0.testing.unit = .xctest }
+        ),
+        ValidationTrigger(
             code: .uiKitRequiresIOS,
             message: "UIKit is only available for iOS projects.",
             configuration: .validBaseline.with {

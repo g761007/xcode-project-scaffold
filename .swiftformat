@@ -17,4 +17,4 @@
 # by it — and the override lands here instead.
 --trailing-commas never
 
---exclude .build,Templates
+--exclude .build,Templates,Sources/ScaffoldCore/Generated

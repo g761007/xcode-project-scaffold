@@ -20,6 +20,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// templates start supporting older releases. That makes it a boundary,
     /// not an impossibility.
     case deploymentTargetNotSupported = "XS0007"
+    case testFrameworkNotSupported = "XS0008"
 
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
@@ -56,7 +57,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .architectureNotSupported,
              .generatorNotSupported,
              .interfaceNotSupported,
-             .deploymentTargetNotSupported:
+             .deploymentTargetNotSupported,
+             .testFrameworkNotSupported:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,

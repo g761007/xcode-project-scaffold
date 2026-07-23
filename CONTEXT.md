@@ -26,7 +26,23 @@ _Avoid_: profile、template、範本
 
 **GenerationPlan**:
 生成前算出的完整計畫——要建立哪些檔案、要執行哪些外部指令。`plan` 與 `init --dry-run` 輸出的就是它。
-_Avoid_: diff、changeset、生成清單
+_Avoid_: diff、changeset
+
+**PlannedFile**:
+`GenerationPlan` 裡的一個檔案：目的地相對路徑與已渲染完成的內容。
+_Avoid_: output file、artifact
+
+**PlannedCommand**:
+`GenerationPlan` 裡的一個外部指令，附帶一句說明它為何存在。
+_Avoid_: step、task
+
+**GenerationOptions**:
+一次執行的選項（要不要初始化 git、要不要呼叫 generator）。它描述的是**這次執行**而非專案，所以只來自 CLI flag，永遠不會出現在 `scaffold.yml` 裡。
+_Avoid_: settings、config
+
+**Placeholder**:
+模板裡的 `{{NAME}}`。渲染時必須有對應的值，否則是錯誤。
+_Avoid_: variable、token、變數、生成清單
 
 **Generator**:
 把 `project.yml` 轉成 `.xcodeproj` 的外部工具。目前只有 XcodeGen。

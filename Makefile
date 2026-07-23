@@ -8,6 +8,10 @@ help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: templates
+templates: ## Re-embed Templates/ into Swift source
+	python3 Scripts/embed-templates.py
+
 .PHONY: build
 build: ## Build in debug
 	swift build

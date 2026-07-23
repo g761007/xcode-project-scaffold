@@ -24,6 +24,14 @@ jobs:
           swift --version
           xcodebuild -version
 
+      # Templates are compiled in, from a generated file that is committed.
+      # Regenerating must be a no-op, or the binary ships templates that differ
+      # from the ones in the repository.
+      - name: Templates are in sync
+        run: |
+          make templates
+          git diff --exit-code -- Sources/ScaffoldCore/Generated
+
       - name: Build
         run: swift build --build-tests
 
@@ -44,3 +52,15 @@ jobs:
 
       - name: SwiftLint
         run: swiftlint --strict
+
+      # The templates ship lint configuration, so `make lint` in a freshly
+      # generated project has to pass. It did not until this check existed:
+      # where `@testable import <ProjectName>` sorts depends on the project's
+      # name, which no template can be written to satisfy in advance.
+      - name: Generated projects pass their own linters
+        run: |
+          MATERIALISE_ROOT="$RUNNER_TEMP/generated" swift test --filter MaterialiseTemplates
+          for project in "$RUNNER_TEMP"/generated/*/; do
+            echo "==> $project"
+            ( cd "$project" && swiftformat --lint . && swiftlint --strict )
+          done

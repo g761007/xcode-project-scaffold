@@ -1,14 +1,10 @@
 included:
-  - Sources
+  - App
   - Tests
 
 excluded:
   - .build
-  - Templates
-  # Written by Scripts/embed-templates.py. Lint rules guide people writing
-  # code; there is no one to guide here, and formatting it would also fight
-  # CI's check that regenerating is a no-op.
-  - Sources/ScaffoldCore/Generated
+  - DerivedData
 
 line_length:
   warning: 120

@@ -25,6 +25,11 @@ struct XcodeGenSpec: Equatable, Sendable {
     var testTarget: TestTarget?
     var schemes: [Scheme]
 
+    /// The scheme Xcode selects when the project is opened. Decided where the
+    /// schemes are named, so that nothing downstream has to re-derive the rule
+    /// about `Release` keeping the bare project name.
+    var defaultSchemeName: String
+
     /// `optimized` maps to XcodeGen's `debug`/`release` config type, which
     /// drives the compiler and packaging defaults Xcode applies.
     struct Configuration: Equatable, Sendable {

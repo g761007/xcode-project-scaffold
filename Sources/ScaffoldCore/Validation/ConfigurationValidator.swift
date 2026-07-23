@@ -32,6 +32,9 @@ extension ConfigurationValidator {
         static let interfaces: Set<UIFramework> = [.uiKit, .swiftUI]
         static let architectures: Set<ArchitecturePattern> = [.minimal]
         static let generators: Set<GeneratorKind> = [.xcodegen]
+        /// `disabled` is supported in the sense that a project can have no
+        /// tests. XCTest is not: there are no templates written against it.
+        static let testFrameworks: Set<UnitTestFramework> = [.swiftTesting, .disabled]
 
         /// Apple's own `RecommendedDeploymentTarget` for each platform on the
         /// Xcode 26 SDKs. Static on purpose — see the note on `validate`.
@@ -42,76 +45,52 @@ extension ConfigurationValidator {
     }
 
     private func capabilityIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
-        var issues: [ValidationIssue] = []
-
-        if !Supported.platforms.contains(configuration.product.platform) {
-            issues.append(notYetSupported(
-                code: .platformNotSupported,
-                noun: "Platform",
-                value: configuration.product.platform.rawValue,
-                path: "product.platform",
-                available: Supported.platforms.map(\.rawValue)
-            ))
-        }
-
-        if !Supported.productTypes.contains(configuration.product.type) {
-            issues.append(notYetSupported(
-                code: .productTypeNotSupported,
-                noun: "Product type",
-                value: configuration.product.type.rawValue,
-                path: "product.type",
-                available: Supported.productTypes.map(\.rawValue)
-            ))
-        }
-
-        if !Supported.interfaces.contains(configuration.interface.primary) {
-            issues.append(notYetSupported(
-                code: .interfaceNotSupported,
-                noun: "Interface",
-                value: configuration.interface.primary.rawValue,
-                path: "interface.primary",
-                available: Supported.interfaces.map(\.rawValue)
-            ))
-        }
-
-        if !Supported.architectures.contains(configuration.architecture.pattern) {
-            issues.append(notYetSupported(
-                code: .architectureNotSupported,
-                noun: "Architecture",
-                value: configuration.architecture.pattern.rawValue,
-                path: "architecture.pattern",
-                available: Supported.architectures.map(\.rawValue)
-            ))
-        }
-
-        if !Supported.generators.contains(configuration.generator.type) {
-            issues.append(notYetSupported(
-                code: .generatorNotSupported,
-                noun: "Generator",
-                value: configuration.generator.type.rawValue,
-                path: "generator.type",
-                available: Supported.generators.map(\.rawValue)
-            ))
-        }
-
-        return issues
+        [
+            unsupported(
+                configuration.product.platform, of: Supported.platforms,
+                as: "Platform", code: .platformNotSupported, at: "product.platform"
+            ),
+            unsupported(
+                configuration.product.type, of: Supported.productTypes,
+                as: "Product type", code: .productTypeNotSupported, at: "product.type"
+            ),
+            unsupported(
+                configuration.interface.primary, of: Supported.interfaces,
+                as: "Interface", code: .interfaceNotSupported, at: "interface.primary"
+            ),
+            unsupported(
+                configuration.architecture.pattern, of: Supported.architectures,
+                as: "Architecture", code: .architectureNotSupported, at: "architecture.pattern"
+            ),
+            unsupported(
+                configuration.generator.type, of: Supported.generators,
+                as: "Generator", code: .generatorNotSupported, at: "generator.type"
+            ),
+            unsupported(
+                configuration.testing.unit, of: Supported.testFrameworks,
+                as: "Test framework", code: .testFrameworkNotSupported, at: "testing.unit"
+            )
+        ].compactMap(\.self)
     }
 
-    /// Every capability-boundary message is built here, so the "in this
-    /// version" wording that distinguishes the two groups cannot be forgotten
-    /// at one call site.
-    private func notYetSupported(
+    /// Every capability-boundary issue is built here, so the "in this version"
+    /// wording that distinguishes the two groups cannot be forgotten at one
+    /// call site, and so that the sixth of these checks reads the same as the
+    /// first.
+    private func unsupported<Value: RawRepresentable & Hashable>(
+        _ value: Value,
+        of supported: Set<Value>,
+        as noun: String,
         code: ValidationCode,
-        noun: String,
-        value: String,
-        path: String,
-        available: [String]
-    ) -> ValidationIssue {
-        ValidationIssue(
+        at path: String
+    ) -> ValidationIssue? where Value.RawValue == String {
+        guard !supported.contains(value) else { return nil }
+
+        return ValidationIssue(
             code: code,
-            message: "\(noun) '\(value)' is not supported in this version.",
+            message: "\(noun) '\(value.rawValue)' is not supported in this version.",
             path: path,
-            suggestion: "Use \(list(available)) instead."
+            suggestion: "Use \(list(supported.map(\.rawValue))) instead."
         )
     }
 }
@@ -155,11 +134,11 @@ extension ConfigurationValidator {
 
         return [ValidationIssue(
             code: required.code,
-            message: "Lifecycle '\(lifecycle.rawValue)' requires \(displayName(required.interface)) "
-                + "as the primary interface, but it is \(displayName(interface)).",
+            message: "Lifecycle '\(lifecycle.rawValue)' requires \(required.interface.displayName) "
+                + "as the primary interface, but it is \(interface.displayName).",
             path: "interface.lifecycle",
             suggestion: "Remove interface.lifecycle to use "
-                + "'\(interface.impliedLifecycle.rawValue)', the default for \(displayName(interface))."
+                + "'\(interface.impliedLifecycle.rawValue)', the default for \(interface.displayName)."
         )]
     }
 }
@@ -337,14 +316,6 @@ extension ConfigurationValidator {
 // MARK: - Formatting
 
 extension ConfigurationValidator {
-    private func displayName(_ interface: UIFramework) -> String {
-        switch interface {
-        case .uiKit: "UIKit"
-        case .swiftUI: "SwiftUI"
-        case .appKit: "AppKit"
-        }
-    }
-
     private func list(_ values: [String]) -> String {
         let quoted = values.sorted().map { "'\($0)'" }
         guard quoted.count > 1 else { return quoted.first ?? "" }

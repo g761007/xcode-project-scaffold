@@ -1,0 +1,12 @@
+--swiftversion {{LANGUAGE_MODE}}.0
+--indent 4
+--self remove
+--stripunusedargs closure-only
+--trailing-commas never
+
+# Without this, imports sort purely alphabetically and `@testable import
+# {{PROJECT_NAME}}` lands in a different place for every project name — which
+# no test file can be written to satisfy in advance.
+--import-grouping testable-last
+
+--exclude .build,DerivedData
