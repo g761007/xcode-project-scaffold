@@ -35,6 +35,12 @@ public struct TemplateRenderingError: Error, Equatable, Sendable {
     }
 }
 
+extension TemplateRenderingError: CustomStringConvertible {
+    public var description: String {
+        message
+    }
+}
+
 /// Substitutes `{{NAME}}` placeholders in template text and in template paths.
 ///
 /// Deliberately not a template language: no conditionals, no loops, no

@@ -8,12 +8,16 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 
 ---
 
-## ⚠️ Status: early — no commands yet
+## ⚠️ Status: early — `init` works, the other commands do not
 
-The package builds, and the configuration schema is implemented and tested.
-`xscaffold` itself currently answers `--help` and `--version` and nothing else:
-**no project can be generated yet.** Everything under "Usage" below marked
-*(planned)* describes the intended v0.1.
+`xscaffold init` creates a project end to end: sources, `project.yml`,
+`scaffold.yml`, lint and format configuration, a `Makefile`, a git repository
+with an initial commit, and a generated `.xcodeproj`. Both v0.1 variants —
+UIKit and SwiftUI — have been checked by hand to lint, build and test after
+generation, on Xcode 26.4.1; CI does not run that check yet.
+
+`validate`, `plan`, `doctor`, `--output json` and `--dry-run` do **not** exist
+yet. Everything below marked *(planned)* describes the intended v0.1.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -46,8 +50,9 @@ xscaffold init --config scaffold.yml           # declarative
                                                # scaffold.yml and calls the CLI
 ```
 
-The machine-readable path is a first-class use case, not an afterthought: every
-command supports `--output json` and returns meaningful exit codes.
+The machine-readable path is a first-class use case, not an afterthought:
+commands return meaningful exit codes, and `--output json` is planned for all of
+them.
 
 ## What it deliberately does not do
 
@@ -98,25 +103,48 @@ and notarised, which is disproportionate at this stage. Building from source
 avoids the problem entirely, and the target audience already has a Swift
 toolchain.
 
-## Usage *(planned)*
+## Usage
 
 ```bash
-xscaffold init [name]         # create a project
+xscaffold init MyApp --preset ios-uikit       # from a preset
+xscaffold init --config scaffold.yml          # from a configuration file
+```
+
+```text
+--config <path>        a scaffold.yml to generate from
+--preset <name>        ios-uikit or ios-swiftui
+--destination <path>   where to create the project (default: ./<name>)
+--force                write into a destination that is not empty
+--skip-git             do not create a git repository
+--skip-generate        do not run XcodeGen
+```
+
+Pass exactly one of `--config` or `--preset`. The positional name sets
+`project.name`; with `--preset` it is required, because a preset says nothing
+about the project's identity. A preset derives the bundle identifier as
+`com.example.<name>` — it is written into the generated `scaffold.yml`, where
+you can change it. Use `--config` when it has to be right from the start.
+
+Execution behaviour lives in flags, never in `scaffold.yml` — the configuration
+file describes the *project*, not a particular run.
+
+Generating into a destination that already exists and is not empty fails with
+exit code 6; `--force` writes into it anyway, replacing files the plan produces
+and leaving everything else alone. **xscaffold only ever deletes what it
+created:** if a run fails after creating the destination, the destination is
+removed; if the destination was already there, it is left as it is and the
+error says so.
+
+### Planned commands
+
+```bash
 xscaffold validate <path>     # validate a scaffold.yml
 xscaffold plan                # preview the generation plan without writing
 xscaffold doctor              # check that required tools are available
 ```
 
-Common flags:
-
-```text
---config <path>      --preset <name>      --destination <path>
---output <text|json> --dry-run            --force
---skip-git           --skip-generate      --validate-build
-```
-
-Execution behaviour lives in flags, never in `scaffold.yml` — the configuration
-file describes the *project*, not a particular run.
+…together with `--output <text|json>`, `--dry-run`, `--validate-build` and
+`--yes`.
 
 ### Minimal `scaffold.yml`
 

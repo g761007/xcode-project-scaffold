@@ -8,6 +8,12 @@ public struct TemplateNotFoundError: Error, Equatable, Sendable {
     public let message: String
 }
 
+extension TemplateNotFoundError: CustomStringConvertible {
+    public var description: String {
+        message
+    }
+}
+
 /// One template file, before rendering.
 struct TemplateFile: Equatable, Sendable {
     /// Where it will land in the generated project, with the layer prefix

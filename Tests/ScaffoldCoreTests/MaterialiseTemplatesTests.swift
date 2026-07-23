@@ -27,19 +27,17 @@ struct MaterialiseTemplatesTests {
         let name = interface == .uiKit ? "UIKitApp" : "SwiftUIApp"
         let destination = URL(fileURLWithPath: root).appendingPathComponent(name)
 
-        let plan = try GenerationPlanBuilder().makePlan(for: .validBaseline.with {
-            $0.project.name = name
-            $0.project.bundleIdentifier = "com.example.\(name.lowercased())"
-            $0.interface = .init(primary: interface)
-        })
+        let plan = try GenerationPlanBuilder().makePlan(
+            for: .validBaseline.with {
+                $0.project.name = name
+                $0.project.bundleIdentifier = "com.example.\(name.lowercased())"
+                $0.interface = .init(primary: interface)
+            },
+            // No commands, so nothing here needs git or XcodeGen: this exists to
+            // put files where a linter can read them.
+            options: GenerationOptions(initializeGit: false, runGenerator: false)
+        )
 
-        for file in plan.files {
-            let url = destination.appendingPathComponent(file.path)
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try file.contents.write(to: url, atomically: true, encoding: .utf8)
-        }
+        try PlanExecutor().execute(plan, at: destination)
     }
 }

@@ -7,6 +7,6 @@ struct XScaffold: AsyncParsableCommand {
         commandName: "xscaffold",
         abstract: "Create a new Xcode project reproducibly, from a single version-controlled configuration file.",
         version: ScaffoldVersion.current,
-        subcommands: []
+        subcommands: [InitCommand.self]
     )
 }

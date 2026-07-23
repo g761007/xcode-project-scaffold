@@ -103,10 +103,6 @@ xcode-project-scaffold
 │   └── Architectures
 │       └── minimal
 │
-├── Presets
-│   ├── ios-uikit.yml
-│   └── ios-swiftui.yml
-│
 ├── Skills
 │   └── xcode-project-scaffold
 │       ├── SKILL.md
@@ -122,6 +118,8 @@ xcode-project-scaffold
     ├── ContractSnapshotTests
     └── IntegrationTests
 ```
+
+**沒有 `Presets/`。** 早期版本把 preset 放在 `Presets/*.yml`。M6 改成 `ScaffoldCore` 裡的 Swift 值：preset 不描述專案身分（名稱、bundle identifier 由 CLI 提供），所以它不是一份 `scaffold.yml`，放到磁碟上就等於再開一種文件格式——要有自己的 schema、解碼、驗證與測試，而 v0.1 的兩個 preset 之間只差 `interface.primary` 一個欄位。等到 preset 需要說的東西明顯多過 schema 預設值時，再重新評估這筆交易。
 
 ### 3.1 為什麼是三個 target
 
@@ -481,6 +479,7 @@ git init → initial commit → xcodegen generate
 - 不在目的目錄邊生成邊修改；先在暫存區完成，再原子搬移
 - 失敗時 rollback，目的目錄不得留下半成品
 - 所有外部指令必須經過 `ProcessRunner`，以便測試替換
+- 能在寫入前知道的事，一律在寫入前檢查：目的目錄狀態、以及計畫裡每個外部指令是否存在。缺少 xcodegen 是最常見的失敗，讓它在磁碟還沒被碰過之前就發生，回復成本是零
 
 ### 10.1 `init` 預設跑到哪裡
 
@@ -491,6 +490,17 @@ git init → initial commit → xcodegen generate
 **預設不跑 `xcodebuild`。** build 驗證的真正需求者是模板測試套件，不是每個開專案的使用者。它移到 CI（§12），使用者端以 `--validate-build` opt-in。
 
 `.xcodeproj` 是衍生物，進 `.gitignore`。生成的 README 第一段說明 clone 後先跑 `make generate`。
+
+### 10.2 rollback 的界線
+
+「不得留下半成品」有一個邊界，M6 才會遇到：目的目錄**本來就存在**時（空目錄，或搭配 `--force` 的非空目錄），失敗後無法只還原到原狀——`.git` 與 `.xcodeproj` 是外部指令產生的，xscaffold 沒有它們的清單，而刪掉猜測出來的檔案會刪到使用者的東西。
+
+因此規則收斂成一句：**xscaffold 只刪自己建立的東西。**
+
+- 目的目錄由 xscaffold 建立（常見情況）→ 失敗時整個刪除，使用者回到執行前的狀態。唯一的例外是路徑中間層：`--destination a/b/App` 會順手建出 `a/b`，回滾只刪 `App`，留下兩個空目錄。刪它們要嘛得遞迴刪除、要嘛得先判斷是否為空，而刪除是唯一出錯就救不回來的操作——兩個空目錄不值得這個風險。
+- 目的目錄本來就存在 → 失敗時不動它，錯誤訊息說明目錄裡現在有生成的檔案。這句話是實作契約：`GenerationError.failedLeavingFiles` 包住原本的失敗，讓「為什麼失敗」與「你的目錄現在長什麼樣」一起說完。
+
+同一條規則也決定了 `--force` 的語意：它**只跳過「目的目錄非空」這道檢查**，把計畫裡的檔案寫進去、覆蓋同路徑的舊檔，其餘檔案原封不動。它不清空目錄。原子搬移因此只在目的目錄不存在時成立——那也是唯一需要它的情況。
 
 ---
 
@@ -524,6 +534,10 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
 
 執行行為一律走 flag，不進 `scaffold.yml`。
 
+`init [name]` 的位置參數就是 `project.name`：`--preset` 沒有別的地方可以拿到專案身分，所以搭配 preset 時必填；搭配 `--config` 時則覆寫檔案裡的 `project.name`（使用者比檔案後說話，而寫出去的 `scaffold.yml` 記錄的是實際用的那個）。
+
+**沒有 `--bundle-id`。** 走 preset 時 bundle identifier 由專案名稱推導成 `com.example.<name>`——沒有任何地方可以推論出真正的組織名，而一個看起來就是佔位符的值會被改掉。它會寫進生成的 `scaffold.yml`，使用者看得到。需要一開始就正確的人走 `--config`。
+
 ### 11.3 JSON output
 
 ```text
@@ -551,6 +565,8 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
 10   Environment requirement missing
 130  User cancelled
 ```
+
+**M6 尚未涵蓋的一段：** 指令自己偵測到的錯誤（缺少 `--preset`、preset 名稱不存在）走上表的 `2`，但 ArgumentParser 自己攔下來的解析錯誤（不認識的 flag、缺少參數值）仍以它的預設 `64`（`EX_USAGE`）結束。要統一得覆寫 root command 的 `main()`，而那會連 `--help` 與 `--version` 的輸出通道一起接手——留給 M7 和 JSON output 一起做。
 
 ---
 
@@ -606,10 +622,12 @@ Schema round-trip（YAML → model → YAML 語意一致）、預設值解析、
 | M3 | 驗證函式、`ValidationIssue`、錯誤碼 | 每條規則正反案例；`XS0xxx` 與 `XS1xxx` 語氣正確 |
 | M4 | XcodeGen spec 建構與序列化 | 結構比對；`environments` 開／關兩種輸出 ✅ |
 | M5 | 模板載入、變數代換、`GenerationPlan` | 契約 snapshot ✅ |
-| M6 | `init` 落地：暫存區 → 原子搬移 → git → xcodegen | 兩個 variant 都能 `open` |
-| M7 | `validate` / `plan` / `doctor`、JSON output、exit code | JSON 契約 snapshot |
+| M6 | `init` 落地：暫存區 → 原子搬移 → git → xcodegen | 兩個 variant 都能 `open` ✅ |
+| M7 | `validate` / `plan` / `doctor`、`--validate-build`、JSON output、exit code | JSON 契約 snapshot |
 | M8 | CI E2E | 兩個 variant 的 `xcodegen` → `build` → `test` 全綠 |
 | M9 | `SKILL.md`、schema reference、`make install`、README | 用 Claude Code 走完一次自然語言 → 專案 |
+
+`--validate-build`（與它的 exit code 9）原本沒有任何 milestone 認領。它歸 M7：那裡本來就要處理 exit code 表，而且它與 `doctor` 是同一類問題——「這台機器做不做得到」。M7 要一併決定它用哪個 destination；§12.2 已經記錄了為什麼寫死裝置名稱在別人的機器上會失敗，所以答案多半是 `generic/platform=iOS Simulator` 而不是任何一台具體模擬器。
 
 ### 13.1 v0.1 Definition of Done
 

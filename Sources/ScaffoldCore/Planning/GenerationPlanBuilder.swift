@@ -131,7 +131,7 @@ extension GenerationPlanBuilder {
             commands.append(PlannedCommand(
                 executable: configuration.generator.type.rawValue,
                 arguments: ["generate"],
-                purpose: "Produce \(configuration.project.name).xcodeproj from project.yml"
+                purpose: "Produce \(configuration.projectFileName) from project.yml"
             ))
         }
 

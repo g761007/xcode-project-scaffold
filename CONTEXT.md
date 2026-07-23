@@ -38,7 +38,21 @@ _Avoid_: step、task
 
 **GenerationOptions**:
 一次執行的選項（要不要初始化 git、要不要呼叫 generator）。它描述的是**這次執行**而非專案，所以只來自 CLI flag，永遠不會出現在 `scaffold.yml` 裡。
+
+它決定的是**計畫裡有什麼**。決定「計畫怎麼落地」的選項——例如 `--force`——不屬於它，那是 `PlanExecutor` 的參數：兩份 `GenerationPlan` 不會因為加不加 `--force` 而不同。
 _Avoid_: settings、config
+
+**PlanExecutor**:
+把 `GenerationPlan` 落到磁碟的執行者：先寫進暫存區，再搬到目的地，最後執行 `PlannedCommand`。它只執行計畫，不做任何決定。
+_Avoid_: writer、generator、生成器
+
+**暫存區**:
+生成過程中先寫入的臨時目錄，位置是目的地的兄弟目錄。所有檔案在這裡完成後才一次移入目的地，因此目的地不會出現半成品。
+_Avoid_: 暫存檔、temp 目錄、工作區
+
+**ProcessRunner**:
+執行外部指令的唯一介面，輸入是 `ProcessInvocation`（指令、參數、工作目錄），輸出是 `ProcessResult`（結束狀態與兩個輸出串流）。所有子行程都必須經過它，測試才能在不真的執行任何指令的情況下檢查一次執行會做什麼。
+_Avoid_: shell、executor、command runner
 
 **Placeholder**:
 模板裡的 `{{NAME}}`。渲染時必須有對應的值，否則是錯誤。
