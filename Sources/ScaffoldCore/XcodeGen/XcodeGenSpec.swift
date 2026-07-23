@@ -75,6 +75,11 @@ struct XcodeGenSpec: Equatable, Sendable {
     struct Scheme: Equatable, Sendable {
         var name: String
         var runConfiguration: String
+        /// Separate from `runConfiguration`, and the same for every scheme:
+        /// `@testable import` needs the app module built with `-enable-testing`,
+        /// which only an unoptimised configuration gets. A scheme that ran its
+        /// tests against an optimised configuration would not compile them.
+        var testConfiguration: String
         var archiveConfiguration: String
     }
 }

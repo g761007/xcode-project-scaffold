@@ -134,7 +134,7 @@ struct XcodeGenSpecEncoderTests {
         run:
           config: Release
         test:
-          config: Release
+          config: Debug
           targets:
           - MyAppTests
         archive:

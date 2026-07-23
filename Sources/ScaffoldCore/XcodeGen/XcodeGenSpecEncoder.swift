@@ -129,7 +129,7 @@ extension XcodeGenSpecEncoder {
 
         if let testTarget = spec.testTarget {
             pairs.append(("test", map([
-                ("config", string(scheme.runConfiguration)),
+                ("config", string(scheme.testConfiguration)),
                 ("targets", sequence([string(testTarget.name)]))
             ])))
         }

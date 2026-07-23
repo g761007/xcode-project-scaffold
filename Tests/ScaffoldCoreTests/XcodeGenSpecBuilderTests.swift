@@ -51,6 +51,7 @@ struct SpecWithoutEnvironmentsTests {
         #expect(schemes.count == 1)
         #expect(schemes.first?.name == "MyApp")
         #expect(schemes.first?.runConfiguration == "Debug")
+        #expect(schemes.first?.testConfiguration == "Debug")
         #expect(schemes.first?.archiveConfiguration == "Release")
     }
 }
@@ -103,11 +104,16 @@ struct SpecWithEnvironmentsTests {
             ]
         }
 
-        #expect(builder.makeSpec(for: configuration).configurations == [
+        let spec = builder.makeSpec(for: configuration)
+
+        #expect(spec.configurations == [
             XcodeGenSpec.Configuration(name: "Dev", optimized: false),
             XcodeGenSpec.Configuration(name: "Staging", optimized: true),
             XcodeGenSpec.Configuration(name: "Release", optimized: true)
         ])
+        // The same configuration the list above marks unoptimised, or the tests
+        // would be built against one that cannot host them.
+        #expect(spec.schemes.map(\.testConfiguration) == ["Dev", "Dev", "Dev"])
     }
 
     @Test("suffixes are applied per configuration")
@@ -153,6 +159,18 @@ struct SpecWithEnvironmentsTests {
 
         #expect(schemes.map(\.runConfiguration) == ["Debug", "Staging", "Release"])
         #expect(schemes.map(\.archiveConfiguration) == ["Debug", "Staging", "Release"])
+    }
+
+    /// Not the scheme's own configuration, unlike everything else about it:
+    /// `@testable import` needs the app module built with `-enable-testing`,
+    /// which an optimised configuration does not get. Testing the Release
+    /// scheme is what a user does first — it is the one Xcode opens on — and
+    /// before this it failed to compile the test target at all.
+    @Test("every scheme tests against the debug configuration")
+    func schemeTestConfigurations() {
+        let schemes = builder.makeSpec(for: Self.configuration).schemes
+
+        #expect(schemes.map(\.testConfiguration) == ["Debug", "Debug", "Debug"])
     }
 
     @Test("with no Release environment every scheme is suffixed")

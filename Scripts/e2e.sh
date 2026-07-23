@@ -48,14 +48,17 @@ root="$(mktemp -d)"
 echo "Simulator:  $device $udid"
 echo "Projects:   $root"
 
-for variant in "ios-uikit:UIKitApp" "ios-swiftui:SwiftUIApp"; do
-    preset="${variant%%:*}"
-    name="${variant##*:}"
-    project="$root/$name/$name.xcodeproj"
+# Creates one project and puts the toolchain through it. The scheme is the
+# project's own name, which is the one Xcode selects when the project is opened
+# — so this checks what a user meets first, not a scheme chosen to pass.
+check() {
+    local name="$1"
+    shift
+    local project="$root/$name/$name.xcodeproj"
 
     echo
-    echo "==> $preset"
-    "$xscaffold" init "$name" --preset "$preset" --destination "$root/$name"
+    echo "==> $name"
+    "$xscaffold" init "$name" "$@" --destination "$root/$name"
 
     # Separately from the test run, which would build anyway: a compile error
     # and a failing test are different problems, and this says which one it is.
@@ -67,7 +70,34 @@ for variant in "ios-uikit:UIKitApp" "ios-swiftui:SwiftUIApp"; do
     # `** TEST FAILED **` and nothing else — not which test, not what it
     # expected. The whole run is a few dozen lines once the build above is done.
     xcodebuild test -project "$project" -scheme "$name" -destination "id=$udid"
-done
+}
+
+check UIKitApp --preset ios-uikit
+check SwiftUIApp --preset ios-swiftui
+
+# Environments, which no preset produces and which the two runs above therefore
+# say nothing about. They earn a case of their own because they change the
+# generated schemes: the default scheme belongs to the Release environment, and
+# a project whose first ⌘U cannot compile its own tests is broken on arrival.
+cat > "$root/environments.yml" <<'YML'
+project:
+  name: EnvApp
+  bundleIdentifier: com.example.envapp
+interface:
+  primary: swiftui
+environments:
+  - name: development
+    configuration: Debug
+    bundleIdentifierSuffix: .dev
+    displayNameSuffix: " Dev"
+  - name: staging
+    configuration: Staging
+    bundleIdentifierSuffix: .stg
+    displayNameSuffix: " STG"
+  - name: production
+    configuration: Release
+YML
+check EnvApp --config "$root/environments.yml"
 
 echo
-echo "Both variants generated, built and tested."
+echo "Every variant generated, built and tested."

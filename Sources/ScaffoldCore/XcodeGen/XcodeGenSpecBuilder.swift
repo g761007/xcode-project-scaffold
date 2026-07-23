@@ -42,22 +42,34 @@ struct XcodeGenSpecBuilder: Sendable {
 // MARK: - Configurations
 
 extension XcodeGenSpecBuilder {
-    /// XcodeGen needs each configuration marked debug or release. `Debug` is
-    /// the debug one; everything else is optimised.
-    ///
-    /// If no environment uses that name the first one becomes the debug build,
-    /// because a project where every configuration is optimised cannot be
-    /// debugged at all — a worse outcome than guessing.
+    /// XcodeGen needs each configuration marked debug or release. Exactly one of
+    /// them is the unoptimised build; everything else is optimised.
     private func makeConfigurations(for project: ProjectConfiguration) -> [XcodeGenSpec.Configuration] {
-        let environments = project.environments
-        let hasConventionalDebug = environments.contains { $0.configuration == Self.debugConfigurationName }
+        let debugName = debugConfigurationName(for: project)
 
-        return environments.enumerated().map { index, environment in
-            let isDebug = hasConventionalDebug
-                ? environment.configuration == Self.debugConfigurationName
-                : index == 0
-            return XcodeGenSpec.Configuration(name: environment.configuration, optimized: !isDebug)
+        return project.environments.map { environment in
+            XcodeGenSpec.Configuration(
+                name: environment.configuration,
+                optimized: environment.configuration != debugName
+            )
         }
+    }
+
+    /// Which configuration is built without optimisation: `Debug` when an
+    /// environment uses that name, and otherwise the first, because a project
+    /// where everything is optimised cannot be debugged at all — a worse
+    /// outcome than guessing.
+    ///
+    /// Asked by the configuration list and by every scheme's test action, so
+    /// the rule is stated once. Two tellings of it would let a project mark one
+    /// configuration as its debug build and run its tests against another.
+    private func debugConfigurationName(for project: ProjectConfiguration) -> String {
+        guard let first = project.environments.first else { return Self.debugConfigurationName }
+
+        let usesConventionalName = project.environments.contains {
+            $0.configuration == Self.debugConfigurationName
+        }
+        return usesConventionalName ? Self.debugConfigurationName : first.configuration
     }
 }
 
@@ -111,10 +123,13 @@ extension XcodeGenSpecBuilder {
 
 extension XcodeGenSpecBuilder {
     private func makeSchemes(for project: ProjectConfiguration) -> [XcodeGenSpec.Scheme] {
+        let testConfiguration = debugConfigurationName(for: project)
+
         guard !project.environments.isEmpty else {
             return [XcodeGenSpec.Scheme(
                 name: project.project.name,
                 runConfiguration: Self.debugConfigurationName,
+                testConfiguration: testConfiguration,
                 archiveConfiguration: Self.releaseConfigurationName
             )]
         }
@@ -123,6 +138,7 @@ extension XcodeGenSpecBuilder {
             XcodeGenSpec.Scheme(
                 name: schemeName(for: environment, in: project),
                 runConfiguration: environment.configuration,
+                testConfiguration: testConfiguration,
                 archiveConfiguration: environment.configuration
             )
         }
