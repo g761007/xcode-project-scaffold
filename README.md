@@ -8,14 +8,14 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 
 ---
 
-## ⚠️ Status: planning — no implementation yet
+## ⚠️ Status: early — no commands yet
 
-This repository currently contains **design documents only**. There is no
-`Package.swift`, no executable, and nothing to install. Everything under
-"Usage" and "Development" below describes the intended v0.1 and does not work
-today.
+The package builds, and the configuration schema is implemented and tested.
+`xscaffold` itself currently answers `--help` and `--version` and nothing else:
+**no project can be generated yet.** Everything under "Usage" below marked
+*(planned)* describes the intended v0.1.
 
-Track the intended scope and milestones in
+Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
 
 ## ⚠️ Stability: none during 0.x
@@ -75,20 +75,22 @@ The reasoning, and what it costs, is recorded in
 |---|---|
 | macOS | Apple silicon or Intel, with Xcode installed |
 | Xcode | 26.x (developed and tested against 26.4) |
-| Swift toolchain | 6.3 or later |
+| Swift toolchain | 6.0 or later (developed and tested against 6.3) |
 | [XcodeGen](https://github.com/yonaskolb/XcodeGen) | required at generation time; `xscaffold` fails with exit code 10 if it is missing |
 
 `xscaffold` calls XcodeGen as a subprocess and does not vendor it. Generated
 projects also expect XcodeGen to be available, since `.xcodeproj` is a derived
 artifact and is git-ignored.
 
-## Installation *(planned)*
+## Installation
 
 ```bash
-git clone https://github.com/<owner>/xcode-project-scaffold.git
+git clone https://github.com/g761007/xcode-project-scaffold.git
 cd xcode-project-scaffold
 make install          # swift build -c release, then copy to ~/.local/bin
 ```
+
+Override the destination with `make install PREFIX=/usr/local`.
 
 There is no pre-built binary distribution during 0.x. Binaries downloaded from
 the internet are quarantined by Gatekeeper unless signed with a Developer ID
@@ -165,17 +167,21 @@ Note that `language.languageMode` is Xcode's `SWIFT_VERSION` build setting — a
 *language mode*, whose only valid values are `5` and `6`. It is not a compiler
 or toolchain version.
 
-## Development *(planned)*
+## Development
 
 ```bash
-swift build           # build
-swift test            # unit and contract tests
-make install          # install to ~/.local/bin
+make build            # swift build
+make test             # swift test
+make lint             # swiftformat --lint and swiftlint --strict
+make format           # apply formatting in place
+make install          # release build, installed to $PREFIX/bin
 ```
 
-Integration tests generate both variants and run `xcodegen generate`,
-`xcodebuild build` and `xcodebuild test` against them. They run in CI on every
-push.
+`make lint` needs `swiftlint` and `swiftformat` on the PATH
+(`brew install swiftlint swiftformat`). CI installs them itself.
+
+Integration tests *(planned)* will generate both variants and run
+`xcodegen generate`, `xcodebuild build` and `xcodebuild test` against them.
 
 When invoking `xcodebuild` locally, **always pass an unambiguous destination.**
 A device name alone matches several simulators across installed runtimes, and

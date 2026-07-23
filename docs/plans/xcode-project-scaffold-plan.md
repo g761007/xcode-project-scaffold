@@ -222,6 +222,11 @@ public enum ProductType: String, Codable, CaseIterable, Sendable {
     case framework                        // v0.1 → XS0003
 }
 
+// Objective-C is absent on purpose, and this is the one place where the
+// "keep the full domain" rule does not apply. macOS and Tuist are coming, so
+// "not supported in this version" is honest for them; Objective-C is not
+// coming at all (§2), so the same wording would mislead. `objective-c`
+// therefore fails as an unrecognised value, listing `swift` as the only option.
 public enum ProgrammingLanguage: String, Codable, CaseIterable, Sendable {
     case swift
 }
@@ -239,6 +244,7 @@ public enum UIFramework: String, Codable, CaseIterable, Sendable {
 
 public enum ApplicationLifecycle: String, Codable, CaseIterable, Sendable {
     case swiftUI = "swiftui"
+    case appDelegate = "app-delegate"     // AppKit only; macOS has no scenes
     case appDelegateSceneDelegate = "app-delegate-scene-delegate"
 }
 
@@ -257,7 +263,7 @@ public enum GeneratorKind: String, Codable, CaseIterable, Sendable {
 public enum UnitTestFramework: String, Codable, CaseIterable, Sendable {
     case swiftTesting = "swift-testing"
     case xctest
-    case none
+    case disabled = "none"                // named to stay clear of Optional.none
 }
 ```
 
@@ -285,7 +291,6 @@ public struct ValidationIssue: Codable, Sendable {
 
 ```text
 XS0001  Platform 'macos' is not supported in this version.
-XS0002  Language 'objective-c' is not supported in this version.
 XS0003  Product type 'framework' is not supported in this version.
 XS0004  Architecture '<name>' is not supported in this version.
 XS0005  Generator 'tuist' is not supported in this version.
@@ -299,6 +304,7 @@ XS1001  UIKit is only available for iOS projects.
 XS1002  AppKit is only available for macOS projects.
 XS1101  Lifecycle 'swiftui' requires SwiftUI as the primary interface.
 XS1102  Lifecycle 'app-delegate-scene-delegate' requires UIKit as the primary interface.
+XS1103  Lifecycle 'app-delegate' requires AppKit as the primary interface.
 XS1201  Swift Testing requires Swift as the primary language.
 XS1301  Bundle identifier must be a valid reverse-DNS string.
 XS1302  Deployment target is below the minimum supported by the installed SDK.

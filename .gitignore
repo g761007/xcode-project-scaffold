@@ -4,7 +4,9 @@
 ## Swift Package Manager
 .build/
 .swiftpm/
-Package.resolved
+# Package.resolved is committed on purpose: xscaffold ships as an executable,
+# and pinning its dependency graph is the same reproducibility promise the tool
+# makes to its own users.
 
 ## Xcode
 DerivedData/

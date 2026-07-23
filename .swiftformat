@@ -1,0 +1,20 @@
+# Formatting for xscaffold's own source. Templates under Templates/ are
+# formatted by the rules they ship with, not by these.
+
+--swiftversion 6.0
+--indent 4
+--self remove
+--stripunusedargs closure-only
+
+# Keep `public` on each declaration rather than hoisting it onto the extension.
+# ScaffoldSchema is a published contract; `public extension` makes every member
+# public implicitly, and silently widening the API surface is a real hazard here.
+--extensionacl on-declarations
+
+# SwiftFormat defaults to adding trailing commas; SwiftLint's stock
+# `trailing_comma` rule forbids them. The two disagree, so one has to give.
+# SwiftLint stays at its defaults — contributors are less likely to be surprised
+# by it — and the override lands here instead.
+--trailing-commas never
+
+--exclude .build,Templates
