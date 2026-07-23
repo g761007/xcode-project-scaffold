@@ -419,13 +419,29 @@ Xcode 26.4 的內建 UIKit 樣板仍使用 `AppDelegate` + `SceneDelegate`，本
 
 | Environment | Build Configuration | Scheme | Bundle ID 後綴 | 顯示名稱後綴 |
 |---|---|---|---|---|
-| `development` | `Debug` | `MyApp-Dev` | `.dev` | ` Dev` |
+| `development` | `Debug` | `MyApp-Development` | `.dev` | ` Dev` |
 | `staging` | `Staging` | `MyApp-Staging` | `.stg` | ` STG` |
 | `production` | `Release` | `MyApp` | 無 | 無 |
 
-production 保留無後綴的原名，因為那是 archive 上架時使用的 scheme，也是打開專案時預設看到的。
-
 `environments: []` 時只產生 `Debug` / `Release` 兩個 configuration 與一個 scheme。
+
+### 9.1 兩條生成規則
+
+`Environment` 少了兩項 XcodeGen 需要的資訊。兩者都以**生成規則**補足，不加 schema 欄位——需要例外的人直接改 `project.yml`，那是生成後的真實來源（[ADR-0001](../adr/0001-scaffold-yml-as-birth-certificate.md)）。
+
+1. **哪些 configuration 是 debug 建置**：名為 `Debug` 的是，其餘為 release。XcodeGen 的 `configs:` 必須標記，而 schema 沒有記錄。
+   **退化情況**：若沒有任何環境使用 `Debug` 這個名稱，則**第一個環境**成為 debug 建置。全部標成 release 會產生一個根本無法除錯的專案，那比猜一個更糟；而環境清單慣例上由開發環境往外排。
+2. **哪個 scheme 用無後綴的原名**：`configuration` 為 `Release` 的那個。它是 archive 上架用的 scheme，也是打開專案時預設選中的。若沒有任何環境使用 `Release`，則全部加後綴。
+
+Scheme 後綴用環境名稱首字大寫（`development` → `Development`），**不縮寫成 `Dev`**：那需要一張任意的對照表，且對沒見過的名稱沒有正確答案。
+
+### 9.2 顯示名稱的實作
+
+每個環境的顯示名稱透過 build setting 而非多份 Info.plist：`Info.plist` 寫 `CFBundleDisplayName: $(PRODUCT_DISPLAY_NAME)`，各 configuration 定義自己的 `PRODUCT_DISPLAY_NAME`。一份 Info.plist 服務所有環境。
+
+已實測驗證：建置 Staging configuration 後，產物 `Info.plist` 的 `CFBundleDisplayName` 確實是 `EnvProbe STG`，`CFBundleIdentifier` 是 `com.example.envprobe.stg`。
+
+因此生成樹裡**沒有** `Config/`（`.xcconfig`）——per-configuration 設定直接寫在 `project.yml` 裡。§13.1 已同步。
 
 ---
 
@@ -526,7 +542,14 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
 Schema round-trip（YAML → model → YAML 語意一致）、預設值解析、驗證規則正反案例、XcodeGen spec 建構（比對結構而非字串）。
 
 **契約 snapshot**
-只鎖三樣東西：生成的檔案清單、`project.yml` 的**解析後結構**、JSON output 的欄位。
+只鎖三樣東西：生成的檔案清單、`project.yml`、JSON output 的欄位。
+
+`project.yml` **兩種都鎖**，而且是唯一逐字比對的檔案：
+
+- **解析後結構** —— 失敗時代表「生成的專案會不一樣」，是有意義的訊號。
+- **逐字文本** —— 因為它的鍵順序與引號是有意義的：順序決定 diff 是否穩定，引號決定 `18.10` 會不會被 YAML 讀成浮點數 `18.1`（另一個 iOS 版本）。結構比對抓不到這兩者。
+
+它是下面那條「不逐字比對」規則的**唯一例外**，理由是它只有一個檔案、完全由工具生成、沒有註解，而且它正是使用者往後每天 diff 的東西。
 
 檔案**內容**不逐字比對——那是 snapshot 最常見的失敗模式：粒度太細，改一個註解就要更新一堆 snapshot，接著養成無腦 accept 的習慣，snapshot 就失去全部價值。內容正確性交給 E2E build 把關。
 
@@ -557,7 +580,7 @@ Schema round-trip（YAML → model → YAML 語意一致）、預設值解析、
 | M1 | `Package.swift` 三個 target、CI、coding conventions | `swift build` / `swift test` |
 | M2 | Schema 型別、預設值、YAML 編解碼 | YAML → model → YAML 語意一致 |
 | M3 | 驗證函式、`ValidationIssue`、錯誤碼 | 每條規則正反案例；`XS0xxx` 與 `XS1xxx` 語氣正確 |
-| M4 | XcodeGen spec 建構與序列化 | 結構比對；`environments` 開／關兩種輸出 |
+| M4 | XcodeGen spec 建構與序列化 | 結構比對；`environments` 開／關兩種輸出 ✅ |
 | M5 | 模板載入、變數代換、`GenerationPlan` | 契約 snapshot |
 | M6 | `init` 落地：暫存區 → 原子搬移 → git → xcodegen | 兩個 variant 都能 `open` |
 | M7 | `validate` / `plan` / `doctor`、JSON output、exit code | JSON 契約 snapshot |
@@ -575,9 +598,8 @@ xscaffold init DemoApp --preset ios-uikit --destination /tmp/DemoApp
 ```text
 DemoApp
 ├── App/                    AppDelegate、SceneDelegate、ViewController
-├── Resources/
+├── Resources/              必須有內容；空目錄在 git 裡不存在，xcodegen 會失敗
 ├── Tests/
-├── Config/                 environments 啟用時才有
 ├── project.yml
 ├── scaffold.yml
 ├── .swiftlint.yml
@@ -586,6 +608,10 @@ DemoApp
 ├── .gitignore
 └── README.md
 ```
+
+**沒有 `Config/`。** 早期版本的計劃書在啟用 environments 時會產生一組 `.xcconfig`。M4 之後不需要了：per-configuration 的 bundle identifier 與顯示名稱直接寫在 `project.yml` 的 `settings.configs` 裡（§9.2）。少一層檔案、少一個會與 `project.yml` 不同步的地方。
+
+**沒有 `App/Info.plist` 模板。** 那個檔案由 XcodeGen 依 `project.yml` 的 `info.properties` 產生，因此它是衍生物，不是模板產出物。同一個理由：描述只有一份。
 
 並通過：
 

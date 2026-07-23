@@ -30,7 +30,11 @@ _Avoid_: diff、changeset、生成清單
 
 **Generator**:
 把 `project.yml` 轉成 `.xcodeproj` 的外部工具。目前只有 XcodeGen。
-_Avoid_: builder、backend、engine
+_Avoid_: backend、engine
+
+**XcodeGenSpec**:
+`ProjectConfiguration` 與 `project.yml` 之間的中介值。它描述要寫出什麼，不描述怎麼寫。所有決定都在這一層，序列化器不自行發明任何值。
+_Avoid_: project spec、YAML model
 
 **ValidationIssue**:
 驗證階段產出的單一問題，含嚴重度、錯誤碼、訊息、路徑與建議。錯誤碼 `XS0xxx` 表示這個版本還沒支援，`XS1xxx` 表示這個組合永遠不合法。

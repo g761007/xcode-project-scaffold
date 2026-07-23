@@ -1,0 +1,75 @@
+/// The subset of XcodeGen's project spec that this version generates.
+///
+/// Modelled here rather than imported from XcodeGen (ADR-0002): a value tree
+/// keeps optional sections — environments in particular — a matter of an empty
+/// array rather than of YAML merging, and lets tests compare structure instead
+/// of text.
+///
+/// Every decision lives in this tree. The encoder that turns it into YAML
+/// invents nothing, so anything a reader wonders about can be answered by
+/// looking at one value rather than by reading the serialiser.
+///
+/// It is deliberately narrow. Anything XcodeGen can express that this does not
+/// is available by editing the generated `project.yml`, which takes over as the
+/// project's definitive description the moment it is written (ADR-0001).
+struct XcodeGenSpec: Equatable, Sendable {
+    var name: String
+    /// XcodeGen's own spelling — `iOS`, not `ios`.
+    var platform: String
+    var deploymentTarget: String
+    var languageMode: String
+    var strictConcurrency: Bool
+    /// Empty means "leave XcodeGen's own Debug and Release in place".
+    var configurations: [Configuration]
+    var appTarget: AppTarget
+    var testTarget: TestTarget?
+    var schemes: [Scheme]
+
+    /// `optimized` maps to XcodeGen's `debug`/`release` config type, which
+    /// drives the compiler and packaging defaults Xcode applies.
+    struct Configuration: Equatable, Sendable {
+        var name: String
+        var optimized: Bool
+    }
+
+    struct AppTarget: Equatable, Sendable {
+        var productType: String
+        var bundleIdentifier: String
+        var displayName: String
+        var sources: [String]
+        var infoPlist: InfoPlist
+        /// Only for configurations that actually differ from the base.
+        var overrides: [TargetOverride]
+    }
+
+    /// XcodeGen writes this file from the values here, so the project ships no
+    /// Info.plist of its own: one description, in `project.yml`, rather than a
+    /// second file that can drift away from it.
+    struct InfoPlist: Equatable, Sendable {
+        var path: String
+        /// iOS 14 and later can describe the launch screen inline, so the
+        /// project ships no storyboard at all. Not applicable to macOS.
+        var includesLaunchScreen: Bool
+        /// UIKit on iOS is scene-based. SwiftUI and macOS are not.
+        var includesSceneManifest: Bool
+    }
+
+    /// One environment's bundle identifier and display name, applied to a
+    /// single build configuration.
+    struct TargetOverride: Equatable, Sendable {
+        var configuration: String
+        var bundleIdentifier: String
+        var displayName: String
+    }
+
+    struct TestTarget: Equatable, Sendable {
+        var name: String
+        var sources: [String]
+    }
+
+    struct Scheme: Equatable, Sendable {
+        var name: String
+        var runConfiguration: String
+        var archiveConfiguration: String
+    }
+}

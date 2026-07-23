@@ -277,31 +277,59 @@ extension ConfigurationValidator {
 
 extension ConfigurationValidator {
     private func environmentIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
-        duplicates(configuration.environments.map(\.name)).map { index, name in
-            ValidationIssue(
-                code: .duplicateEnvironmentName,
-                message: "Environment name '\(name)' is used more than once.",
+        var issues: [ValidationIssue] = []
+
+        // Case-insensitive: environment names become scheme names, and `dev`
+        // and `Dev` would produce the same one. Xcode cannot hold two schemes
+        // under one name, so the second would silently replace the first.
+        issues += duplicates(configuration.environments.map(\.name), ignoringCase: true)
+            .map { index, name in
+                ValidationIssue(
+                    code: .duplicateEnvironmentName,
+                    message: "Environment name '\(name)' is used more than once.",
+                    path: "environments[\(index)].name",
+                    suggestion: "Give each environment a name that differs by more than its casing."
+                )
+            }
+
+        // Case-sensitive: Xcode really does treat `Debug` and `debug` as
+        // different build configurations, so folding them would reject a valid
+        // project.
+        issues += duplicates(configuration.environments.map(\.configuration), ignoringCase: false)
+            .map { index, name in
+                ValidationIssue(
+                    code: .duplicateBuildConfiguration,
+                    message: "Build configuration '\(name)' is used by more than one environment.",
+                    path: "environments[\(index)].configuration",
+                    suggestion: "Give each environment its own build configuration."
+                )
+            }
+
+        // The name also has to survive becoming a scheme, which is a file on
+        // disk.
+        issues += configuration.environments.enumerated().compactMap { index, environment in
+            guard !isUsableTargetName(environment.name) else { return nil }
+            return ValidationIssue(
+                code: .invalidProjectName,
+                message: "Environment name '\(environment.name)' cannot be used in a scheme name.",
                 path: "environments[\(index)].name",
-                suggestion: "Give each environment a distinct name."
-            )
-        } + duplicates(configuration.environments.map(\.configuration)).map { index, name in
-            ValidationIssue(
-                code: .duplicateBuildConfiguration,
-                message: "Build configuration '\(name)' is used by more than one environment.",
-                path: "environments[\(index)].configuration",
-                suggestion: "Give each environment its own build configuration."
+                suggestion: "Use a name with no leading or trailing spaces and no '/', '\\' or ':'."
             )
         }
+
+        return issues
     }
 
     /// Every repeat after the first, so five clashing environments produce four
-    /// issues rather than one. Case-sensitive: Xcode treats `Debug` and `debug`
-    /// as different build configurations, so folding them would reject a valid
-    /// project.
-    private func duplicates(_ values: [String]) -> [(index: Int, value: String)] {
+    /// issues rather than one.
+    private func duplicates(
+        _ values: [String],
+        ignoringCase: Bool
+    ) -> [(index: Int, value: String)] {
         var seen: Set<String> = []
         return values.enumerated().compactMap { index, value in
-            seen.insert(value).inserted ? nil : (index, value)
+            let key = ignoringCase ? value.lowercased() : value
+            return seen.insert(key).inserted ? nil : (index, value)
         }
     }
 }

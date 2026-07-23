@@ -196,18 +196,45 @@ struct EnvironmentValidationTests {
         #expect(reported.count == 1)
     }
 
-    /// Environment names are user-facing labels and build configurations are
-    /// Xcode identifiers; comparing them case-insensitively would reject
-    /// `Debug`/`debug` pairs that Xcode itself treats as distinct.
-    @Test("names differing only by case are distinct")
-    func caseSensitiveComparison() {
+    /// Xcode genuinely treats `Debug` and `debug` as different build
+    /// configurations, so folding them would reject a valid project.
+    @Test("build configurations differing only by case are distinct")
+    func buildConfigurationsAreCaseSensitive() {
         let configuration = ProjectConfiguration.validBaseline.with {
             $0.environments = [
-                Environment(name: "staging", configuration: "Debug"),
-                Environment(name: "Staging", configuration: "debug")
+                Environment(name: "one", configuration: "Debug"),
+                Environment(name: "two", configuration: "debug")
             ]
         }
 
-        #expect(codes(configuration).isEmpty)
+        #expect(!codes(configuration).contains(.duplicateBuildConfiguration))
+    }
+
+    /// Environment names are not: they become scheme names, and `staging` and
+    /// `Staging` both produce `MyApp-Staging`. Xcode cannot hold two schemes
+    /// under one name, so the second would silently replace the first.
+    @Test("environment names differing only by case are a duplicate")
+    func environmentNamesAreCaseInsensitive() {
+        let configuration = ProjectConfiguration.validBaseline.with {
+            $0.environments = [
+                Environment(name: "staging", configuration: "Debug"),
+                Environment(name: "Staging", configuration: "Release")
+            ]
+        }
+
+        #expect(codes(configuration).contains(.duplicateEnvironmentName))
+    }
+
+    /// The name becomes a `.xcscheme` file, so it has to survive the file
+    /// system too.
+    @Test("an environment name that cannot be a filename is rejected", arguments: [
+        "my/env", "my:env", " staging", "staging "
+    ])
+    func environmentNameMustBeUsable(name: String) {
+        let configuration = ProjectConfiguration.validBaseline.with {
+            $0.environments = [Environment(name: name, configuration: "Debug")]
+        }
+
+        #expect(codes(configuration).contains(.invalidProjectName))
     }
 }
