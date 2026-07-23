@@ -8,16 +8,15 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 
 ---
 
-## ⚠️ Status: early — `init` works, the other commands do not
+## ⚠️ Status: early — all four commands work
 
-`xscaffold init` creates a project end to end: sources, `project.yml`,
-`scaffold.yml`, lint and format configuration, a `Makefile`, a git repository
-with an initial commit, and a generated `.xcodeproj`. Both v0.1 variants —
-UIKit and SwiftUI — have been checked by hand to lint, build and test after
-generation, on Xcode 26.4.1; CI does not run that check yet.
+`init`, `validate`, `plan` and `doctor` are implemented, with `--output json`
+and the exit codes below. Both v0.1 variants — UIKit and SwiftUI — have been
+checked by hand to lint, build and test after generation, on Xcode 26.4.1; CI
+does not run that check yet.
 
-`validate`, `plan`, `doctor`, `--output json` and `--dry-run` do **not** exist
-yet. Everything below marked *(planned)* describes the intended v0.1.
+What is left for v0.1 is CI coverage of both variants end to end, and the
+bundled Skill with its schema reference.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -51,8 +50,7 @@ xscaffold init --config scaffold.yml           # declarative
 ```
 
 The machine-readable path is a first-class use case, not an afterthought:
-commands return meaningful exit codes, and `--output json` is planned for all of
-them.
+every command supports `--output json` and returns a meaningful exit code.
 
 ## What it deliberately does not do
 
@@ -106,18 +104,31 @@ toolchain.
 ## Usage
 
 ```bash
-xscaffold init MyApp --preset ios-uikit       # from a preset
-xscaffold init --config scaffold.yml          # from a configuration file
+xscaffold init MyApp --preset ios-uikit       # create a project
+xscaffold validate scaffold.yml               # check a configuration
+xscaffold plan MyApp --preset ios-uikit       # show what init would create
+xscaffold doctor                              # check the tools init needs
 ```
 
 ```text
 --config <path>        a scaffold.yml to generate from
 --preset <name>        ios-uikit or ios-swiftui
 --destination <path>   where to create the project (default: ./<name>)
+--output <text|json>   how to report the result
+--dry-run              show what init would create, and stop
 --force                write into a destination that is not empty
 --skip-git             do not create a git repository
 --skip-generate        do not run XcodeGen
+--validate-build       build the generated project before reporting success
 ```
+
+`plan` and `init --dry-run` are the same implementation under two names, and
+take the same options, so a preview cannot disagree with the run it previews.
+
+`doctor` separates what a default `init` cannot do without — `git` and
+`xcodegen` — from what only the generated project needs: `xcodebuild` for
+`make test`, `swiftformat` and `swiftlint` for `make lint`. Only a missing
+requirement exits 10; the rest are reported and shrugged at.
 
 Pass exactly one of `--config` or `--preset`. The positional name sets
 `project.name`; with `--preset` it is required, because a preset says nothing
@@ -135,16 +146,34 @@ created:** if a run fails after creating the destination, the destination is
 removed; if the destination was already there, it is left as it is and the
 error says so.
 
-### Planned commands
+### Machine-readable output
 
-```bash
-xscaffold validate <path>     # validate a scaffold.yml
-xscaffold plan                # preview the generation plan without writing
-xscaffold doctor              # check that required tools are available
+`--output json` puts one JSON document on stdout and nothing else; anything a
+person would read goes to stderr. Failures produce a document too — that is
+when a caller needs it most:
+
+```console
+$ xscaffold validate scaffold.yml --output json
+{"command":"validate","exitCode":0,"issues":[],"ok":true}
+
+$ xscaffold doctor --output json | jq '.checks[] | select(.found == false)'
 ```
 
-…together with `--output <text|json>`, `--dry-run`, `--validate-build` and
-`--yes`.
+`ok`, `command` and `exitCode` are always present, and `message` on failure.
+`issues`, `plan`, `checks` and `destination` appear only when that command has
+them to report — an absent key, never `null`. `plan` carries file paths and
+sizes, not file contents.
+
+### Exit codes
+
+```text
+0   success                        6   file conflict
+1   unexpected failure             7   generation failure
+2   invalid CLI arguments          8   external command failure
+3   configuration parsing failure  9   build validation failure
+4   configuration validation       10  environment requirement missing
+5   template resolution failure
+```
 
 ### Minimal `scaffold.yml`
 

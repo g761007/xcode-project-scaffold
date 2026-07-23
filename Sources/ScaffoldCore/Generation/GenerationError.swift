@@ -25,6 +25,29 @@ public enum GenerationError: Error, Equatable, Sendable {
     indirect case failedLeavingFiles(GenerationError, in: URL)
 }
 
+extension GenerationError {
+    /// What the CLI exits with (§11.4).
+    ///
+    /// Here rather than in the CLI so that it can be tested without running a
+    /// binary, and so that adding a case makes the compiler ask what it means
+    /// to a caller — the one question a new failure mode must not skip.
+    public var exitCode: ScaffoldExitCode {
+        switch self {
+        case .destinationNotEmpty, .destinationIsNotADirectory, .cannotReplaceDirectory:
+            .fileConflict
+        case .executableNotFound:
+            .environmentRequirementMissing
+        case .commandFailed:
+            .externalCommandFailure
+        case .unsafePlannedPath:
+            .generationFailure
+        // What could not be undone does not change why it failed.
+        case let .failedLeavingFiles(underlying, _):
+            underlying.exitCode
+        }
+    }
+}
+
 extension GenerationError: CustomStringConvertible {
     public var description: String {
         switch self {

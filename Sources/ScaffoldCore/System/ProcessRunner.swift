@@ -27,6 +27,20 @@ public struct ProcessResult: Equatable, Sendable {
     public var succeeded: Bool {
         exitStatus == 0
     }
+
+    /// Both streams, for reporting a failure.
+    ///
+    /// Not "stderr, or stdout if that is empty". A failing `xcodebuild -quiet`
+    /// puts tens of kilobytes of diagnostics on stdout and exactly
+    /// `** BUILD FAILED **` on stderr, so choosing one stream throws away the
+    /// half that says what went wrong — and which half that is depends on the
+    /// tool.
+    public var combinedOutput: String {
+        [standardOutput, standardError]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
 }
 
 /// The only door to the outside world (§18.2), so that a test can watch what a
@@ -39,6 +53,8 @@ public protocol ProcessRunner: Sendable {
     /// the files are in place means undoing work that never had to start.
     func locate(_ executable: String) -> URL?
 
+    /// Throws `GenerationError.executableNotFound` when the command is not
+    /// installed — a fact about the machine, not a non-zero exit status.
     func run(_ invocation: ProcessInvocation) throws -> ProcessResult
 }
 
@@ -62,63 +78,63 @@ public struct SystemProcessRunner: ProcessRunner {
         return nil
     }
 
+    /// Output is captured through temporary files rather than pipes.
+    ///
+    /// A pipe holds 64 KB and then blocks the child, so both streams have to be
+    /// drained while the child is still running — which needs two more threads
+    /// per command and a barrier to join them. Under a parallel test run that
+    /// pattern fills the cooperative thread pool with threads waiting on that
+    /// barrier and the whole process stops. A file never blocks the writer, so
+    /// waiting for the child is all the synchronisation there is.
     public func run(_ invocation: ProcessInvocation) throws -> ProcessResult {
         guard let executableURL = locate(invocation.executable) else {
             throw GenerationError.executableNotFound(invocation.executable)
+        }
+
+        let output = try CapturedStream()
+        let error = try CapturedStream()
+        defer {
+            output.discard()
+            error.discard()
         }
 
         let process = Process()
         process.executableURL = executableURL
         process.arguments = invocation.arguments
         process.currentDirectoryURL = invocation.workingDirectory
-
-        let output = Pipe()
-        let error = Pipe()
-        process.standardOutput = output
-        process.standardError = error
+        process.standardOutput = output.handle
+        process.standardError = error.handle
 
         try process.run()
-
-        // Both pipes are drained on their own queue. Reading one to EOF and
-        // only then the other deadlocks as soon as the child fills the second
-        // pipe's buffer while we are still blocked on the first.
-        let collectedOutput = CollectedData()
-        let collectedError = CollectedData()
-        let group = DispatchGroup()
-        let queue = DispatchQueue(label: "xscaffold.process-output", attributes: .concurrent)
-        queue.async(group: group) { collectedOutput.store(output.fileHandleForReading.readDataToEndOfFile()) }
-        queue.async(group: group) { collectedError.store(error.fileHandleForReading.readDataToEndOfFile()) }
-
         process.waitUntilExit()
-        group.wait()
 
         return ProcessResult(
             exitStatus: process.terminationStatus,
-            standardOutput: collectedOutput.text,
-            standardError: collectedError.text
+            standardOutput: output.text,
+            standardError: error.text
         )
     }
 }
 
-/// Written on a background queue and read once both queues have finished.
-private final class CollectedData: @unchecked Sendable {
-    private let lock = NSLock()
-    private var data = Data()
+/// A file standing in for one of a child process's output streams.
+private struct CapturedStream {
+    let url: URL
+    let handle: FileHandle
 
-    func store(_ new: Data) {
-        lock.lock()
-        defer { lock.unlock() }
-        data = new
+    init() throws {
+        url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("xscaffold-output-\(UUID().uuidString)")
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        handle = try FileHandle(forWritingTo: url)
     }
 
+    /// Read after the child has exited, so everything it wrote is already here.
     var text: String {
-        lock.lock()
-        defer { lock.unlock() }
-        // Lossy on purpose, against `optional_data_string_conversion`: this is a
-        // failure message on its way to the user. A tool that emits one stray
-        // byte should cost them one replacement character, not the whole
-        // explanation of what went wrong.
-        // swiftlint:disable:next optional_data_string_conversion
-        return String(decoding: data, as: UTF8.self)
+        (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+    }
+
+    func discard() {
+        try? handle.close()
+        try? FileManager.default.removeItem(at: url)
     }
 }

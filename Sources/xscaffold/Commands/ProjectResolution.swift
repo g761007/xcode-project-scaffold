@@ -1,0 +1,100 @@
+import ArgumentParser
+import Foundation
+import ScaffoldCore
+import ScaffoldSchema
+
+// The steps between "what the user typed" and "a plan", shared by every
+// command that needs them. Kept in one place so that `validate`, `plan` and
+// `init` cannot come to different conclusions about the same file — which is
+// the whole promise of `validate` running before `init`.
+
+/// Reads and decodes a `scaffold.yml`. Used by `--config` and by `validate`,
+/// which would otherwise report the same two failures in two wordings.
+func readConfiguration(at path: String, reportingTo reporter: Reporter) throws -> ProjectConfiguration {
+    guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
+        throw reporter.failure(.configurationParsingFailure, "Cannot read '\(path)'.")
+    }
+
+    do {
+        return try ConfigurationCoder().decode(text)
+    } catch {
+        throw reporter.failure(.configurationParsingFailure, "\(path): \(error)")
+    }
+}
+
+/// Stops the run if the configuration cannot be generated, and returns what did
+/// not stop it — the warnings, which are worth reporting and worth continuing
+/// past.
+///
+/// Every problem is reported rather than the first, so someone fixing five
+/// mistakes runs the command once instead of five times.
+func checkConfiguration(
+    _ configuration: ProjectConfiguration,
+    describedAs subject: String,
+    reportingTo reporter: Reporter
+) throws -> [ValidationIssue] {
+    let issues = ConfigurationValidator().validate(configuration)
+    guard !issues.contains(where: { $0.severity == .error }) else {
+        throw reporter.failure(.validationFailure, "\(subject) cannot be generated.", issues: issues)
+    }
+    return issues
+}
+
+/// Where the user's arguments become a project that is known to be generatable.
+func resolveConfiguration(
+    _ options: ProjectOptions,
+    reportingTo reporter: Reporter
+) throws -> (configuration: ProjectConfiguration, warnings: [ValidationIssue]) {
+    let configuration = try options.configuration(reportingTo: reporter)
+    let warnings = try checkConfiguration(
+        configuration,
+        describedAs: "The configuration",
+        reportingTo: reporter
+    )
+
+    for warning in warnings {
+        reporter.note(warning.report)
+    }
+    return (configuration, warnings)
+}
+
+func makePlan(
+    for configuration: ProjectConfiguration,
+    options: GenerationOptions,
+    reportingTo reporter: Reporter
+) throws -> GenerationPlan {
+    do {
+        return try GenerationPlanBuilder().makePlan(for: configuration, options: options)
+    } catch {
+        throw reporter.failure(.templateResolutionFailure, "\(error)")
+    }
+}
+
+/// Used by `plan` and by `init --dry-run`, which report the same thing under
+/// their own names.
+func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Reporter) throws {
+    let (configuration, warnings) = try resolveConfiguration(project, reportingTo: reporter)
+    let plan = try makePlan(for: configuration, options: run.generationOptions, reportingTo: reporter)
+    let destination = project.destinationURL(for: configuration)
+
+    reporter.succeed(
+        CommandOutput(
+            command: reporter.command,
+            exitCode: .success,
+            issues: warnings,
+            destination: destination.path,
+            plan: PlanSummary(plan)
+        ),
+        text: "\(configuration.project.name) would be created at:\n\(plan.summary(at: destination))"
+    )
+}
+
+extension GenerationPlan {
+    /// The shape `plan`, `init --dry-run` and `init` all report in, so that what
+    /// a preview showed and what a run did can be compared line for line.
+    func summary(at destination: URL) -> String {
+        var lines = ["\(destination.path)", "  \(files.count) files"]
+        lines += commands.map { "  \($0.displayString)" }
+        return lines.joined(separator: "\n")
+    }
+}

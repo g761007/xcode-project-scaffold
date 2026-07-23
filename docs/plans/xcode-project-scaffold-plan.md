@@ -512,8 +512,15 @@ git init → initial commit → xcodegen generate
 xscaffold init [name]      建立專案
 xscaffold validate <path>  驗證設定
 xscaffold plan             預覽 GenerationPlan（與 init --dry-run 共用實作）
-xscaffold doctor           檢查 xcodegen / Xcode 是否可用
+xscaffold doctor           檢查生成需要的工具是否可用
 ```
+
+`doctor` 檢查的不只 xcodegen 與 Xcode：
+
+- **必要**（少了就跑不完一次預設 `init`）：`git`、`xcodegen`。
+- **非必要**（少了照樣生得出專案，但生出來的專案有事做不了）：`xcodebuild`、`swiftformat`、`swiftlint`。§10.1 明講預設不跑 `xcodebuild`，所以它不是必要條件；但生成專案的 `make test` 與 `--validate-build` 需要它，而 `make lint` 需要另外兩個。
+
+必要與非必要的差別會反映在 exit code 上：只有必要項目缺席才會以 `10` 結束。把「裝了才做得到的事」列出來，比讓使用者在第一次 `make lint` 才發現要好。
 
 `plan` 與 `init --dry-run` 是同一份實作的兩個入口，輸出同一個 `GenerationPlan`。
 
@@ -529,8 +536,9 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
 --skip-git
 --skip-generate
 --validate-build
---yes
 ```
+
+**`--yes`已移除。** 它的用途是跳過互動確認，而 v0.1 沒有任何互動（§14 把互動式 prompt 延到 v0.2）。一個沒有東西可以確認的確認旗標，只會讓寫腳本的人以為某處會停下來問。它跟互動式 prompt 一起回來，`130` 也是。
 
 執行行為一律走 flag，不進 `scaffold.yml`。
 
@@ -549,6 +557,16 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
   失敗時仍輸出合法 JSON
 ```
 
+四個指令共用**同一個信封**（`CommandOutput`），成功與失敗也共用。理由是：不共用的話，呼叫端得先知道自己跑了哪個指令、結果是成功還是失敗，才知道該怎麼解析——而它想知道的正是後者。
+
+`ok`、`command` 與 `exitCode` 永遠都在。`message` 在失敗時出現。`issues`、`plan`、`checks`、`destination` 是「有話說才出現」，**不存在時是整個 key 消失，不是 `null`**。
+
+`ok` 由 `exitCode` 推導而非另外傳入：一份說自己成功、行程卻以 4 結束的文件，比沒有文件更糟。
+
+「失敗時仍輸出合法 JSON」也涵蓋參數解析失敗——那時還沒有任何指令存在、也就沒人知道使用者要了 json。所以 root 的 `main()` 會直接回頭讀 `CommandLine.arguments`。這條承諾要嘛到處成立，要嘛呼叫端就得準備好接住自己解不開的東西。
+
+`plan` 的 JSON **不含檔案內容**，只有路徑與位元組數。一個空專案的內容約四十 KB，而呼叫端拿它做的事（顯示摘要、決定要不要繼續）沒有一項需要內容；真的需要內容的人要的是生成出來的專案。
+
 ### 11.4 Exit code
 
 ```text
@@ -566,7 +584,9 @@ xscaffold doctor           檢查 xcodegen / Xcode 是否可用
 130  User cancelled
 ```
 
-**M6 尚未涵蓋的一段：** 指令自己偵測到的錯誤（缺少 `--preset`、preset 名稱不存在）走上表的 `2`，但 ArgumentParser 自己攔下來的解析錯誤（不認識的 flag、缺少參數值）仍以它的預設 `64`（`EX_USAGE`）結束。要統一得覆寫 root command 的 `main()`，而那會連 `--help` 與 `--version` 的輸出通道一起接手——留給 M7 和 JSON output 一起做。
+M7 統一了這張表：root command 覆寫了 `main()`，把 ArgumentParser 自己的 `64`（`EX_USAGE`）改寫成 `2`，其餘原樣通過。`--help` 與 `--version` 不是失敗，維持 stdout 與 `0`。
+
+`1` 現在也在型別裡有名字。它不該被任何人主動選擇，但必須說得出口——一個無法用契約自己的詞彙回報的失敗，比一個說「unexpected」的更糟。
 
 ---
 
@@ -623,7 +643,7 @@ Schema round-trip（YAML → model → YAML 語意一致）、預設值解析、
 | M4 | XcodeGen spec 建構與序列化 | 結構比對；`environments` 開／關兩種輸出 ✅ |
 | M5 | 模板載入、變數代換、`GenerationPlan` | 契約 snapshot ✅ |
 | M6 | `init` 落地：暫存區 → 原子搬移 → git → xcodegen | 兩個 variant 都能 `open` ✅ |
-| M7 | `validate` / `plan` / `doctor`、`--validate-build`、JSON output、exit code | JSON 契約 snapshot |
+| M7 | `validate` / `plan` / `doctor`、`--validate-build`、JSON output、exit code | JSON 契約 snapshot ✅ |
 | M8 | CI E2E | 兩個 variant 的 `xcodegen` → `build` → `test` 全綠 |
 | M9 | `SKILL.md`、schema reference、`make install`、README | 用 Claude Code 走完一次自然語言 → 專案 |
 

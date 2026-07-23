@@ -175,9 +175,7 @@ extension PlanExecutor {
                 throw GenerationError.commandFailed(
                     command,
                     exitStatus: result.exitStatus,
-                    // Tools report failures on stderr; the few that do not leave
-                    // the reader with an exit status and no explanation.
-                    output: result.standardError.isEmpty ? result.standardOutput : result.standardError
+                    output: result.combinedOutput
                 )
             }
         }

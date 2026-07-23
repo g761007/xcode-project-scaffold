@@ -66,6 +66,22 @@ _Avoid_: backend、engine
 `ProjectConfiguration` 與 `project.yml` 之間的中介值。它描述要寫出什麼，不描述怎麼寫。所有決定都在這一層，序列化器不自行發明任何值。
 _Avoid_: project spec、YAML model
 
+**CommandOutput**:
+`--output json` 時每個指令寫到 stdout 的那份文件，成功與失敗共用一種信封。`ok`、`command` 與 `exitCode` 永遠都在，`message` 在失敗時出現，其餘欄位（`issues`、`plan`、`checks`、`destination`）有話說才出現。
+_Avoid_: response、payload、回傳值
+
+**PlanSummary**:
+`GenerationPlan` 在 `CommandOutput` 裡的樣子：檔案路徑與位元組數，加上要執行的指令。**不含檔案內容**——呼叫端拿它做的事沒有一項需要內容。
+_Avoid_: plan output、摘要
+
+**ScaffoldExitCode**:
+CLI 的結束碼（§11.4）。它是契約的一部分而非實作細節：呼叫端靠它分辨「你的設定有問題」與「這台機器沒裝 XcodeGen」。
+_Avoid_: error code、status
+
+**EnvironmentCheck**:
+`doctor` 對某個外部工具的一次檢查結果：有沒有裝、是不是必要、以及版本。它描述的是**這台機器**，不是設定。
+_Avoid_: dependency、requirement、環境變數
+
 **ValidationIssue**:
 驗證階段產出的單一問題，含嚴重度、錯誤碼、訊息、路徑與建議。錯誤碼 `XS0xxx` 表示這個版本還沒支援，`XS1xxx` 表示這個組合永遠不合法。
 _Avoid_: error、warning、diagnostic

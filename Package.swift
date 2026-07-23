@@ -55,6 +55,16 @@ let package = Package(
             name: "ScaffoldCoreTests",
             dependencies: ["ScaffoldCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+
+        // Runs the built executable. The CLI contract — exit codes, and what
+        // arrives on stdout under --output json — is what scripts and the Skill
+        // are written against, and none of it can be checked by importing a
+        // module: it only exists once a process has run and exited.
+        .testTarget(
+            name: "CommandLineTests",
+            dependencies: ["xscaffold", "ScaffoldCore", "ScaffoldSchema"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

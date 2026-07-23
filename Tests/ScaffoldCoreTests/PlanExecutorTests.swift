@@ -5,54 +5,6 @@ import Testing
 
 // MARK: - Fixtures
 
-/// Records what a run would execute, and can be told that a tool is missing or
-/// that a command fails — the two failures that decide whether the destination
-/// is left clean.
-private final class FakeProcessRunner: ProcessRunner, @unchecked Sendable {
-    /// What the command was, and what it could see when it ran.
-    struct Execution: Sendable {
-        var invocation: ProcessInvocation
-        var visibleFiles: [String]
-    }
-
-    private let missing: Set<String>
-    private let failing: String?
-    private let lock = NSLock()
-    private var recorded: [Execution] = []
-
-    init(missing: Set<String> = [], failing: String? = nil) {
-        self.missing = missing
-        self.failing = failing
-    }
-
-    var executions: [Execution] {
-        lock.lock()
-        defer { lock.unlock() }
-        return recorded
-    }
-
-    var invocations: [ProcessInvocation] {
-        executions.map(\.invocation)
-    }
-
-    func locate(_ executable: String) -> URL? {
-        missing.contains(executable) ? nil : URL(fileURLWithPath: "/usr/bin/\(executable)")
-    }
-
-    func run(_ invocation: ProcessInvocation) throws -> ProcessResult {
-        let visible = (try? FileManager.default.contentsOfDirectory(
-            atPath: invocation.workingDirectory.path
-        )) ?? []
-
-        lock.lock()
-        recorded.append(Execution(invocation: invocation, visibleFiles: visible.sorted()))
-        lock.unlock()
-
-        guard invocation.executable == failing else { return ProcessResult(exitStatus: 0) }
-        return ProcessResult(exitStatus: 2, standardError: "fatal: it did not work\n")
-    }
-}
-
 private let samplePlan = GenerationPlan(
     files: [
         PlannedFile(path: "App/Main.swift", contents: "print(\"hello\")\n"),
