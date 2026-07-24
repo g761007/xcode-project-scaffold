@@ -59,7 +59,7 @@ jobs:
           git config --global user.name "xscaffold CI"
           git config --global user.email "ci@xscaffold.invalid"
 
-      - name: Generate, build and test both variants
+      - name: Generate, build and test every variant
         run: make e2e
 
   lint:

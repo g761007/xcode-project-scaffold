@@ -72,6 +72,24 @@ check() {
     xcodebuild test -project "$project" -scheme "$name" -destination "id=$udid"
 }
 
+# The macOS equivalent of check(): the destination is the host mac, not a
+# simulator, and code signing is switched off so a bare CI runner with no
+# signing identity can still build and launch the test host.
+check_macos() {
+    local name="$1"
+    shift
+    local project="$root/$name/$name.xcodeproj"
+
+    echo
+    echo "==> $name (macOS)"
+    "$xscaffold" init "$name" "$@" --destination "$root/$name"
+
+    xcodebuild build -project "$project" -scheme "$name" \
+        -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -quiet
+    xcodebuild test -project "$project" -scheme "$name" \
+        -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
+}
+
 check UIKitApp --preset ios-uikit
 check SwiftUIApp --preset ios-swiftui
 
@@ -143,6 +161,41 @@ environments:
     configuration: Release
 YML
 check EnvApp --config "$root/environments.yml"
+
+# macOS, the platform axis v0.3 adds. The two presets cover the plain variants;
+# the MVVM overlay ships its own sources, so each interface earns a run of its
+# own — SwiftUI observing an @Observable model, AppKit driving one through a
+# closure from a code-built NSViewController with no storyboard or xib.
+check_macos MacSwiftUIApp --preset macos-swiftui
+check_macos MacAppKitApp --preset macos-appkit
+
+cat > "$root/mvvm-macos-swiftui.yml" <<'YML'
+project:
+  name: MacMVVMSwiftUIApp
+  bundleIdentifier: com.example.macmvvmswiftuiapp
+product:
+  platform: macos
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+YML
+check_macos MacMVVMSwiftUIApp --config "$root/mvvm-macos-swiftui.yml"
+
+cat > "$root/mvvm-macos-appkit.yml" <<'YML'
+project:
+  name: MacMVVMAppKitApp
+  bundleIdentifier: com.example.macmvvmappkitapp
+product:
+  platform: macos
+interface:
+  primary: appkit
+architecture:
+  pattern: mvvm
+  includeExample: true
+YML
+check_macos MacMVVMAppKitApp --config "$root/mvvm-macos-appkit.yml"
 
 echo
 echo "Every variant generated, built and tested."

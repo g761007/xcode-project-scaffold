@@ -11,14 +11,16 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 ## ⚠️ Status: early — five commands work
 
 `init`, `new`, `validate`, `plan` and `doctor` are implemented, with
-`--output json` (bar the interactive `new`) and the exit codes below. The iOS
-variants — UIKit and SwiftUI — are generated, built and tested against a
-simulator on every push, plain and with an MVVM or MVVM-C example; a separate
-job checks that generated sources pass the linters they ship with. The Skill an
-agent drives all of this with is in
+`--output json` (bar the interactive `new`) and the exit codes below. Four
+variants — iOS UIKit and SwiftUI, macOS SwiftUI and AppKit — are generated, built
+and tested on every push, plain and with an MVVM (or, on iOS UIKit, MVVM-C)
+example; a separate job checks that generated sources pass the linters they ship
+with. The Skill an agent drives all of this with is in
 [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/).
 
-v0.2 adds the MVVM and MVVM-C architectures and the interactive `new` command.
+v0.2 adds the MVVM and MVVM-C architectures and the interactive `new` command;
+v0.3 adds macOS — SwiftUI and AppKit variants, the latter built entirely in code
+with no storyboard or xib.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -118,7 +120,7 @@ xscaffold doctor                              # check the tools init needs
 
 ```text
 --config <path>        a scaffold.yml to generate from
---preset <name>        ios-uikit or ios-swiftui
+--preset <name>        ios-uikit, ios-swiftui, macos-swiftui or macos-appkit
 --destination <path>   where to create the project (default: ./<name>)
 --output <text|json>   how to report the result
 --dry-run              show what init would create, and stop
@@ -147,11 +149,12 @@ file describes the *project*, not a particular run.
 
 ### Creating a project interactively
 
-`xscaffold new` asks for the name, bundle identifier, interface, architecture,
-whether to include the pattern's example, and the environments, then generates
-the project through the same pipeline `init` runs. It offers every choice and
-lets `validate` decide, re-asking a question when a combination is refused — it
-holds no rules of its own.
+`xscaffold new` asks for the platform, name, bundle identifier, interface,
+architecture, whether to include the pattern's example, and the environments,
+then generates the project through the same pipeline `init` runs. Every
+interface is offered on every platform; `validate` decides, and a refused
+combination — UIKit on macOS, AppKit on iOS — re-asks the question rather than
+being filtered out, so the prompt holds no rules of its own.
 
 `new` needs a terminal; for a scriptable run, use `init`. It shares `init`'s
 `--destination`, `--force`, `--skip-git`, `--skip-generate` and

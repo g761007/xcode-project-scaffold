@@ -19,12 +19,14 @@ struct MaterialiseTemplatesTests {
 
     /// One generated project to lay on disk. The architecture example ships its
     /// own sources, so it needs a case of its own — the plain variants would
-    /// never render `GreetingViewModel` for a linter to read.
+    /// never render `GreetingViewModel` for a linter to read. The example is not
+    /// stated: an unset value follows the pattern, so `mvvm` brings its example
+    /// and `minimal` brings none — exactly what a real project gets.
     struct Variant: Sendable, CustomStringConvertible {
         let name: String
+        let platform: ApplePlatform
         let interface: UIFramework
         let architecture: ArchitecturePattern
-        let includeExample: Bool?
 
         var description: String {
             name
@@ -32,11 +34,15 @@ struct MaterialiseTemplatesTests {
     }
 
     static let variants: [Variant] = [
-        Variant(name: "UIKitApp", interface: .uiKit, architecture: .minimal, includeExample: nil),
-        Variant(name: "SwiftUIApp", interface: .swiftUI, architecture: .minimal, includeExample: nil),
-        Variant(name: "UIKitMVVMApp", interface: .uiKit, architecture: .mvvm, includeExample: true),
-        Variant(name: "SwiftUIMVVMApp", interface: .swiftUI, architecture: .mvvm, includeExample: true),
-        Variant(name: "UIKitMVVMCApp", interface: .uiKit, architecture: .mvvmCoordinator, includeExample: true)
+        Variant(name: "UIKitApp", platform: .iOS, interface: .uiKit, architecture: .minimal),
+        Variant(name: "SwiftUIApp", platform: .iOS, interface: .swiftUI, architecture: .minimal),
+        Variant(name: "UIKitMVVMApp", platform: .iOS, interface: .uiKit, architecture: .mvvm),
+        Variant(name: "SwiftUIMVVMApp", platform: .iOS, interface: .swiftUI, architecture: .mvvm),
+        Variant(name: "UIKitMVVMCApp", platform: .iOS, interface: .uiKit, architecture: .mvvmCoordinator),
+        Variant(name: "MacSwiftUIApp", platform: .macOS, interface: .swiftUI, architecture: .minimal),
+        Variant(name: "MacAppKitApp", platform: .macOS, interface: .appKit, architecture: .minimal),
+        Variant(name: "MacSwiftUIMVVMApp", platform: .macOS, interface: .swiftUI, architecture: .mvvm),
+        Variant(name: "MacAppKitMVVMApp", platform: .macOS, interface: .appKit, architecture: .mvvm)
     ]
 
     @Test(
@@ -52,8 +58,9 @@ struct MaterialiseTemplatesTests {
             for: .validBaseline.with {
                 $0.project.name = variant.name
                 $0.project.bundleIdentifier = "com.example.\(variant.name.lowercased())"
+                $0.product.platform = variant.platform
                 $0.interface = .init(primary: variant.interface)
-                $0.architecture = .init(pattern: variant.architecture, includeExample: variant.includeExample)
+                $0.architecture = .init(pattern: variant.architecture)
             },
             // No commands, so nothing here needs git or XcodeGen: this exists to
             // put files where a linter can read them.

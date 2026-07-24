@@ -8,6 +8,45 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [0.3.0] — Unreleased
+
+### Added
+
+- **macOS support.** `product.platform: macos` now generates a project, through
+  two new variants — `macos-swiftui` and `macos-appkit` — each built and tested
+  on macOS in CI. The lifecycle follows the interface: macOS SwiftUI uses the App
+  lifecycle, macOS AppKit an `NSApplicationDelegate`, since macOS has no scenes.
+- **The AppKit variant is built entirely in code.** `macos-appkit` ships no
+  `Main.storyboard` and no `MainMenu.xib`: a `main.swift` entry point, an
+  `NSApplicationDelegate` that assembles the window and an `NSMenu` menu bar, and
+  a code-built `NSViewController`. Interface Builder files are the
+  machine-generated XML XcodeGen exists to keep out of the project ([ADR-0006](docs/adr/0006-appkit-built-programmatically.md)).
+- **MVVM on macOS.** The MVVM example now generates for both macOS variants,
+  reusing the framework-free view model.
+- **`macos-swiftui` and `macos-appkit` presets**, joining the two iOS presets.
+- **A platform question in `xscaffold new`.** It is asked first; every interface
+  is offered on every platform, and a pairing the platform forbids is left to
+  `validate`, which re-asks the offending question — the prompt holds no
+  compatibility rule of its own.
+- **A platform-aware deployment target default:** iOS `18.0`, macOS `15.0`.
+
+### Changed
+
+- The `Shared` template layer no longer carries the `AppIcon`; it moved down to
+  each variant, because the iOS and macOS icons differ. Generated iOS projects
+  are unchanged.
+
+### Validation
+
+- `XS0001` (platform not supported) and `XS0006` (interface not supported) are
+  removed. With every platform and interface now accepted, no configuration could
+  trigger them, and a dead code is worse than none.
+- `XS0009` now reads "MVVM-C is only available on UIKit in this version" and
+  covers AppKit as well as SwiftUI.
+- `XS1001` (UIKit requires iOS), `XS1002` (AppKit requires macOS) and `XS1103`
+  (the `app-delegate` lifecycle requires AppKit) now have reachable
+  configurations for the first time.
+
 ## [0.2.0] — 2026-07-24
 
 ### Added

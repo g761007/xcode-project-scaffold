@@ -87,10 +87,13 @@ afterwards.
 |---|---|---|---|
 | `platform` | enum | `ios` | `ios`, `macos` |
 | `type` | enum | `application` | `application`, `framework` |
-| `deploymentTarget` | string | `"18.0"` | One to three dot-separated numbers |
+| `deploymentTarget` | string | `"18.0"` on iOS, `"15.0"` on macOS | One to three dot-separated numbers |
+
+The default follows the platform — iOS `"18.0"` has no meaning on macOS. Both are
+one major release back, a defensible floor rather than the newest possible one.
 
 **Quote `deploymentTarget`.** Unquoted, YAML reads `18.10` as the number `18.1`
-— a different iOS version.
+— a different OS version.
 
 ### `language`
 
@@ -209,16 +212,25 @@ Every value listed above decodes. Only these generate; the rest are rejected by
 
 | | Supported |
 |---|---|
-| `product.platform` | `ios` |
+| `product.platform` | `ios`, `macos` |
 | `product.type` | `application` |
-| `interface.primary` | `uikit`, `swiftui` |
+| `interface.primary` | `uikit`, `swiftui`, `appkit` |
 | `architecture.pattern` | `minimal`, `mvvm`; `mvvm-c` on `uikit` only |
 | `generator.type` | `xcodegen` |
 | `testing.unit` | `swift-testing`, `none` |
-| `product.deploymentTarget` | iOS `15.0` or later |
+| `product.deploymentTarget` | iOS `15.0` or later, macOS `11.0` or later |
 
-`mvvm-c` is a UIKit navigation pattern; on `swiftui` it is `XS0009` — not
-supported in this version, rather than never. `mvvm` works on both interfaces.
+Platform and interface pair up: `uikit` needs `ios`, `appkit` needs `macos`, and
+`swiftui` runs on both. The four buildable variants are:
+
+| | `uikit` | `swiftui` | `appkit` |
+|---|---|---|---|
+| **`ios`** | ✅ | ✅ | `XS1002` |
+| **`macos`** | `XS1001` | ✅ | ✅ |
+
+`mvvm` works on every one of these. `mvvm-c` is a UIKit navigation pattern, so it
+is available on `ios` + `uikit` only; on `swiftui` or `appkit` it is `XS0009` —
+not supported in this version, rather than never.
 
 ## Rules `validate` enforces
 
