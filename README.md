@@ -287,6 +287,7 @@ A device name alone matches several simulators across installed runtimes, and
 
 | Document | Purpose |
 |---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed in each release. |
 | [`CONTEXT.md`](CONTEXT.md) | Project glossary. Read before introducing new terminology. |
 | [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md) | Scope, schema, milestones, and what is explicitly excluded. |
 | [`docs/adr/`](docs/adr/) | Architecture decision records. |
