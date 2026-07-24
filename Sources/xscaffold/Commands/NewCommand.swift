@@ -66,8 +66,8 @@ struct NewCommand: ParsableCommand {
         let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
         let destination = destinationURL(for: configuration)
 
-        guard confirmed(plan, at: destination, using: prompter) else {
-            throw cancelled(using: prompter)
+        guard confirmed(plan, at: destination, using: prompter, assumeYes: assumeYes) else {
+            throw cancelled(using: prompter, reportingTo: reporter)
         }
 
         try writePlan(plan, to: destination, force: force, reportingTo: reporter)
@@ -86,34 +86,10 @@ extension NewCommand {
         do {
             return try InteractiveConfiguration().collect(name: name, using: prompter)
         } catch InteractivePromptError.cancelled {
-            throw cancelled(using: prompter)
+            throw cancelled(using: prompter, reportingTo: reporter)
         } catch let InteractivePromptError.unresolvable(issue) {
             throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
         }
-    }
-
-    /// Shows the plan and asks once more before writing, unless `--yes`. A "no"
-    /// or an ended input is a cancellation, not an answer of "don't generate":
-    /// both leave with 130 and nothing on disk.
-    private func confirmed(_ plan: GenerationPlan, at destination: URL, using prompter: some Prompter) -> Bool {
-        prompter.show("")
-        prompter.show("This will create:")
-        prompter.show(plan.summary(at: destination))
-        guard !assumeYes else { return true }
-
-        prompter.show("")
-        prompter.show("Create it? [Y/n]:")
-        guard let line = prompter.readLine() else { return false }
-
-        let answer = line.trimmingCharacters(in: .whitespaces).lowercased()
-        return answer.isEmpty || answer == "y" || answer == "yes"
-    }
-
-    /// A cancellation is not a failure to report through the error channel: it
-    /// says so on stderr and leaves with 130, carrying no message of its own.
-    private func cancelled(using prompter: some Prompter) -> ExitCode {
-        prompter.show("Cancelled; nothing was created.")
-        return ExitCode(ScaffoldExitCode.userCancelled.rawValue)
     }
 
     private func destinationURL(for configuration: ProjectConfiguration) -> URL {

@@ -12,6 +12,7 @@ struct XScaffold: ParsableCommand {
         subcommands: [
             InitCommand.self,
             NewCommand.self,
+            GenerateCommand.self,
             ValidateCommand.self,
             PlanCommand.self,
             DoctorCommand.self
