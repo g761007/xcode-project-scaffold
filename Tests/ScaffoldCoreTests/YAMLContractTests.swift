@@ -31,6 +31,8 @@ struct YAMLContractTests {
       pattern: minimal
     generator:
       type: xcodegen
+    dependencyManagement:
+      mode: none
     environments: []
     quality:
       swiftlint: true

@@ -25,6 +25,25 @@ extension ProjectConfiguration {
         ),
         architecture: Architecture(pattern: .clean),
         generator: Generator(type: .tuist),
+        dependencyManagement: DependencyManagement(
+            mode: .mixed,
+            spm: .init(packages: [
+                SwiftPackage(
+                    name: "FixturePackage",
+                    url: "https://example.com/fixture.git",
+                    requirement: .exact("9.9.9"),
+                    products: [PackageProduct(name: "FixtureProduct", targets: ["Fixture"])]
+                )
+            ]),
+            cocoapods: .init(
+                pods: [Pod(
+                    name: "FixturePod",
+                    source: .gitTag(url: "https://example.com/pod.git", tag: "v9"),
+                    subspecs: ["Core"]
+                )],
+                bundler: .init(enabled: true)
+            )
+        ),
         environments: [
             Environment(
                 name: "development",

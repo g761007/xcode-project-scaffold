@@ -132,6 +132,100 @@ struct ValidationContractTests {
                     Environment(name: "staging", configuration: "Debug")
                 ]
             }
+        ),
+        ValidationTrigger(
+            code: .dependencyModeNotSupported,
+            message: "Dependency mode 'spm' is not supported in this version.",
+            configuration: .validBaseline.with { $0.dependencyManagement.mode = .spm }
+        ),
+        ValidationTrigger(
+            code: .bundlerNotSupported,
+            message: "Bundler is not supported in this version.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.cocoapods = .init(bundler: .init(enabled: true))
+            }
+        ),
+        ValidationTrigger(
+            code: .duplicatePackageName,
+            message: "Package name 'alamofire' is declared more than once.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.mode = .spm
+                $0.dependencyManagement.spm = .init(packages: [
+                    SwiftPackage(
+                        name: "Alamofire", url: "https://example.com/a.git",
+                        requirement: .from("5.0.0"), products: []
+                    ),
+                    SwiftPackage(
+                        name: "alamofire", url: "https://example.com/b.git",
+                        requirement: .from("5.0.0"), products: []
+                    )
+                ])
+            }
+        ),
+        ValidationTrigger(
+            code: .emptyPackageURL,
+            message: "Package 'Alamofire' has an empty url.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.mode = .spm
+                $0.dependencyManagement.spm = .init(packages: [
+                    SwiftPackage(name: "Alamofire", url: " ", requirement: .from("5.0.0"), products: [])
+                ])
+            }
+        ),
+        ValidationTrigger(
+            code: .unknownProductTarget,
+            message: "Product 'Alamofire' maps to target 'Nowhere', which this project "
+                + "does not generate.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.mode = .spm
+                $0.dependencyManagement.spm = .init(packages: [
+                    SwiftPackage(
+                        name: "Alamofire", url: "https://example.com/a.git",
+                        requirement: .from("5.0.0"),
+                        products: [PackageProduct(name: "Alamofire", targets: ["Nowhere"])]
+                    )
+                ])
+            }
+        ),
+        ValidationTrigger(
+            code: .duplicatePodName,
+            message: "Pod 'snapkit' is declared more than once.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.mode = .cocoapods
+                $0.dependencyManagement.cocoapods = .init(pods: [
+                    Pod(name: "SnapKit", source: .version("5.7.0")),
+                    Pod(name: "snapkit", source: .version("5.6.0"))
+                ])
+            }
+        ),
+        ValidationTrigger(
+            code: .duplicateDependency,
+            message: "'Alamofire' is declared as both a package and a pod; the project "
+                + "would link it twice.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.mode = .mixed
+                $0.dependencyManagement.spm = .init(packages: [
+                    SwiftPackage(
+                        name: "Alamofire", url: "https://example.com/a.git",
+                        requirement: .from("5.0.0"), products: []
+                    )
+                ])
+                $0.dependencyManagement.cocoapods = .init(pods: [
+                    Pod(name: "Alamofire", source: .version("5.0.0"))
+                ])
+            }
+        ),
+        ValidationTrigger(
+            code: .dependenciesOutsideMode,
+            message: "Packages are declared, but dependencyManagement.mode 'none' never reads them.",
+            configuration: .validBaseline.with {
+                $0.dependencyManagement.spm = .init(packages: [
+                    SwiftPackage(
+                        name: "Alamofire", url: "https://example.com/a.git",
+                        requirement: .from("5.0.0"), products: []
+                    )
+                ])
+            }
         )
     ]
 

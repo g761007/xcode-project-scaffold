@@ -30,6 +30,12 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// "in this version".
     case coordinatorRequiresUIKit = "XS0009"
 
+    /// Both dependency codes are boundaries, not verdicts: the schema accepts
+    /// the declaration today, and the tickets that generate from it lift each
+    /// restriction (§27) — spm and cocoapods within v0.5, bundler in v0.6.
+    case dependencyModeNotSupported = "XS0010"
+    case bundlerNotSupported = "XS0011"
+
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
     case appKitRequiresMacOS = "XS1002"
@@ -55,6 +61,14 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     case duplicateEnvironmentName = "XS1401"
     case duplicateBuildConfiguration = "XS1402"
 
+    // XS15xx — dependencies.
+    case duplicatePackageName = "XS1501"
+    case emptyPackageURL = "XS1502"
+    case unknownProductTarget = "XS1503"
+    case duplicatePodName = "XS1504"
+    case duplicateDependency = "XS1505"
+    case dependenciesOutsideMode = "XS1506"
+
     public enum Category: Sendable, Hashable {
         /// Valid in the domain; this version cannot generate it yet.
         case capabilityBoundary
@@ -72,7 +86,9 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .generatorNotSupported,
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
-             .coordinatorRequiresUIKit:
+             .coordinatorRequiresUIKit,
+             .dependencyModeNotSupported,
+             .bundlerNotSupported:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,
@@ -85,7 +101,13 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .malformedDeploymentTarget,
              .invalidProjectName,
              .duplicateEnvironmentName,
-             .duplicateBuildConfiguration:
+             .duplicateBuildConfiguration,
+             .duplicatePackageName,
+             .emptyPackageURL,
+             .unknownProductTarget,
+             .duplicatePodName,
+             .duplicateDependency,
+             .dependenciesOutsideMode:
             .permanentlyInvalid
         }
     }
