@@ -52,6 +52,35 @@ private func decoded(_ result: ProcessResult) throws -> CommandOutput {
     try JSONDecoder().decode(CommandOutput.self, from: Data(result.standardOutput.utf8))
 }
 
+/// Runs xscaffold with its input closed. `new` must not block: without a
+/// terminal to read from it exits rather than waiting on stdin, and this is how
+/// a test reaches that path without a real one.
+private func xscaffoldWithoutInput(_ arguments: String...) throws -> ProcessResult {
+    guard let executable else { throw CannotFindTheBinary() }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: executable)
+    process.arguments = arguments
+    process.currentDirectoryURL = FileManager.default.temporaryDirectory
+    process.standardInput = FileHandle.nullDevice
+
+    let output = Pipe()
+    let error = Pipe()
+    process.standardOutput = output
+    process.standardError = error
+
+    try process.run()
+    process.waitUntilExit()
+
+    // The output here is a line or two, well under a pipe's buffer, so reading
+    // after the process exits cannot deadlock.
+    return ProcessResult(
+        exitStatus: process.terminationStatus,
+        standardOutput: String(bytes: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "",
+        standardError: String(bytes: error.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    )
+}
+
 private func withTemporaryDirectory(_ body: (URL) throws -> Void) throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("xscaffold-cli-\(UUID().uuidString)")
@@ -220,6 +249,27 @@ struct JSONOutputTests {
         #expect(output.command == "doctor")
         #expect(output.checks?.isEmpty == false)
         #expect(output.checks?.contains { $0.name == "xcodegen" } == true)
+    }
+}
+
+/// `new` is the one interactive command, and §11.3/ADR-0005 draw two lines
+/// around it: no machine-readable output, and no running without a terminal to
+/// answer at. Both are refusals a caller must be able to rely on.
+@Suite("The new command refuses what it cannot do")
+struct NewCommandGuardTests {
+    @Test("new rejects --output json before reading anything")
+    func rejectsJSON() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--output", "json")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+    }
+
+    @Test("new without a terminal exits 2 and points at init")
+    func refusesWithoutATerminal() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--skip-git", "--skip-generate")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("init"))
     }
 }
 

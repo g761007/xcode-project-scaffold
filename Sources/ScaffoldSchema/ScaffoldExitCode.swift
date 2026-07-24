@@ -9,9 +9,9 @@
 /// purpose, but it has to be nameable: a failure that cannot be reported in the
 /// contract's own vocabulary is worse than one that says "unexpected".
 ///
-/// `130` (user cancelled) from §11.4 is absent, because nothing in this version
-/// can be cancelled — there is no interactive prompt to answer. It arrives with
-/// one, in v0.2.
+/// `130` (user cancelled) follows the shell convention of 128 + SIGINT (2). It
+/// arrives with the interactive `new` command: answering it with Ctrl-C, or
+/// ending its input, stops the run before anything is written.
 public enum ScaffoldExitCode: Int32, Codable, Sendable, CaseIterable {
     case success = 0
     case unexpectedFailure = 1
@@ -24,4 +24,5 @@ public enum ScaffoldExitCode: Int32, Codable, Sendable, CaseIterable {
     case externalCommandFailure = 8
     case buildValidationFailure = 9
     case environmentRequirementMissing = 10
+    case userCancelled = 130
 }
