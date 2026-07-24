@@ -107,7 +107,7 @@ struct EmittedPackageTests {
     }
 
     @Test("the test target keeps its app dependency alongside package products")
-    func testTargetDependencies() throws {
+    func targetDependencies() throws {
         let shared = SwiftPackage(
             name: "Collections",
             url: "https://example.com/collections.git",
