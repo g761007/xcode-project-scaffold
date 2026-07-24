@@ -117,15 +117,33 @@ struct NewCommand: ParsableCommand {
         let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
         let destination = destinationURL(for: configuration)
 
-        guard confirmed(plan, at: destination, using: prompter, assumeYes: assumeYes) else {
-            throw cancelled(using: prompter, reportingTo: reporter)
+        // --yes answered the menu in advance: generate. The summary still
+        // shows — the flag skips questions, never information (§4.2).
+        if assumeYes {
+            _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
+            try writePlan(plan, to: destination, force: force, reportingTo: reporter)
+            if validateBuild {
+                try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
+            }
+            reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
+            return
         }
 
-        try writePlan(plan, to: destination, force: force, reportingTo: reporter)
-        if validateBuild {
-            try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
+        switch try preview(plan, for: validated, warnings: warnings, at: destination, using: prompter,
+                           reportingTo: reporter)
+        {
+        case .generated:
+            if validateBuild {
+                try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
+            }
+            reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
+
+        case let .savedManifest(manifest):
+            reportSaved(manifest, at: destination, to: reporter)
+
+        case .cancelled:
+            throw cancelled(using: prompter, reportingTo: reporter)
         }
-        reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
     }
 }
 
@@ -142,6 +160,45 @@ extension NewCommand {
         } catch let InteractivePromptError.unresolvable(issue) {
             throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
         }
+    }
+
+    /// The preview and its menu (§4.2), with a generation failure mapped to
+    /// the code it chose — the same mapping `writePlan` performs.
+    private func preview(
+        _ plan: GenerationPlan,
+        for validated: ValidatedConfiguration,
+        warnings: [ValidationIssue],
+        at destination: URL,
+        using prompter: some Prompter,
+        reportingTo reporter: Reporter
+    ) throws -> PreviewSession.Outcome {
+        do {
+            return try PreviewSession().run(
+                plan, for: validated, warnings: warnings, at: destination, force: force, using: prompter
+            )
+        } catch let error as GenerationError {
+            throw reporter.failure(error.exitCode, "\(error)")
+        } catch {
+            throw reporter.failure(.generationFailure, "\(error)")
+        }
+    }
+
+    /// Save-and-exit's report: where the manifest is, and steps that work as
+    /// written — in-place generation needs `--destination .`, because
+    /// `generate` otherwise defaults to creating `./<name>` inside the
+    /// directory the user just changed into.
+    private func reportSaved(_ manifest: URL, at destination: URL, to reporter: Reporter) {
+        reporter.succeed(
+            CommandOutput(command: reporter.command, exitCode: .success, destination: destination.path),
+            text: """
+            Saved \(manifest.path); nothing else was created.
+
+            Next steps:
+              cd \(destination.path)
+              xscaffold plan --config scaffold.yml --destination .
+              xscaffold generate --destination .
+            """
+        )
     }
 
     private func destinationURL(for configuration: ProjectConfiguration) -> URL {
