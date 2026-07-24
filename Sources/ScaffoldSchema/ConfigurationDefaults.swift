@@ -33,6 +33,9 @@ public enum ConfigurationDefaults {
     public static let swiftformat = true
 
     public static let unitTestFramework = UnitTestFramework.swiftTesting
+    public static let uiTestsEnabled = false
+    public static let uiTestFramework = UITestFramework.xctest
+    public static let launchPerformanceTest = false
 
     public static let defaultBranch = "main"
 }

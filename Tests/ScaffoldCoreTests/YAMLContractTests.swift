@@ -39,6 +39,10 @@ struct YAMLContractTests {
       swiftformat: true
     testing:
       unit: swift-testing
+      ui:
+        enabled: false
+        framework: xctest
+        launchPerformanceTest: false
     git:
       defaultBranch: main
 

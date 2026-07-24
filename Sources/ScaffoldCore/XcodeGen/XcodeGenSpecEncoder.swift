@@ -50,6 +50,9 @@ extension XcodeGenSpecEncoder {
         if let testTarget = spec.testTarget {
             targets.append((testTarget.name, node(for: testTarget, in: spec)))
         }
+        if let uiTestTarget = spec.uiTestTarget {
+            targets.append((uiTestTarget.name, node(for: uiTestTarget, in: spec)))
+        }
         pairs.append(("targets", map(targets)))
 
         pairs.append(("schemes", map(spec.schemes.map { scheme in
@@ -140,6 +143,18 @@ extension XcodeGenSpecEncoder {
     }
 }
 
+extension XcodeGenSpecEncoder {
+    private func node(for target: XcodeGenSpec.UITestTarget, in spec: XcodeGenSpec) -> Node {
+        map([
+            ("type", string("bundle.ui-testing")),
+            ("platform", string(spec.platform)),
+            ("sources", sequence(target.sources.map(string))),
+            ("settings", map([("base", map([("GENERATE_INFOPLIST_FILE", boolean(true))]))])),
+            ("dependencies", sequence([map([("target", string(spec.name))])]))
+        ])
+    }
+}
+
 // MARK: - Schemes
 
 extension XcodeGenSpecEncoder {
@@ -149,10 +164,11 @@ extension XcodeGenSpecEncoder {
             ("run", map([("config", string(scheme.runConfiguration))]))
         ]
 
-        if let testTarget = spec.testTarget {
+        let testTargetNames = [spec.testTarget?.name, spec.uiTestTarget?.name].compactMap(\.self)
+        if !testTargetNames.isEmpty {
             pairs.append(("test", map([
                 ("config", string(scheme.testConfiguration)),
-                ("targets", sequence([string(testTarget.name)]))
+                ("targets", sequence(testTargetNames.map(string)))
             ])))
         }
 

@@ -101,6 +101,14 @@ public enum GeneratorKind: String, ScaffoldEnum {
     case tuist
 }
 
+/// UI automation is XCUITest territory whichever unit framework the project
+/// chose — swift-testing has no UI automation — so the vocabulary has one
+/// value. It exists as a field anyway (§15.2): the schema says what the tests
+/// are written against, and a second framework can join without a new key.
+public enum UITestFramework: String, ScaffoldEnum {
+    case xctest
+}
+
 public enum UnitTestFramework: String, ScaffoldEnum {
     case swiftTesting = "swift-testing"
     case xctest

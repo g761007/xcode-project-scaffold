@@ -16,6 +16,7 @@ struct XcodeGenSpecBuilder: Sendable {
 
     static let appSourceDirectories = ["App", "Resources"]
     static let testSourceDirectories = ["Tests"]
+    static let uiTestSourceDirectories = ["UITests"]
     static let infoPlistPath = "App/Info.plist"
 
     func makeSpec(for project: ProjectConfiguration) -> XcodeGenSpec {
@@ -31,6 +32,7 @@ struct XcodeGenSpecBuilder: Sendable {
             packages: makePackages(for: project),
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
+            uiTestTarget: makeUITestTarget(for: project),
             schemes: schemes,
             // The bare-named scheme when there is one, which is the same rule
             // `schemeName(for:in:)` applies; otherwise simply the first.
@@ -118,6 +120,15 @@ extension XcodeGenSpecBuilder {
             name: "\(project.project.name)Tests",
             sources: Self.testSourceDirectories,
             packageProducts: packageProducts(for: "\(project.project.name)Tests", in: project)
+        )
+    }
+
+    private func makeUITestTarget(for project: ProjectConfiguration) -> XcodeGenSpec.UITestTarget? {
+        guard project.testing.ui.enabled else { return nil }
+
+        return XcodeGenSpec.UITestTarget(
+            name: "\(project.project.name)UITests",
+            sources: Self.uiTestSourceDirectories
         )
     }
 }
