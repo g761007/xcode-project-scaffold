@@ -94,6 +94,34 @@ struct CommandOutputContractTests {
         """)
     }
 
+    /// §13.3: what a forced run would replace is part of the plan a caller
+    /// approves. Absent when nothing would be — the key never arrives empty.
+    @Test("a plan that would overwrite says which files, and only then")
+    func overwrites() throws {
+        let plan = GenerationPlan(
+            files: [PlannedFile(path: "README.md", contents: "# MyApp\n")],
+            commands: []
+        )
+
+        let overwriting = try encoder.encode(CommandOutput(
+            command: "plan",
+            exitCode: .success,
+            plan: PlanSummary(plan, overwrites: ["README.md"])
+        ))
+        #expect(overwriting == """
+        {"command":"plan","exitCode":0,"ok":true,\
+        "plan":{"commands":[],"files":[{"bytes":8,"path":"README.md"}],\
+        "overwrites":["README.md"]}}
+        """)
+
+        let clean = try encoder.encode(CommandOutput(
+            command: "plan",
+            exitCode: .success,
+            plan: PlanSummary(plan, overwrites: [])
+        ))
+        #expect(!clean.contains("overwrites"))
+    }
+
     @Test("doctor carries one entry per thing it looked for")
     func checks() throws {
         let output = CommandOutput(

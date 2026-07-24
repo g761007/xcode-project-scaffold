@@ -66,9 +66,15 @@ public struct PlanSummary: Codable, Equatable, Sendable {
     public var files: [File]
     public var commands: [PlannedCommand]
 
-    public init(files: [File], commands: [PlannedCommand]) {
+    /// Planned paths that already exist at the destination and would be
+    /// replaced (§13.3). Present only when there are any — an absent key and
+    /// "nothing would be overwritten" are the same statement.
+    public var overwrites: [String]?
+
+    public init(files: [File], commands: [PlannedCommand], overwrites: [String]? = nil) {
         self.files = files
         self.commands = commands
+        self.overwrites = (overwrites?.isEmpty == false) ? overwrites : nil
     }
 
     public struct File: Codable, Equatable, Sendable {
@@ -85,10 +91,11 @@ public struct PlanSummary: Codable, Equatable, Sendable {
 }
 
 extension PlanSummary {
-    public init(_ plan: GenerationPlan) {
+    public init(_ plan: GenerationPlan, overwrites: [String]? = nil) {
         self.init(
             files: plan.files.map { File(path: $0.path, bytes: $0.contents.utf8.count) },
-            commands: plan.commands
+            commands: plan.commands,
+            overwrites: overwrites
         )
     }
 }

@@ -69,6 +69,12 @@ extension PlanExecutor {
     /// Whether the destination is already there — which decides whether a later
     /// failure may remove it — throwing if it is there in a way that cannot be
     /// written into.
+    ///
+    /// §13.3's two tiers, in order. A directory that already holds a project is
+    /// refused before `force` is so much as consulted, so the flag can never
+    /// downgrade the hard tier. A merely non-empty one is refused unless
+    /// forced. A `scaffold.yml` on its own occupies nothing: it is how "save
+    /// now, generate later" leaves a directory, and the plan writes its own.
     private func destinationExists(_ destination: URL, force: Bool) throws -> Bool {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: destination.path, isDirectory: &isDirectory) else {
@@ -79,10 +85,25 @@ extension PlanExecutor {
         }
 
         let existing = try FileManager.default.contentsOfDirectory(atPath: destination.path)
-        guard existing.isEmpty || force else {
+        if let marker = projectMarker(among: existing) {
+            throw GenerationError.destinationHasProject(destination, marker: marker)
+        }
+        guard existing.allSatisfy({ $0 == "scaffold.yml" }) || force else {
             throw GenerationError.destinationNotEmpty(destination)
         }
         return true
+    }
+
+    /// The mark of an existing project among a directory's own entries: a
+    /// project file, a generator manifest, or source code — `.swift` also
+    /// catches `Package.swift`, so a Swift package is refused by the same rule.
+    /// Top-level entries only: the canonical layouts all mark themselves there,
+    /// and anything deeper is still behind the non-empty tier.
+    private func projectMarker(among entries: [String]) -> String? {
+        entries.sorted().first { entry in
+            entry.hasSuffix(".xcodeproj") || entry.hasSuffix(".xcworkspace")
+                || entry == "project.yml" || entry.hasSuffix(".swift")
+        }
     }
 
     private func checkExecutables(of commands: [PlannedCommand]) throws {

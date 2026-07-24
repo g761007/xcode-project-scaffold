@@ -78,6 +78,7 @@ func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Repor
     let plan = try makePlan(for: validated, options: run.generationOptions, reportingTo: reporter)
     let configuration = validated.configuration
     let destination = project.destinationURL(for: configuration)
+    let overwrites = plan.overwrites(at: destination)
 
     reporter.succeed(
         CommandOutput(
@@ -85,17 +86,28 @@ func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Repor
             exitCode: .success,
             issues: warnings,
             destination: destination.path,
-            plan: PlanSummary(plan)
+            plan: PlanSummary(plan, overwrites: overwrites)
         ),
-        text: "\(configuration.project.name) would be created at:\n\(plan.summary(at: destination))"
+        text: "\(configuration.project.name) would be created at:\n"
+            + plan.summary(at: destination, overwriting: overwrites)
     )
 }
 
 extension GenerationPlan {
     /// The shape `plan`, `init --dry-run` and `init` all report in, so that what
     /// a preview showed and what a run did can be compared line for line.
-    func summary(at destination: URL) -> String {
+    ///
+    /// The overwrites arrive as a parameter rather than being asked for here,
+    /// because only the caller knows whether the run is still ahead: after
+    /// writing, every planned path exists and the question answers itself
+    /// wrongly. Post-write reports pass nothing.
+    func summary(at destination: URL, overwriting overwrites: [String] = []) -> String {
         var lines = ["\(destination.path)", "  \(files.count) files"]
+        if !overwrites.isEmpty {
+            lines.append("  \(overwrites.count) existing file\(overwrites.count == 1 ? "" : "s") "
+                + "will be overwritten:")
+            lines += overwrites.map { "    \($0)" }
+        }
         lines += commands.map { "  \($0.displayString)" }
         return lines.joined(separator: "\n")
     }
@@ -116,7 +128,7 @@ func confirmed(
 ) -> Bool {
     prompter.show("")
     prompter.show("This will create:")
-    prompter.show(plan.summary(at: destination))
+    prompter.show(plan.summary(at: destination, overwriting: plan.overwrites(at: destination)))
     guard !assumeYes else { return true }
 
     prompter.show("")
