@@ -135,8 +135,8 @@ struct ValidationContractTests {
         ),
         ValidationTrigger(
             code: .dependencyModeNotSupported,
-            message: "Dependency mode 'spm' is not supported in this version.",
-            configuration: .validBaseline.with { $0.dependencyManagement.mode = .spm }
+            message: "Dependency mode 'cocoapods' is not supported in this version.",
+            configuration: .validBaseline.with { $0.dependencyManagement.mode = .cocoapods }
         ),
         ValidationTrigger(
             code: .bundlerNotSupported,

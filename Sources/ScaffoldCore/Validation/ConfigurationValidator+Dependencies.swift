@@ -5,10 +5,11 @@ import ScaffoldSchema
 // validator, the same two-group contract.
 
 extension ConfigurationValidator {
-    /// Which dependency modes this version can generate. `disabled` only until
-    /// the v0.5 generation tickets land: the schema accepts the rest today, so
-    /// the message can say "not yet" instead of "unrecognised" (#60 → #62/#63).
-    private static let supportedDependencyModes: Set<DependencyMode> = [.disabled]
+    /// Which dependency modes this version can generate. cocoapods and mixed
+    /// stay behind the boundary until Podfile generation lands (#63); the
+    /// schema accepts them today, so the message says "not yet" rather than
+    /// "unrecognised".
+    private static let supportedDependencyModes: Set<DependencyMode> = [.disabled, .spm]
 
     func dependencyIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
         let dependencies = configuration.dependencyManagement
