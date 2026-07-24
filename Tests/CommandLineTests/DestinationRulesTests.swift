@@ -105,8 +105,10 @@ struct DestinationRulesTests {
                 to: destination.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
             )
 
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
             let output = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination.path, "--output", "json"
+                "plan", "--config", config.path, "--destination", destination.path, "--output", "json"
             ))
 
             #expect(output.plan?.overwrites?.contains("README.md") == true)
@@ -118,8 +120,10 @@ struct DestinationRulesTests {
         try withTemporaryDirectory { root in
             let destination = root.appendingPathComponent("App")
 
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
             let output = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination.path, "--output", "json"
+                "plan", "--config", config.path, "--destination", destination.path, "--output", "json"
             ))
 
             #expect(output.plan?.overwrites == nil)

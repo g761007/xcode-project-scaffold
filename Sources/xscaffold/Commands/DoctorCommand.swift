@@ -11,7 +11,7 @@ import ScaffoldSchema
 struct DoctorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "doctor",
-        abstract: "Check that the tools init needs are installed."
+        abstract: "Check that the tools generation needs are installed."
     )
 
     @OptionGroup var output: OutputOptions

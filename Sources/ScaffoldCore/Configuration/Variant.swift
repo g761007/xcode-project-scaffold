@@ -73,9 +73,3 @@ public struct Variant: Equatable, Sendable {
         return "com.example.\(segment)"
     }
 }
-
-/// The name these four wore while they hung off `--preset` (§17.1). The
-/// deprecated `init` still spells it that way and goes with it in v0.6; the
-/// word itself returns in v0.7 meaning a project scale, which is why nothing
-/// new should take this spelling.
-public typealias Preset = Variant

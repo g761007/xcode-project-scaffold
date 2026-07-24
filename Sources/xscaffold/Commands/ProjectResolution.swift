@@ -41,24 +41,6 @@ func checkConfiguration(
     }
 }
 
-/// Where the user's arguments become a project that is known to be generatable.
-func resolveConfiguration(
-    _ options: ProjectOptions,
-    reportingTo reporter: Reporter
-) throws -> (validated: ValidatedConfiguration, warnings: [ValidationIssue]) {
-    let configuration = try options.configuration(reportingTo: reporter)
-    let (validated, warnings) = try checkConfiguration(
-        configuration,
-        describedAs: "The configuration",
-        reportingTo: reporter
-    )
-
-    for warning in warnings {
-        reporter.note(warning.report)
-    }
-    return (validated, warnings)
-}
-
 func makePlan(
     for validated: ValidatedConfiguration,
     options: GenerationOptions,
@@ -71,20 +53,30 @@ func makePlan(
     }
 }
 
-/// Used by `plan` and by `init --dry-run`, which report the same thing under
-/// their own names. The two flags lengthen the text form; the JSON document
-/// already carries every file, so only the resolved configuration joins it.
+/// `plan`'s whole implementation. The two flags lengthen the text form; the
+/// JSON document already carries every file, so only the resolved
+/// configuration joins it.
 func reportPlan(
-    for project: ProjectOptions,
+    configurationAt path: String,
+    destination destinationOverride: String?,
     run: RunOptions,
     listingFiles: Bool = false,
     showingResolvedConfiguration: Bool = false,
     to reporter: Reporter
 ) throws {
-    let (validated, warnings) = try resolveConfiguration(project, reportingTo: reporter)
+    let read = try readConfiguration(at: path, reportingTo: reporter)
+    let (validated, warnings) = try checkConfiguration(
+        read, describedAs: "The configuration", reportingTo: reporter
+    )
+    for warning in warnings {
+        reporter.note(warning.report)
+    }
+
     let plan = try makePlan(for: validated, options: run.generationOptions, reportingTo: reporter)
     let configuration = validated.configuration
-    let destination = project.destinationURL(for: configuration)
+    let destination = URL(
+        fileURLWithPath: destinationOverride ?? configuration.project.name
+    ).standardizedFileURL
     let overwrites = plan.overwrites(at: destination)
 
     var text = "\(configuration.project.name) would be created at:\n"
