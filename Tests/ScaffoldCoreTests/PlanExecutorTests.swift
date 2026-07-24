@@ -134,6 +134,86 @@ struct PlanExecutorRefusalTests {
         }
     }
 
+    /// §13.3's hard tier: a directory that already holds a project is refused
+    /// outright, and `force` is never consulted — it can move into someone's
+    /// directory, never onto someone's project. `.swift` also catches
+    /// `Package.swift`, so a Swift package is refused by the same rule.
+    @Test("a destination with a project in it is refused, force or not", arguments: [
+        "App.xcodeproj", "App.xcworkspace", "project.yml", "main.swift", "Package.swift"
+    ])
+    func projectDestination(marker: String) throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("MyApp")
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
+            if marker.hasSuffix(".xcodeproj") || marker.hasSuffix(".xcworkspace") {
+                try FileManager.default.createDirectory(
+                    at: destination.appendingPathComponent(marker),
+                    withIntermediateDirectories: false
+                )
+            } else {
+                try "existing".write(
+                    to: destination.appendingPathComponent(marker), atomically: true, encoding: .utf8
+                )
+            }
+
+            let error = #expect(throws: GenerationError.self) {
+                try PlanExecutor(processRunner: FakeProcessRunner())
+                    .execute(samplePlan, at: destination, force: true)
+            }
+
+            #expect(try #require(error) == .destinationHasProject(destination, marker: marker))
+            #expect(try #require(error).description.contains("OUTPUT_DIRECTORY_HAS_PROJECT"))
+            #expect(try entries(of: destination) == [marker])
+        }
+    }
+
+    /// The one occupant that does not occupy (§13.3): a scaffold.yml alone is
+    /// how "save now, generate later" leaves a directory, and the plan writes
+    /// its own anyway.
+    @Test("a destination holding only scaffold.yml is written into without force")
+    func manifestOnlyDestination() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("MyApp")
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
+            try "project:\n".write(
+                to: destination.appendingPathComponent("scaffold.yml"), atomically: true, encoding: .utf8
+            )
+
+            try PlanExecutor(processRunner: FakeProcessRunner()).execute(samplePlan, at: destination)
+
+            #expect(try entries(of: destination) == ["App", "README.md", "scaffold.yml"])
+        }
+    }
+
+    /// The GitHub starter (§13.3): README, LICENSE and a .git directory are the
+    /// soft tier — refused with the flag named, then entered with it, replacing
+    /// what the plan names and nothing else.
+    @Test("--force moves into a GitHub starter directory")
+    func githubStarter() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("MyApp")
+            try FileManager.default.createDirectory(
+                at: destination.appendingPathComponent(".git"),
+                withIntermediateDirectories: true
+            )
+            try "old".write(to: destination.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+            try "MIT".write(to: destination.appendingPathComponent("LICENSE"), atomically: true, encoding: .utf8)
+
+            let error = #expect(throws: GenerationError.self) {
+                try PlanExecutor(processRunner: FakeProcessRunner()).execute(samplePlan, at: destination)
+            }
+            #expect(try #require(error) == .destinationNotEmpty(destination))
+            #expect(try #require(error).description.contains("OUTPUT_DIRECTORY_NOT_EMPTY"))
+
+            try PlanExecutor(processRunner: FakeProcessRunner())
+                .execute(samplePlan, at: destination, force: true)
+
+            #expect(try entries(of: destination) == [".git", "App", "LICENSE", "README.md"])
+            #expect(try contents(of: destination.appendingPathComponent("README.md")) == "# Sample\n")
+            #expect(try contents(of: destination.appendingPathComponent("LICENSE")) == "MIT")
+        }
+    }
+
     @Test("--force writes into it and leaves what it did not plan alone")
     func forcedDestination() throws {
         try withTemporaryDirectory { root in

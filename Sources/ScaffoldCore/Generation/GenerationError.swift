@@ -7,7 +7,14 @@ import ScaffoldSchema
 /// before this point, so anything here means the destination — or the machine —
 /// was not what the run needed.
 public enum GenerationError: Error, Equatable, Sendable {
+    /// The soft tier of §13.3: a non-empty directory with no project in it.
+    /// `--force` moves in; nothing but a planned path's namesake is touched.
     case destinationNotEmpty(URL)
+    /// The hard tier of §13.3: the directory already holds a project — an
+    /// `.xcodeproj`, an `.xcworkspace`, a `project.yml` or source code — and no
+    /// flag can write into it. xscaffold creates new projects; the moment it
+    /// might be updating an existing one, it stops.
+    case destinationHasProject(URL, marker: String)
     case destinationIsNotADirectory(URL)
     /// A directory sitting where the plan needs a file. Refused rather than
     /// removed: `--force` replaces files, and removing a directory would take
@@ -33,7 +40,7 @@ extension GenerationError {
     /// to a caller — the one question a new failure mode must not skip.
     public var exitCode: ScaffoldExitCode {
         switch self {
-        case .destinationNotEmpty, .destinationIsNotADirectory, .cannotReplaceDirectory:
+        case .destinationNotEmpty, .destinationHasProject, .destinationIsNotADirectory, .cannotReplaceDirectory:
             .fileConflict
         case .executableNotFound:
             .environmentRequirementMissing
@@ -51,9 +58,17 @@ extension GenerationError {
 extension GenerationError: CustomStringConvertible {
     public var description: String {
         switch self {
+        // The two §13.3 tiers open with their contract names, the way a
+        // ValidationIssue opens with its code: the part a script greps for and
+        // a reader looks up.
         case let .destinationNotEmpty(destination):
-            "'\(destination.path)' already exists and is not empty. "
+            "OUTPUT_DIRECTORY_NOT_EMPTY: '\(destination.path)' already exists and is not empty. "
                 + "Choose an empty destination, or pass --force to write into it anyway."
+
+        case let .destinationHasProject(destination, marker):
+            "OUTPUT_DIRECTORY_HAS_PROJECT: '\(destination.path)' contains an existing project "
+                + "(\(marker)). xscaffold creates new projects and does not update existing "
+                + "projects, so no flag makes this destination writable."
 
         case let .destinationIsNotADirectory(destination):
             "'\(destination.path)' already exists and is not a directory."
