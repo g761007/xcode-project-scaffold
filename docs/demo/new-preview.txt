@@ -1,0 +1,67 @@
+$ xscaffold new Bookshelf --variant ios-swiftui
+
+Bundle identifier [com.example.bookshelf]:
+
+Architecture:
+  1) Minimal
+  2) MVVM
+  3) MVVM-C
+1
+Build environments:
+  1) None — just Debug and Release
+  2) Standard — development, staging, production
+1
+
+Configuration Preview
+
+  Project:       Bookshelf (com.example.bookshelf)
+  Platform:      iOS 18.0, SwiftUI
+  Architecture:  Minimal
+  Testing:       swift-testing
+  Environments:  none — Debug and Release
+  Destination:   /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf
+
+  13 files will be created.
+  The following commands will run:
+    xcodegen generate
+
+What next?
+  1) Generate project
+  2) Save scaffold.yml and exit
+  3) Edit configuration
+  4) Show complete file plan
+  5) Show resolved configuration
+  6) Cancel
+4
+
+Files:
+  .gitignore
+  .swiftformat
+  .swiftlint.yml
+  App/BookshelfApp.swift
+  App/ContentView.swift
+  Makefile
+  README.md
+  Resources/Assets.xcassets/AccentColor.colorset/Contents.json
+  Resources/Assets.xcassets/AppIcon.appiconset/Contents.json
+  Resources/Assets.xcassets/Contents.json
+  Tests/ContentViewTests.swift
+  project.yml
+  scaffold.yml
+Commands:
+  xcodegen generate  — Produce Bookshelf.xcodeproj from project.yml
+
+What next?
+  1) Generate project
+  2) Save scaffold.yml and exit
+  3) Edit configuration
+  4) Show complete file plan
+  5) Show resolved configuration
+  6) Cancel
+2
+Saved /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf/scaffold.yml; nothing else was created.
+
+Next steps:
+  cd /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf
+  xscaffold plan --config scaffold.yml --destination .
+  xscaffold generate --destination .

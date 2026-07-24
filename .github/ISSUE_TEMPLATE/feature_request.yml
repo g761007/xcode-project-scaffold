@@ -1,0 +1,30 @@
+name: Feature request
+description: Something xscaffold should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing: the tool's boundary is project *creation* — it does not
+        manage existing projects (see the README's "What it deliberately does
+        not do"), and the roadmap in docs/plans/ may already schedule what you
+        are about to ask for.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what stands in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+    validations:
+      required: false
