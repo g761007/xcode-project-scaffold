@@ -146,6 +146,9 @@ extension PreviewSession {
         prompter.show("Configuration Preview")
         prompter.show("")
         prompter.show("  Project:       \(configuration.project.name) (\(configuration.project.bundleIdentifier))")
+        if !configuration.project.organizationName.isEmpty {
+            prompter.show("  Organization:  \(configuration.project.organizationName)")
+        }
         prompter.show("  Platform:      \(configuration.product.platform.displayName) "
             + "\(configuration.product.deploymentTarget), \(configuration.interface.primary.displayName)")
         prompter.show("  Architecture:  \(architectureLine(for: configuration.architecture))")

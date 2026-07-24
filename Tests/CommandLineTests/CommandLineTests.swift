@@ -301,3 +301,29 @@ struct NewVariantTests {
         #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
     }
 }
+
+/// Issue #46: the two new flags parse, and the contradiction between --open
+/// and --skip-generate is refused before anything is read.
+@Suite("The advanced and open flags")
+struct AdvancedAndOpenFlagTests {
+    @Test("--open with --skip-generate is a contradiction, refused up front")
+    func openWithoutAProject() throws {
+        let result = try xscaffoldWithoutInput(
+            "new", "App", "--variant", "ios-uikit", "--yes", "--open", "--skip-git", "--skip-generate"
+        )
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("--open"))
+    }
+
+    /// The flag parses and reaches the questions — which need a terminal, so
+    /// the refusal proves the parse happened rather than an unknown-option
+    /// error (which would exit before naming the terminal).
+    @Test("--advanced parses, and still needs a terminal to ask anything")
+    func advancedParses() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--advanced", "--skip-git", "--skip-generate")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("terminal"))
+    }
+}

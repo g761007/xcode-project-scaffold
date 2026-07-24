@@ -190,6 +190,69 @@ struct InteractiveConfigurationTests {
         #expect(prompter.timesAsked("Interface") == 2)
     }
 
+    /// Issue #46: --advanced appends the questions most runs never need, all
+    /// of them scaffold.yml fields with defaults. The default question set is
+    /// untouched — the same script that drove it before drives it still.
+    @Test("advanced asks the extra fields, and the answers reach the configuration")
+    func advancedQuestions() throws {
+        let prompter = ScriptedPrompter([
+            "1", // platform: iOS
+            "App", // name
+            "", // bundle identifier: default
+            "2", // interface: SwiftUI
+            "1", // architecture: Minimal
+            "1", // environments: none
+            "Acme Corp", // organization name
+            "17.0", // deployment target
+            "3", // unit tests: none
+            "n", // SwiftLint: no
+            "y", // SwiftFormat: yes
+            "trunk" // git default branch
+        ])
+
+        let answers = try InteractiveConfiguration().collect(name: nil, advanced: true, using: prompter)
+        let configuration = answers.resolved()
+
+        #expect(configuration.project.organizationName == "Acme Corp")
+        #expect(configuration.product.deploymentTarget == "17.0")
+        #expect(configuration.testing.unit == .disabled)
+        #expect(configuration.quality.swiftlint == false)
+        #expect(configuration.quality.swiftformat == true)
+        #expect(configuration.git.defaultBranch == "trunk")
+    }
+
+    /// XCTest is offered — the schema knows it — and this version rejects it
+    /// (XS0xxx), so the question is asked again: the same offer-then-revalidate
+    /// contract every other unsupported choice follows.
+    @Test("choosing a test framework this version rejects re-asks the question")
+    func reasksUnsupportedTestFramework() throws {
+        let prompter = ScriptedPrompter([
+            "1", "App", "", "2", "1", "1", // the default set
+            "Acme", "18.0", // organization, deployment target
+            "2", // unit tests: XCTest (rejected by this version)
+            "y", "y", "main", // lint, format, branch
+            "1" // unit tests asked again: Swift Testing
+        ])
+
+        let answers = try InteractiveConfiguration().collect(name: nil, advanced: true, using: prompter)
+
+        #expect(answers.unitTestFramework == .swiftTesting)
+        #expect(prompter.timesAsked("Unit tests") == 2)
+    }
+
+    @Test("without advanced, the extra questions are not asked and defaults apply")
+    func advancedOffByDefault() throws {
+        let prompter = ScriptedPrompter(["1", "App", "", "2", "1", "1"])
+
+        let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
+        let configuration = answers.resolved()
+
+        #expect(prompter.firstIndex(of: "Organization name") == nil)
+        #expect(prompter.firstIndex(of: "Deployment target") == nil)
+        #expect(configuration.testing.unit == ConfigurationDefaults.unitTestFramework)
+        #expect(configuration.git.defaultBranch == ConfigurationDefaults.defaultBranch)
+    }
+
     @Test("input that ends before the answers are complete cancels")
     func endedInputCancels() {
         // Platform is the first question, and there is nothing to answer it with.

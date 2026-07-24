@@ -60,9 +60,16 @@ struct NewCommand: ParsableCommand {
     @Flag(name: .customLong("validate-build"), help: "Build the generated project before reporting success.")
     var validateBuild = false
 
+    @Flag(name: .customLong("advanced"), help: "Also ask about the fields most projects leave at their defaults.")
+    var advanced = false
+
+    @Flag(name: .customLong("open"), help: "Open the generated project when generation succeeds.")
+    var openWhenDone = false
+
     /// `new` is interactive by definition, so the machine-readable path is out:
     /// json forbids interaction (§11.3). The build-flag contradiction
-    /// `generate` catches applies here too.
+    /// `generate` catches applies here too, and `--open` joins it for the same
+    /// reason: skipping the generator leaves no project file to act on.
     func validate() throws {
         guard presetName == nil else {
             throw ValidationError("new has no --preset — did you mean --variant? The platform "
@@ -79,6 +86,10 @@ struct NewCommand: ParsableCommand {
         guard !validateBuild || !runOptions.skipGenerate else {
             throw ValidationError("--validate-build cannot be used with --skip-generate: there would be "
                 + "no project file to build.")
+        }
+        guard !openWhenDone || !runOptions.skipGenerate else {
+            throw ValidationError("--open cannot be used with --skip-generate: there would be "
+                + "no project file to open.")
         }
     }
 
@@ -174,7 +185,9 @@ extension NewCommand {
     }
 
     /// Everything after the files are down, shared by the --yes path and the
-    /// menu's Generate: the build check if asked for, then the created report.
+    /// menu's Generate: the build check if asked for, the created report, and
+    /// then --open — last, because a failure to open is a note on a success,
+    /// not a failure of the run (the project is there either way).
     private func finishGeneration(
         _ plan: GenerationPlan,
         warnings: [ValidationIssue],
@@ -186,6 +199,14 @@ extension NewCommand {
             try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
         }
         reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
+
+        if openWhenDone {
+            do {
+                try ProjectOpener().open(configuration, at: destination)
+            } catch {
+                reporter.note("\(error)")
+            }
+        }
     }
 
     private func collect(
@@ -194,7 +215,8 @@ extension NewCommand {
         reportingTo reporter: Reporter
     ) throws -> PartialProjectConfiguration {
         do {
-            return try InteractiveConfiguration().collect(name: name, variant: variant, using: prompter)
+            return try InteractiveConfiguration()
+                .collect(name: name, variant: variant, advanced: advanced, using: prompter)
         } catch InteractivePromptError.cancelled {
             throw cancelled(using: prompter, reportingTo: reporter)
         } catch let InteractivePromptError.unresolvable(issue) {
