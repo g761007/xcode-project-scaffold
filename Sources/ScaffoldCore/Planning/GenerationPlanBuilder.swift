@@ -12,6 +12,9 @@ public struct GenerationPlanBuilder: Sendable {
     private let specEncoder = XcodeGenSpecEncoder()
     private let configurationCoder = ConfigurationCoder()
 
+    static let schemaURL =
+        "https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json"
+
     public init() {}
 
     /// Takes the proof, not the configuration: `ValidatedConfiguration` can
@@ -48,9 +51,13 @@ extension GenerationPlanBuilder {
             path: "project.yml",
             contents: specEncoder.encode(specBuilder.makeSpec(for: configuration))
         ))
+        // The annotation is the plan's addition, not the coder's: the coder
+        // stays a pure value<->text mapping, and decode tolerates the comment
+        // the way it tolerates any other.
         try files.append(PlannedFile(
             path: "scaffold.yml",
-            contents: configurationCoder.encode(configuration)
+            contents: "# yaml-language-server: $schema=" + Self.schemaURL + "\n"
+                + configurationCoder.encode(configuration)
         ))
         if usesPods(configuration) {
             files.append(PlannedFile(

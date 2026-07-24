@@ -15,7 +15,8 @@ struct XScaffold: ParsableCommand {
             GenerateCommand.self,
             ValidateCommand.self,
             PlanCommand.self,
-            DoctorCommand.self
+            DoctorCommand.self,
+            CapabilitiesCommand.self
         ]
     )
 }

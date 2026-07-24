@@ -144,6 +144,27 @@ struct CommandOutputContractTests {
         #expect(!without.contains("resolvedConfiguration"))
     }
 
+    /// Key-based like resolvedConfiguration: the lists' contents are pinned by
+    /// the capabilities contract test against the real binary.
+    @Test("capabilities joins the document only from its own command")
+    func capabilitiesKey() throws {
+        let with = try encoder.encode(CommandOutput(
+            command: "capabilities",
+            exitCode: .success,
+            capabilities: CapabilitiesDocument(
+                version: "1.0.0", schemaVersions: [1], variants: ["ios-uikit"],
+                platforms: ["ios"], architectures: ["minimal"],
+                dependencyManagementModes: ["none"], testingFrameworks: ["swift-testing"],
+                features: []
+            )
+        ))
+        #expect(with.contains("\"capabilities\":"))
+        #expect(with.contains("\"variants\":[\"ios-uikit\"]"))
+
+        let without = try encoder.encode(CommandOutput(command: "plan", exitCode: .success))
+        #expect(!without.contains("capabilities"))
+    }
+
     @Test("doctor carries one entry per thing it looked for")
     func checks() throws {
         let output = CommandOutput(

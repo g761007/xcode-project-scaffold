@@ -1,0 +1,452 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json",
+  "title": "scaffold.yml",
+  "description": "A declarative description of an Xcode project for xscaffold. Deliberately stricter than the decoder about unknown keys, so a typo squiggles in the editor instead of being silently ignored.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "organizationName": {
+          "type": "string"
+        },
+        "bundleIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "bundleIdentifier"
+      ]
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "ios",
+            "macos"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "application",
+            "framework"
+          ]
+        },
+        "deploymentTarget": {
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      }
+    },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": [
+            "swift"
+          ]
+        },
+        "languageMode": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "enum": [
+            "5",
+            "6",
+            5,
+            6
+          ]
+        }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": [
+            "uikit",
+            "swiftui",
+            "appkit"
+          ]
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "swiftui",
+            "app-delegate",
+            "app-delegate-scene-delegate"
+          ]
+        }
+      },
+      "required": [
+        "primary"
+      ]
+    },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "enum": [
+            "minimal",
+            "mvvm",
+            "mvvm-c",
+            "clean"
+          ]
+        },
+        "includeExample": {
+          "type": "boolean"
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "xcodegen",
+            "tuist"
+          ]
+        }
+      }
+    },
+    "dependencyManagement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "spm",
+            "cocoapods",
+            "mixed"
+          ]
+        },
+        "spm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "packages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "exact": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "string"
+                  },
+                  "products": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "targets": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "targets"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "url"
+                ],
+                "oneOf": [
+                  {
+                    "required": [
+                      "from"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "exact"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "branch"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "revision"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "cocoapods": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pods": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "git": {
+                    "type": "string"
+                  },
+                  "tag": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "subspecs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "oneOf": [
+                  {
+                    "required": [
+                      "version"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "path"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "git",
+                      "tag"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "git",
+                      "branch"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "git",
+                      "commit"
+                    ]
+                  }
+                ]
+              }
+            },
+            "bundler": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "environments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "bundleIdentifierSuffix": {
+            "type": "string"
+          },
+          "displayNameSuffix": {
+            "type": "string"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "configuration"
+        ]
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "example": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "example"
+            ]
+          }
+        }
+      }
+    },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "developmentLanguage": {
+          "type": "string"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "swiftlint": {
+          "type": "boolean"
+        },
+        "swiftformat": {
+          "type": "boolean"
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "swift-testing",
+            "xctest",
+            "none"
+          ]
+        },
+        "ui": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "framework": {
+              "type": "string",
+              "enum": [
+                "xctest"
+              ]
+            },
+            "launchPerformanceTest": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultBranch": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "project",
+    "interface"
+  ]
+}
