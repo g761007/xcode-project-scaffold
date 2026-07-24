@@ -20,9 +20,10 @@ public struct ProjectOpener: Sendable {
         }
     }
 
-    /// Opens the project file the generator produced at `destination`.
+    /// Opens what the run produced at `destination` — the project file, or the
+    /// workspace when the container says so.
     public func open(_ configuration: ProjectConfiguration, at destination: URL) throws {
-        let path = destination.appendingPathComponent(configuration.projectFileName).path
+        let path = destination.appendingPathComponent(ProjectContainer(for: configuration).fileName).path
         let result = try processRunner.run(ProcessInvocation(
             executable: "open",
             arguments: [path],

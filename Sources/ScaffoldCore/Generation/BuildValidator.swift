@@ -36,11 +36,12 @@ public struct BuildValidator: Sendable {
     }
 
     private func buildCommand(for configuration: ProjectConfiguration) -> PlannedCommand {
-        PlannedCommand(
+        let container = ProjectContainer(for: configuration)
+        return PlannedCommand(
             executable: "xcodebuild",
             arguments: [
                 "build",
-                "-project", configuration.projectFileName,
+                container.xcodebuildFlag, container.fileName,
                 "-scheme", XcodeGenSpecBuilder().makeSpec(for: configuration).defaultSchemeName,
                 "-destination", destination(for: configuration.product.platform),
                 "-quiet"
