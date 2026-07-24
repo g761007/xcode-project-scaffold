@@ -974,6 +974,55 @@ the original intent stays visible. Changing it does not change the project.
 }
 
 """#,
+        "Shared/UITests/LaunchPerformanceTests.swift": #"""
+import XCTest
+
+/// How long launching takes, measured the way Xcode reports it. Optional
+/// (testing.ui.launchPerformanceTest): a baseline is only useful to projects
+/// that intend to watch it.
+final class LaunchPerformanceTests: XCTestCase {
+    @MainActor
+    func testLaunchPerformance() throws {
+        measure(metrics: [XCTApplicationLaunchMetric()]) {
+            XCUIApplication().launch()
+        }
+    }
+}
+
+"""#,
+        "Shared/UITests/LaunchTests.swift": #"""
+import XCTest
+
+/// The app starts. The cheapest possible answer to "did this build produce
+/// something that runs?", and the first test to fail when it did not.
+final class LaunchTests: XCTestCase {
+    @MainActor
+    func testAppLaunches() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+}
+
+"""#,
+        "Shared/UITests/SmokeTests.swift": #"""
+import XCTest
+
+/// The first screen appears. Deliberately shallow: it asserts a window, not
+/// its contents, so it survives every redesign and still catches a blank
+/// launch. Deeper flows belong in tests written against them.
+final class SmokeTests: XCTestCase {
+    @MainActor
+    func testFirstScreenAppears() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
+    }
+}
+
+"""#,
         "Variants/ios-swiftui/App/ContentView.swift": #"""
 import SwiftUI
 

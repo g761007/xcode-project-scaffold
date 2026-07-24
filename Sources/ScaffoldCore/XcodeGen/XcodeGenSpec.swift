@@ -25,6 +25,7 @@ struct XcodeGenSpec: Equatable, Sendable {
     var packages: [Package]
     var appTarget: AppTarget
     var testTarget: TestTarget?
+    var uiTestTarget: UITestTarget?
     var schemes: [Scheme]
 
     /// The scheme Xcode selects when the project is opened. Decided where the
@@ -90,6 +91,11 @@ struct XcodeGenSpec: Equatable, Sendable {
         var name: String
         var sources: [String]
         var packageProducts: [PackageProductDependency]
+    }
+
+    struct UITestTarget: Equatable, Sendable {
+        var name: String
+        var sources: [String]
     }
 
     struct Scheme: Equatable, Sendable {

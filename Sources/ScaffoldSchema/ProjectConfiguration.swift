@@ -217,14 +217,42 @@ extension ProjectConfiguration {
 
     public struct Testing: Codable, Equatable, Sendable {
         public var unit: UnitTestFramework
+        public var ui: UITesting
 
-        public init(unit: UnitTestFramework? = nil) {
+        public init(unit: UnitTestFramework? = nil, ui: UITesting? = nil) {
             self.unit = unit ?? ConfigurationDefaults.unitTestFramework
+            self.ui = ui ?? UITesting()
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            try self.init(unit: container.decodeIfPresent(UnitTestFramework.self, forKey: .unit))
+            try self.init(
+                unit: container.decodeIfPresent(UnitTestFramework.self, forKey: .unit),
+                ui: container.decodeIfPresent(UITesting.self, forKey: .ui)
+            )
+        }
+    }
+
+    /// The UI test target (§15.2), configured apart from unit tests: they
+    /// answer different questions and a project may want either alone.
+    public struct UITesting: Codable, Equatable, Sendable {
+        public var enabled: Bool
+        public var framework: UITestFramework
+        public var launchPerformanceTest: Bool
+
+        public init(enabled: Bool? = nil, framework: UITestFramework? = nil, launchPerformanceTest: Bool? = nil) {
+            self.enabled = enabled ?? ConfigurationDefaults.uiTestsEnabled
+            self.framework = framework ?? ConfigurationDefaults.uiTestFramework
+            self.launchPerformanceTest = launchPerformanceTest ?? ConfigurationDefaults.launchPerformanceTest
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            try self.init(
+                enabled: container.decodeIfPresent(Bool.self, forKey: .enabled),
+                framework: container.decodeIfPresent(UITestFramework.self, forKey: .framework),
+                launchPerformanceTest: container.decodeIfPresent(Bool.self, forKey: .launchPerformanceTest)
+            )
         }
     }
 

@@ -100,7 +100,13 @@ struct TemplateLibrary: Sendable {
         switch file.path {
         case ".swiftlint.yml": configuration.quality.swiftlint
         case ".swiftformat": configuration.quality.swiftformat
-        default: !file.path.hasPrefix("Tests/") || configuration.testing.unit != .disabled
+        case "UITests/LaunchPerformanceTests.swift":
+            configuration.testing.ui.enabled && configuration.testing.ui.launchPerformanceTest
+        case let path where path.hasPrefix("UITests/"):
+            configuration.testing.ui.enabled
+        case let path where path.hasPrefix("Tests/"):
+            configuration.testing.unit != .disabled
+        default: true
         }
     }
 

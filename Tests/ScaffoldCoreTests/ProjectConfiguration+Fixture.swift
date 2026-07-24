@@ -59,7 +59,11 @@ extension ProjectConfiguration {
             )
         ],
         quality: Quality(swiftlint: false, swiftformat: false),
-        testing: Testing(unit: .xctest),
+        testing: Testing(unit: .xctest, ui: UITesting(
+            enabled: true,
+            framework: .xctest,
+            launchPerformanceTest: true
+        )),
         git: Git(defaultBranch: "trunk")
     )
 }
