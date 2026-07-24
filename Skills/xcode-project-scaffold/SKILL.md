@@ -10,10 +10,14 @@ description: Create a new Xcode project from a description in words, by writing 
 with one commit — and guarantees the same configuration produces the same
 project.
 
-Call the CLI directly. Every command takes `--output json` and exits with a code
-that says what went wrong; a wrapper script would only hide both. If `xscaffold`
-is not on the PATH, say so and stop — it is installed with `make install` from
-its repository.
+Call the CLI directly. The commands this skill uses — `init`, `validate`, `plan`
+and `doctor` — take `--output json` and exit with a code that says what went
+wrong; a wrapper script would only hide both. If `xscaffold` is not on the PATH,
+say so and stop — it is installed with `make install` from its repository.
+
+There is also an interactive `xscaffold new`, which asks a person questions at a
+terminal. It is not for this skill: an agent has the answers already, so it
+writes a `scaffold.yml` and takes the declarative path below.
 
 ## The workflow
 
@@ -43,8 +47,8 @@ running `validate` first is how you get the issues before anything is written.
 
 ## Reading the output
 
-All four commands answer with one JSON document on stdout, in the same envelope,
-whether they succeeded or failed:
+These four commands answer with one JSON document on stdout, in the same
+envelope, whether they succeeded or failed:
 
 ```json
 {"command":"validate","exitCode":0,"issues":[],"ok":true}
