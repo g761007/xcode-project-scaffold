@@ -54,13 +54,47 @@ struct GenerationPlanContractTests {
         ])
     }
 
+    /// macOS SwiftUI shares the SwiftUI variant's file shape — the sources are
+    /// cross-platform for this content — differing only in the AppIcon it now
+    /// carries (M2 moved that to the variant layer). The build/test proof is the
+    /// E2E job; this pins the list.
+    @Test("a macOS SwiftUI project has the SwiftUI file shape")
+    func macOSSwiftUIFileList() throws {
+        let plan = try planner.makePlan(for: .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .swiftUI)
+        })
+
+        #expect(plan.files.map(\.path) == [
+            ".gitignore",
+            ".swiftformat",
+            ".swiftlint.yml",
+            "App/ContentView.swift",
+            "App/MyAppApp.swift",
+            "Makefile",
+            "README.md",
+            "Resources/Assets.xcassets/AccentColor.colorset/Contents.json",
+            "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+            "Resources/Assets.xcassets/Contents.json",
+            "Tests/ContentViewTests.swift",
+            "project.yml",
+            "scaffold.yml"
+        ])
+    }
+
     /// The assertion §12.1 asks for: a placeholder that survived into a
     /// generated file would often still compile, so nothing else would catch it.
-    @Test("no file contains an unsubstituted placeholder", arguments: [UIFramework.uiKit, .swiftUI])
-    func noPlaceholdersSurvive(interface: UIFramework) throws {
-        let plan = try planner.makePlan(for: .validBaseline.with {
-            $0.interface = .init(primary: interface)
-        })
+    /// Covers macOS as well, since a new variant reaches the substitution afresh.
+    @Test("no file contains an unsubstituted placeholder", arguments: [
+        ProjectConfiguration.validBaseline,
+        .validBaseline.with { $0.interface = .init(primary: .swiftUI) },
+        .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .swiftUI)
+        }
+    ])
+    func noPlaceholdersSurvive(configuration: ProjectConfiguration) throws {
+        let plan = try planner.makePlan(for: configuration.with { $0.project.name = "Bookshelf" })
 
         for file in plan.files {
             #expect(!file.contents.contains("{{"), "\(file.path)")
@@ -233,9 +267,9 @@ struct GenerationPlanCommandTests {
 
 @Suite("Templates that do not exist")
 struct TemplateSelectionTests {
-    /// Validation rejects macOS first, so this can only be reached by skipping
-    /// it. Failing with a clear message beats producing a project with no
-    /// sources in it.
+    /// macOS AppKit passes validation now but has no templates until M4, so a
+    /// plan for it is a template lookup that finds nothing. Failing with a clear
+    /// message beats producing a project with no sources in it.
     @Test("a variant with no templates is an error")
     func unknownVariant() throws {
         let configuration = ProjectConfiguration.validBaseline.with {

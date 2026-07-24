@@ -291,6 +291,92 @@ struct RootViewControllerTests {
 }
 
 """#,
+        "Architectures/mvvm/macos-swiftui/App/ContentView.swift": #"""
+import SwiftUI
+
+struct ContentView: View {
+    /// Owned by the view but created outside it, so a test — or a preview — can
+    /// supply its own. See App/GreetingViewModel.swift for the logic itself.
+    @State private var viewModel: GreetingViewModel
+
+    init(viewModel: GreetingViewModel = GreetingViewModel(title: "{{PROJECT_NAME}}")) {
+        _viewModel = State(initialValue: viewModel)
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(viewModel.title)
+                .font(.largeTitle)
+            Text(viewModel.tapCountText)
+            Button("Tap me") {
+                viewModel.registerTap()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+"""#,
+        "Architectures/mvvm/macos-swiftui/App/GreetingViewModel.swift": #"""
+import Observation
+
+/// The screen's state and behaviour, with no reference to SwiftUI.
+///
+/// `@Observable` lets the view read these properties and re-render when they
+/// change, so the view holds no logic and the view model can be tested on its
+/// own — see `Tests/GreetingViewModelTests.swift`.
+@MainActor
+@Observable
+final class GreetingViewModel {
+    let title: String
+    private(set) var tapCount = 0
+
+    init(title: String) {
+        self.title = title
+    }
+
+    var tapCountText: String {
+        "Tapped \(tapCount) time\(tapCount == 1 ? "" : "s")"
+    }
+
+    func registerTap() {
+        tapCount += 1
+    }
+}
+
+"""#,
+        "Architectures/mvvm/macos-swiftui/Tests/GreetingViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Greeting view model")
+struct GreetingViewModelTests {
+    @Test("it starts with no taps")
+    func startsWithNoTaps() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        #expect(viewModel.tapCount == 0)
+        #expect(viewModel.tapCountText == "Tapped 0 times")
+    }
+
+    @Test("registering a tap advances the count")
+    func registerTapAdvances() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        viewModel.registerTap()
+
+        #expect(viewModel.tapCount == 1)
+        #expect(viewModel.tapCountText == "Tapped 1 time")
+    }
+}
+
+"""#,
         "Architectures/mvvm-c/architecture.md": #"""
 **MVVM-C.** Each screen is a *view* and a *view model*, as in MVVM — but
 navigation is pulled out into a *coordinator*. A view model reports intent (a
@@ -924,6 +1010,109 @@ struct RootViewControllerTests {
         controller.loadViewIfNeeded()
 
         #expect(controller.view.backgroundColor == .systemBackground)
+    }
+}
+
+"""#,
+        "Variants/macos-swiftui/App/ContentView.swift": #"""
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        Text(verbatim: "{{PROJECT_NAME}}")
+            .font(.largeTitle)
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+"""#,
+        "Variants/macos-swiftui/App/{{PROJECT_NAME}}App.swift": #"""
+import SwiftUI
+
+@main
+struct {{PROJECT_NAME}}App: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+"""#,
+        "Variants/macos-swiftui/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": #"""
+{
+  "images" : [
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "16x16"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "16x16"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "32x32"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "32x32"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "128x128"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "128x128"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "256x256"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "256x256"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "512x512"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "512x512"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+
+"""#,
+        "Variants/macos-swiftui/Tests/ContentViewTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Content view")
+struct ContentViewTests {
+    @Test("the view can be created")
+    func viewCanBeCreated() {
+        _ = ContentView()
     }
 }
 
