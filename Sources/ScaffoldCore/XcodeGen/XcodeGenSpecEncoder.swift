@@ -18,11 +18,16 @@ struct XcodeGenSpecEncoder: Sendable {
 
 extension XcodeGenSpecEncoder {
     private func node(for spec: XcodeGenSpec) -> Node {
+        var options: [(String, Node)] = [
+            ("deploymentTarget", map([(spec.platform, string(spec.deploymentTarget))]))
+        ]
+        if let developmentLanguage = spec.developmentLanguage {
+            options.append(("developmentLanguage", string(developmentLanguage)))
+        }
+
         var pairs: [(String, Node)] = [
             ("name", string(spec.name)),
-            ("options", map([
-                ("deploymentTarget", map([(spec.platform, string(spec.deploymentTarget))]))
-            ]))
+            ("options", map(options))
         ]
 
         if !spec.configurations.isEmpty {

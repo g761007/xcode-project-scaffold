@@ -59,6 +59,7 @@ extension GenerationPlanBuilder {
             ))
         }
         files.append(contentsOf: environmentFiles(for: configuration))
+        files.append(contentsOf: localizationFiles(for: configuration))
 
         return files.sorted { $0.path < $1.path }
     }
@@ -154,6 +155,23 @@ extension GenerationPlanBuilder {
         let environmentKeys = configuration.environments.flatMap(\.values.keys)
         let secretKeys = (configuration.secrets?.keys ?? []).map(\.name)
         return Array(Set(environmentKeys + secretKeys))
+    }
+}
+
+// MARK: - Localization
+
+extension GenerationPlanBuilder {
+    /// One lproj per shipped language (§16), each holding a Localizable.strings
+    /// with a header rather than nothing — this tool never generates an empty
+    /// folder, and an empty strings file explains itself worse than one line.
+    private func localizationFiles(for configuration: ProjectConfiguration) -> [PlannedFile] {
+        configuration.localization.languages.map { language in
+            PlannedFile(
+                path: "Resources/\(language).lproj/Localizable.strings",
+                contents: "/* \(language) strings for \(configuration.project.name). "
+                    + "Add an entry per user-facing string. */\n"
+            )
+        }
     }
 }
 

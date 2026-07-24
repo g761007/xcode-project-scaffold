@@ -20,6 +20,7 @@ public struct ConfigurationValidator: Sendable {
             + fieldIssues(configuration)
             + environmentIssues(configuration)
             + valueKeyIssues(configuration)
+            + localizationIssues(configuration)
             + dependencyIssues(configuration)
     }
 }

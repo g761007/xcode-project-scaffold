@@ -63,6 +63,10 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     case duplicateBuildConfiguration = "XS1402"
     case invalidValueKey = "XS1403"
 
+    // XS16xx — localization.
+    case developmentLanguageNotListed = "XS1601"
+    case duplicateLanguage = "XS1602"
+
     // XS15xx — dependencies.
     case duplicatePackageName = "XS1501"
     case emptyPackageURL = "XS1502"
@@ -109,7 +113,9 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .unknownProductTarget,
              .duplicatePodName,
              .duplicateDependency,
-             .dependenciesOutsideMode:
+             .dependenciesOutsideMode,
+             .developmentLanguageNotListed,
+             .duplicateLanguage:
             .permanentlyInvalid
         }
     }

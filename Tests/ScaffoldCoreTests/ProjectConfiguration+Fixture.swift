@@ -60,6 +60,7 @@ extension ProjectConfiguration {
             )
         ],
         secrets: Secrets(keys: [.init(name: "API_KEY", example: "example-123")]),
+        localization: Localization(developmentLanguage: "ja", languages: ["ja", "en"]),
         quality: Quality(swiftlint: false, swiftformat: false),
         testing: Testing(unit: .xctest, ui: UITesting(
             enabled: true,
