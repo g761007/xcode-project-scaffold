@@ -7,6 +7,11 @@ import ScaffoldSchema
 /// `resolved()`. Keeping it separate is what lets the prompt gather input
 /// without knowing any compatibility rules (§15): it produces one of these, and
 /// the validator — not the prompt — decides whether it can be generated.
+///
+/// The optional fields at the end are the `--advanced` questions (§4.2): `nil`
+/// means "not asked", and `resolved()` hands a nil straight to the default it
+/// would have taken anyway — so a default run and an advanced run that accepts
+/// every suggestion produce the same configuration.
 public struct PartialProjectConfiguration: Equatable, Sendable {
     public var platform: ApplePlatform
     public var name: String
@@ -16,6 +21,13 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     public var includeExample: Bool?
     public var environments: [Environment]
 
+    public var organizationName: String?
+    public var deploymentTarget: String?
+    public var unitTestFramework: UnitTestFramework?
+    public var swiftlint: Bool?
+    public var swiftformat: Bool?
+    public var gitDefaultBranch: String?
+
     public init(
         platform: ApplePlatform,
         name: String,
@@ -23,7 +35,13 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         interface: UIFramework,
         pattern: ArchitecturePattern,
         includeExample: Bool?,
-        environments: [Environment]
+        environments: [Environment],
+        organizationName: String? = nil,
+        deploymentTarget: String? = nil,
+        unitTestFramework: UnitTestFramework? = nil,
+        swiftlint: Bool? = nil,
+        swiftformat: Bool? = nil,
+        gitDefaultBranch: String? = nil
     ) {
         self.platform = platform
         self.name = name
@@ -32,6 +50,12 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         self.pattern = pattern
         self.includeExample = includeExample
         self.environments = environments
+        self.organizationName = organizationName
+        self.deploymentTarget = deploymentTarget
+        self.unitTestFramework = unitTestFramework
+        self.swiftlint = swiftlint
+        self.swiftformat = swiftformat
+        self.gitDefaultBranch = gitDefaultBranch
     }
 
     /// The full configuration these answers describe, with defaults applied for
@@ -39,11 +63,14 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     /// from the platform (Product's own default), so the prompt need not ask.
     public func resolved() -> ProjectConfiguration {
         ProjectConfiguration(
-            project: .init(name: name, bundleIdentifier: bundleIdentifier),
-            product: .init(platform: platform),
+            project: .init(name: name, organizationName: organizationName, bundleIdentifier: bundleIdentifier),
+            product: .init(platform: platform, deploymentTarget: deploymentTarget),
             interface: .init(primary: interface),
             architecture: .init(pattern: pattern, includeExample: includeExample),
-            environments: environments
+            environments: environments,
+            quality: .init(swiftlint: swiftlint, swiftformat: swiftformat),
+            testing: .init(unit: unitTestFramework),
+            git: .init(defaultBranch: gitDefaultBranch)
         )
     }
 }

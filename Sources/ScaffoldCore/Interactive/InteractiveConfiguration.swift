@@ -26,10 +26,15 @@ public struct InteractiveConfiguration: Sendable {
     /// name comes as its own argument, the platform and interface together as a
     /// `--variant` (§17.1) — which is why they arrive as one.
     ///
+    /// `advanced` appends the questions most runs never need (§4.2): fields
+    /// that live in `scaffold.yml` and already have defaults, offered here so
+    /// they can be answered without editing the file afterwards.
+    ///
     /// - Throws: `InteractivePromptError`.
     public func collect(
         name initialName: String?,
         variant: Variant? = nil,
+        advanced: Bool = false,
         using prompter: some Prompter
     ) throws -> PartialProjectConfiguration {
         let platform = try variant?.platform ?? askPlatform(using: prompter)
@@ -39,7 +44,7 @@ public struct InteractiveConfiguration: Sendable {
         let (pattern, includeExample) = try askArchitecture(using: prompter)
         let environments = try askEnvironments(using: prompter)
 
-        let answers = PartialProjectConfiguration(
+        var answers = PartialProjectConfiguration(
             platform: platform,
             name: name,
             bundleIdentifier: bundleIdentifier,
@@ -48,7 +53,30 @@ public struct InteractiveConfiguration: Sendable {
             includeExample: includeExample,
             environments: environments
         )
+        if advanced {
+            try askAdvanced(into: &answers, using: prompter)
+        }
         return try resolve(answers, using: prompter)
+    }
+
+    /// The `--advanced` questions, in schema order. Every one of them writes a
+    /// `scaffold.yml` field — destination and build validation are run options,
+    /// not project properties, so they stay flags (§CONTEXT: GenerationOptions
+    /// never appears in scaffold.yml).
+    private func askAdvanced(
+        into answers: inout PartialProjectConfiguration,
+        using prompter: some Prompter
+    ) throws {
+        answers.organizationName = try freeText("Organization name", default: nil, using: prompter)
+        answers.deploymentTarget = try askDeploymentTarget(for: answers.platform, using: prompter)
+        answers.unitTestFramework = try askUnitTests(using: prompter)
+        answers.swiftlint = try confirm("Include SwiftLint", default: ConfigurationDefaults.swiftlint, using: prompter)
+        answers.swiftformat = try confirm(
+            "Include SwiftFormat", default: ConfigurationDefaults.swiftformat, using: prompter
+        )
+        answers.gitDefaultBranch = try freeText(
+            "Git default branch", default: ConfigurationDefaults.defaultBranch, using: prompter
+        )
     }
 }
 
@@ -147,6 +175,10 @@ extension InteractiveConfiguration {
             answers.bundleIdentifier = try askBundleIdentifier(for: answers.name, using: prompter)
         case "product.platform":
             answers.platform = try askPlatform(using: prompter)
+        case "product.deploymentTarget":
+            answers.deploymentTarget = try askDeploymentTarget(for: answers.platform, using: prompter)
+        case "testing.unit":
+            answers.unitTestFramework = try askUnitTests(using: prompter)
         case "interface.primary", "interface.lifecycle":
             answers.interface = try askInterface(using: prompter)
         case "architecture.pattern", "architecture.includeExample":
@@ -198,6 +230,25 @@ extension InteractiveConfiguration {
             ? try confirm("Include the example", default: true, using: prompter)
             : nil
         return (pattern, includeExample)
+    }
+
+    private func askDeploymentTarget(for platform: ApplePlatform, using prompter: some Prompter) throws -> String {
+        try freeText(
+            "Deployment target",
+            default: ConfigurationDefaults.deploymentTarget(for: platform),
+            using: prompter
+        )
+    }
+
+    /// Every framework the schema knows is offered, including ones this
+    /// version does not generate yet — the validator says so and the question
+    /// is asked again, the same as every other unsupported choice (§15).
+    private func askUnitTests(using prompter: some Prompter) throws -> UnitTestFramework {
+        try choice("Unit tests", [
+            ("Swift Testing", UnitTestFramework.swiftTesting),
+            ("XCTest", .xctest),
+            ("None", .disabled)
+        ], using: prompter)
     }
 
     private func askEnvironments(using prompter: some Prompter) throws -> [Environment] {
