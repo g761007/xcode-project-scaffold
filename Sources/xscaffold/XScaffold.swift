@@ -9,7 +9,13 @@ struct XScaffold: ParsableCommand {
         commandName: "xscaffold",
         abstract: "Create a new Xcode project reproducibly, from a single version-controlled configuration file.",
         version: ScaffoldVersion.current,
-        subcommands: [InitCommand.self, ValidateCommand.self, PlanCommand.self, DoctorCommand.self]
+        subcommands: [
+            InitCommand.self,
+            NewCommand.self,
+            ValidateCommand.self,
+            PlanCommand.self,
+            DoctorCommand.self
+        ]
     )
 }
 

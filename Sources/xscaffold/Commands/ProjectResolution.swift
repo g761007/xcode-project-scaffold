@@ -98,3 +98,84 @@ extension GenerationPlan {
         return lines.joined(separator: "\n")
     }
 }
+
+// The last steps of a run, shared by `init` and `new` so the two cannot drift:
+// both write through the same executor, verify a build the same way and report
+// success in the same shape.
+
+/// Lays the plan on disk, mapping a generation failure to the code it chose.
+func writePlan(_ plan: GenerationPlan, to destination: URL, force: Bool, reportingTo reporter: Reporter) throws {
+    do {
+        try PlanExecutor().execute(plan, at: destination, force: force)
+    } catch let error as GenerationError {
+        throw reporter.failure(error.exitCode, "\(error)")
+    } catch {
+        throw reporter.failure(.generationFailure, "\(error)")
+    }
+}
+
+/// The project stays if the build fails. Generation succeeded; what failed is a
+/// check on top of it, and deleting the evidence would be a strange way to
+/// report a compiler error.
+func verifyBuild(
+    of configuration: ProjectConfiguration,
+    at destination: URL,
+    reportingTo reporter: Reporter
+) throws {
+    reporter.note("Building \(configuration.project.name)…")
+
+    do {
+        try BuildValidator().validate(configuration, at: destination)
+    } catch let error as BuildValidationError {
+        throw reporter.failure(error.exitCode, "\(error)")
+    } catch let error as GenerationError {
+        // Xcode missing entirely is a missing requirement, not a failed build:
+        // a different code, and a different thing to do about it.
+        throw reporter.failure(error.exitCode, "\(error)")
+    } catch {
+        throw reporter.failure(.buildValidationFailure, "\(error)")
+    }
+}
+
+func reportCreated(
+    _ plan: GenerationPlan,
+    warnings: [ValidationIssue],
+    for configuration: ProjectConfiguration,
+    at destination: URL,
+    to reporter: Reporter
+) {
+    reporter.succeed(
+        CommandOutput(
+            command: reporter.command,
+            exitCode: .success,
+            issues: warnings,
+            destination: destination.path,
+            plan: PlanSummary(plan)
+        ),
+        text: createdText(plan, for: configuration, at: destination)
+    )
+}
+
+private func createdText(
+    _ plan: GenerationPlan,
+    for configuration: ProjectConfiguration,
+    at destination: URL
+) -> String {
+    var lines = ["Created \(configuration.project.name) at:", plan.summary(at: destination), ""]
+
+    // Whether a project file exists yet is what the plan actually ran, not a
+    // flag passed alongside it: the generator command is in the plan unless it
+    // was skipped.
+    let willGenerate = plan.commands.contains { $0.executable == configuration.generator.type.rawValue }
+    guard willGenerate else {
+        // Deliberately not "run `make generate`": which recipe produces the
+        // project file is the generated Makefile's business, and the README that
+        // has just been written says so.
+        lines.append("There is no project file yet. The generated README.md says how to produce one.")
+        return lines.joined(separator: "\n")
+    }
+
+    lines.append("Open it with:")
+    lines.append("  open \(destination.appendingPathComponent(configuration.projectFileName).path)")
+    return lines.joined(separator: "\n")
+}

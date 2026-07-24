@@ -65,91 +65,11 @@ struct InitCommand: ParsableCommand {
         let plan = try makePlan(for: configuration, options: runOptions.generationOptions, reportingTo: reporter)
         let destination = project.destinationURL(for: configuration)
 
-        try write(plan, to: destination, reportingTo: reporter)
+        try writePlan(plan, to: destination, force: force, reportingTo: reporter)
         if validateBuild {
             try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
         }
 
-        report(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
-    }
-}
-
-// MARK: - Doing it
-
-extension InitCommand {
-    private func write(_ plan: GenerationPlan, to destination: URL, reportingTo reporter: Reporter) throws {
-        do {
-            try PlanExecutor().execute(plan, at: destination, force: force)
-        } catch let error as GenerationError {
-            throw reporter.failure(error.exitCode, "\(error)")
-        } catch {
-            throw reporter.failure(.generationFailure, "\(error)")
-        }
-    }
-
-    /// The project stays if the build fails. Generation succeeded; what failed
-    /// is a check on top of it, and deleting the evidence would be a strange way
-    /// to report a compiler error.
-    private func verifyBuild(
-        of configuration: ProjectConfiguration,
-        at destination: URL,
-        reportingTo reporter: Reporter
-    ) throws {
-        reporter.note("Building \(configuration.project.name)…")
-
-        do {
-            try BuildValidator().validate(configuration, at: destination)
-        } catch let error as BuildValidationError {
-            throw reporter.failure(error.exitCode, "\(error)")
-        } catch let error as GenerationError {
-            // Xcode missing entirely is a missing requirement, not a failed
-            // build: a different code, and a different thing to do about it.
-            throw reporter.failure(error.exitCode, "\(error)")
-        } catch {
-            throw reporter.failure(.buildValidationFailure, "\(error)")
-        }
-    }
-}
-
-// MARK: - Saying what happened
-
-extension InitCommand {
-    private func report(
-        _ plan: GenerationPlan,
-        warnings: [ValidationIssue],
-        for configuration: ProjectConfiguration,
-        at destination: URL,
-        to reporter: Reporter
-    ) {
-        reporter.succeed(
-            CommandOutput(
-                command: reporter.command,
-                exitCode: .success,
-                issues: warnings,
-                destination: destination.path,
-                plan: PlanSummary(plan)
-            ),
-            text: text(plan, for: configuration, at: destination)
-        )
-    }
-
-    private func text(
-        _ plan: GenerationPlan,
-        for configuration: ProjectConfiguration,
-        at destination: URL
-    ) -> String {
-        var lines = ["Created \(configuration.project.name) at:", plan.summary(at: destination), ""]
-
-        guard !runOptions.skipGenerate else {
-            // Deliberately not "run `make generate`": which recipe produces the
-            // project file is the generated Makefile's business, and the README
-            // that has just been written says so.
-            lines.append("There is no project file yet. The generated README.md says how to produce one.")
-            return lines.joined(separator: "\n")
-        }
-
-        lines.append("Open it with:")
-        lines.append("  open \(destination.appendingPathComponent(configuration.projectFileName).path)")
-        return lines.joined(separator: "\n")
+        reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
     }
 }
