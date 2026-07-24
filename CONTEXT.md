@@ -27,8 +27,10 @@ _Avoid_: answers、draft config、partial
 _Avoid_: checked config、safe config
 
 **Preset**:
-一組具名的 `ProjectConfiguration` 預設值。它是預設值集合，不是模板。
-_Avoid_: profile、template、範本
+專案規模與預設功能的具名集合（minimal / standard / production），v0.7 生效，屆時以
+`--preset` 提供。在那之前這個詞不指任何現役概念——v0.4 之前掛在 `--preset` 下的四個
+平台組合現在叫 Variant（ADR-0007）。
+_Avoid_: profile、template、範本、（舊語意）平台組合
 
 ## 生成
 
@@ -102,7 +104,9 @@ _Avoid_: error、warning、diagnostic
 
 **Variant**:
 platform × language × interface 的一個具體組合，例如 `ios-uikit`。各 Variant 之間不共用原始碼。
-_Avoid_: template、flavor、combination、組合
+CLI 以 `--variant` 選取（`new MyApp --variant ios-uikit`）；`scaffold.yml` 內仍是 platform 與
+interface 兩個欄位，variant 只是一次答兩題的捷徑。
+_Avoid_: template、flavor、combination、組合、preset（v0.4 起）
 
 **Shared Layer**:
 所有 Variant 共用的檔案，例如 `.swiftlint.yml`、`Makefile`、`.gitignore`，以及**平台中性**的資產（如 `AccentColor`）。平台專屬的資產不在這裡——`AppIcon` 因 iOS 與 macOS 的圖示不同而下放到各 Variant。
