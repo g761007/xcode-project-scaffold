@@ -6,13 +6,15 @@ import Testing
 /// so this is the whole interactive path minus the terminal — which is exactly
 /// what the seam exists to make testable.
 ///
-/// Answers are consumed in question order: name, bundle identifier, interface,
-/// architecture, [example], environments; the choice questions take a number.
+/// Answers are consumed in question order: platform, name, bundle identifier,
+/// interface, architecture, [example], environments; the choice questions take a
+/// number.
 @Suite("Collecting answers interactively")
 struct InteractiveConfigurationTests {
     @Test("a full set of answers becomes the configuration they describe")
     func happyPath() throws {
         let prompter = ScriptedPrompter([
+            "1", // platform: iOS
             "Bookshelf", // name
             "com.acme.bookshelf", // bundle identifier
             "2", // interface: SwiftUI
@@ -23,6 +25,7 @@ struct InteractiveConfigurationTests {
 
         let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
 
+        #expect(answers.platform == .iOS)
         #expect(answers.name == "Bookshelf")
         #expect(answers.bundleIdentifier == "com.acme.bookshelf")
         #expect(answers.interface == .swiftUI)
@@ -31,14 +34,35 @@ struct InteractiveConfigurationTests {
         #expect(answers.environments.isEmpty)
     }
 
+    /// The platform axis M5 adds: macOS with AppKit, a combination unreachable
+    /// before. Every interface is offered on every platform, so this is just two
+    /// answers, not a special case.
+    @Test("choosing macOS and AppKit is offered and collected")
+    func macOSAppKit() throws {
+        let prompter = ScriptedPrompter([
+            "2", // platform: macOS
+            "Desk", // name
+            "", // bundle identifier: default
+            "3", // interface: AppKit
+            "1", // architecture: Minimal
+            "1" // environments: none
+        ])
+
+        let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
+
+        #expect(answers.platform == .macOS)
+        #expect(answers.interface == .appKit)
+        #expect(ConfigurationValidator().validate(answers.resolved()).isEmpty)
+    }
+
     @Test("questions are asked in their documented order")
     func order() throws {
-        let prompter = ScriptedPrompter(["App", "", "1", "2", "y", "2"])
+        let prompter = ScriptedPrompter(["1", "App", "", "1", "2", "y", "2"])
 
         _ = try InteractiveConfiguration().collect(name: nil, using: prompter)
 
         let order = [
-            "Project name", "Bundle identifier", "Interface",
+            "Platform", "Project name", "Bundle identifier", "Interface",
             "Architecture", "Include the example", "Build environments"
         ]
         let indices = order.map { prompter.firstIndex(of: $0) }
@@ -49,6 +73,7 @@ struct InteractiveConfigurationTests {
     @Test("a name given on the command line is not asked for")
     func nameFromArgument() throws {
         let prompter = ScriptedPrompter([
+            "1", // platform: iOS
             "", // bundle identifier: accept the derived default
             "1", // interface: UIKit
             "1", // architecture: Minimal
@@ -66,12 +91,12 @@ struct InteractiveConfigurationTests {
 
     @Test("the example is asked about only for a pattern that has one")
     func exampleOnlyWhereThereIsOne() throws {
-        let minimal = ScriptedPrompter(["App", "", "1", "1", "1"])
+        let minimal = ScriptedPrompter(["1", "App", "", "1", "1", "1"])
         let minimalAnswers = try InteractiveConfiguration().collect(name: nil, using: minimal)
         #expect(minimalAnswers.includeExample == nil)
         #expect(minimal.firstIndex(of: "Include the example") == nil)
 
-        let mvvm = ScriptedPrompter(["App", "", "1", "2", "n", "1"])
+        let mvvm = ScriptedPrompter(["1", "App", "", "1", "2", "n", "1"])
         let mvvmAnswers = try InteractiveConfiguration().collect(name: nil, using: mvvm)
         #expect(mvvmAnswers.includeExample == false)
         #expect(mvvm.firstIndex(of: "Include the example") != nil)
@@ -80,6 +105,7 @@ struct InteractiveConfigurationTests {
     @Test("a free-text answer the validator rejects is asked again")
     func reasksInvalidField() throws {
         let prompter = ScriptedPrompter([
+            "1", // platform: iOS
             "App", // name
             "nope", // bundle identifier: not reverse-DNS (XS1301)
             "1", // interface
@@ -96,13 +122,13 @@ struct InteractiveConfigurationTests {
         #expect(prompter.timesAsked("Bundle identifier [") == 2)
     }
 
-    /// The one combination the prompt lets a user reach that the validator
-    /// rejects: MVVM-C on SwiftUI (XS0009). The prompt holds no rule about it —
-    /// it offers the choice, then re-asks the architecture when validation says
-    /// no.
+    /// A combination the prompt lets a user reach that the validator rejects:
+    /// MVVM-C on SwiftUI (XS0009). The prompt holds no rule about it — it offers
+    /// the choice, then re-asks the architecture when validation says no.
     @Test("MVVM-C on SwiftUI is refused, then the architecture is asked again")
     func reasksIncompatibleArchitecture() throws {
         let prompter = ScriptedPrompter([
+            "1", // platform: iOS
             "App", // name
             "", // bundle identifier: default
             "2", // interface: SwiftUI
@@ -120,10 +146,31 @@ struct InteractiveConfigurationTests {
         #expect(prompter.timesAsked("Architecture") == 2)
     }
 
+    /// AppKit on iOS is a pairing the validator rejects (XS1002). As with the
+    /// architecture case, the prompt offered it, then re-asks the interface the
+    /// issue points at — it never encodes the platform/interface rule itself.
+    @Test("AppKit on iOS is refused, then the interface is asked again")
+    func reasksIncompatibleInterface() throws {
+        let prompter = ScriptedPrompter([
+            "1", // platform: iOS
+            "App", // name
+            "", // bundle identifier: default
+            "3", // interface: AppKit  (invalid on iOS)
+            "1", // architecture: Minimal
+            "1", // environments
+            "1" // interface asked again: UIKit
+        ])
+
+        let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
+
+        #expect(answers.platform == .iOS)
+        #expect(answers.interface == .uiKit)
+        #expect(prompter.timesAsked("Interface") == 2)
+    }
+
     @Test("input that ends before the answers are complete cancels")
     func endedInputCancels() {
-        // The name is given, so the bundle identifier is the first question —
-        // and there is nothing to answer it with.
+        // Platform is the first question, and there is nothing to answer it with.
         let prompter = ScriptedPrompter([])
 
         #expect(throws: InteractivePromptError.cancelled) {

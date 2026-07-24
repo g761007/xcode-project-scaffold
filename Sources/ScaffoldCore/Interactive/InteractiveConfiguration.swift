@@ -28,6 +28,7 @@ public struct InteractiveConfiguration: Sendable {
         name initialName: String?,
         using prompter: some Prompter
     ) throws -> PartialProjectConfiguration {
+        let platform = try askPlatform(using: prompter)
         let name = try initialName ?? askName(using: prompter)
         let bundleIdentifier = try askBundleIdentifier(for: name, using: prompter)
         let interface = try askInterface(using: prompter)
@@ -35,6 +36,7 @@ public struct InteractiveConfiguration: Sendable {
         let environments = try askEnvironments(using: prompter)
 
         let answers = PartialProjectConfiguration(
+            platform: platform,
             name: name,
             bundleIdentifier: bundleIdentifier,
             interface: interface,
@@ -83,6 +85,8 @@ extension InteractiveConfiguration {
             answers.name = try askName(using: prompter)
         case "project.bundleIdentifier":
             answers.bundleIdentifier = try askBundleIdentifier(for: answers.name, using: prompter)
+        case "product.platform":
+            answers.platform = try askPlatform(using: prompter)
         case "interface.primary", "interface.lifecycle":
             answers.interface = try askInterface(using: prompter)
         case "architecture.pattern", "architecture.includeExample":
@@ -106,8 +110,19 @@ extension InteractiveConfiguration {
         try freeText("Bundle identifier", default: Preset.bundleIdentifier(for: name), using: prompter)
     }
 
+    /// Every interface is offered on every platform. A pairing the platform does
+    /// not allow (UIKit on macOS, AppKit on iOS) is left to the validator, which
+    /// re-asks this question — the prompt holds no compatibility rule (§15).
+    private func askPlatform(using prompter: some Prompter) throws -> ApplePlatform {
+        try choice("Platform", [("iOS", ApplePlatform.iOS), ("macOS", .macOS)], using: prompter)
+    }
+
     private func askInterface(using prompter: some Prompter) throws -> UIFramework {
-        try choice("Interface", [("UIKit", UIFramework.uiKit), ("SwiftUI", .swiftUI)], using: prompter)
+        try choice(
+            "Interface",
+            [("UIKit", UIFramework.uiKit), ("SwiftUI", .swiftUI), ("AppKit", .appKit)],
+            using: prompter
+        )
     }
 
     /// The example question follows from the architecture: a pattern with no

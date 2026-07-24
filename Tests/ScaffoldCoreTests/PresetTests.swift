@@ -32,6 +32,19 @@ struct PresetTests {
         #expect(swiftUI.configuration(projectName: "MyApp").interface.primary == .swiftUI)
     }
 
+    /// M5 adds the macOS pair. The platform is what separates them from the iOS
+    /// presets; the deployment target and lifecycle follow from it.
+    @Test("the macOS presets target macOS on each interface")
+    func macOSPresets() throws {
+        let swiftUI = try #require(Preset.named("macos-swiftui")).configuration(projectName: "MyApp")
+        let appKit = try #require(Preset.named("macos-appkit")).configuration(projectName: "MyApp")
+
+        #expect(swiftUI.product.platform == .macOS)
+        #expect(swiftUI.interface.primary == .swiftUI)
+        #expect(appKit.product.platform == .macOS)
+        #expect(appKit.interface.primary == .appKit)
+    }
+
     @Test("an unknown name is not a preset")
     func unknownPreset() {
         #expect(Preset.named("ios-appkit") == nil)

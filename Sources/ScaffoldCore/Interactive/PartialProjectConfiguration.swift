@@ -8,6 +8,7 @@ import ScaffoldSchema
 /// without knowing any compatibility rules (§15): it produces one of these, and
 /// the validator — not the prompt — decides whether it can be generated.
 public struct PartialProjectConfiguration: Equatable, Sendable {
+    public var platform: ApplePlatform
     public var name: String
     public var bundleIdentifier: String
     public var interface: UIFramework
@@ -16,6 +17,7 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     public var environments: [Environment]
 
     public init(
+        platform: ApplePlatform,
         name: String,
         bundleIdentifier: String,
         interface: UIFramework,
@@ -23,6 +25,7 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         includeExample: Bool?,
         environments: [Environment]
     ) {
+        self.platform = platform
         self.name = name
         self.bundleIdentifier = bundleIdentifier
         self.interface = interface
@@ -32,10 +35,12 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     }
 
     /// The full configuration these answers describe, with defaults applied for
-    /// every field the prompt did not ask about.
+    /// every field the prompt did not ask about. The deployment target follows
+    /// from the platform (Product's own default), so the prompt need not ask.
     public func resolved() -> ProjectConfiguration {
         ProjectConfiguration(
             project: .init(name: name, bundleIdentifier: bundleIdentifier),
+            product: .init(platform: platform),
             interface: .init(primary: interface),
             architecture: .init(pattern: pattern, includeExample: includeExample),
             environments: environments

@@ -13,21 +13,37 @@ public struct Preset: Equatable, Sendable {
     public let name: String
     public let summary: String
 
-    /// The only thing this version's presets disagree about. Everything else a
-    /// preset could state is already the schema's default, and stating it twice
-    /// is how the two drift apart.
+    /// All a preset states beyond the schema's defaults: the platform and the
+    /// interface. Everything else is already a default, and stating it twice is
+    /// how the two drift apart. The deployment target and lifecycle follow from
+    /// these — Product and Interface derive them.
+    let platform: ApplePlatform
     let interface: UIFramework
 
     public static let all: [Preset] = [
         Preset(
             name: "ios-uikit",
             summary: "iOS app, UIKit, AppDelegate and SceneDelegate",
+            platform: .iOS,
             interface: .uiKit
         ),
         Preset(
             name: "ios-swiftui",
             summary: "iOS app, SwiftUI, App lifecycle",
+            platform: .iOS,
             interface: .swiftUI
+        ),
+        Preset(
+            name: "macos-swiftui",
+            summary: "macOS app, SwiftUI, App lifecycle",
+            platform: .macOS,
+            interface: .swiftUI
+        ),
+        Preset(
+            name: "macos-appkit",
+            summary: "macOS app, AppKit, code-built window and menu bar",
+            platform: .macOS,
+            interface: .appKit
         )
     ]
 
@@ -42,6 +58,7 @@ public struct Preset: Equatable, Sendable {
                 name: projectName,
                 bundleIdentifier: Self.bundleIdentifier(for: projectName)
             ),
+            product: .init(platform: platform),
             interface: .init(primary: interface)
         )
     }
