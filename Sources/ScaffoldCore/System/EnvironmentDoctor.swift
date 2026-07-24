@@ -14,8 +14,15 @@ public struct EnvironmentDoctor: Sendable {
         self.processRunner = processRunner
     }
 
-    public func check() -> [EnvironmentCheck] {
-        Tool.all.map(check)
+    /// The configuration decides how hard to insist on CocoaPods: `pod` is
+    /// required exactly when the mode reads pods, and merely reported
+    /// otherwise. Everything else is the same on every machine.
+    public func check(for configuration: ProjectConfiguration? = nil) -> [EnvironmentCheck] {
+        let usesPods = configuration.map {
+            $0.dependencyManagement.mode == .cocoapods || $0.dependencyManagement.mode == .mixed
+        } ?? false
+
+        return (Tool.all + [Tool.pod(required: usesPods)]).map(check)
     }
 
     private func check(_ tool: Tool) -> EnvironmentCheck {
@@ -99,6 +106,18 @@ extension EnvironmentDoctor {
                     + "Install with `brew install swiftlint`."
             )
         ]
+
+        /// Required exactly when the configuration in hand reads pods (§9.3);
+        /// without one to consult, reported and shrugged at like the linters.
+        static func pod(required: Bool) -> Tool {
+            Tool(
+                name: "pod",
+                versionArguments: ["--version"],
+                required: required,
+                purpose: "Needed when dependencyManagement.mode is cocoapods or mixed. "
+                    + "Install with `brew install cocoapods`."
+            )
+        }
     }
 }
 

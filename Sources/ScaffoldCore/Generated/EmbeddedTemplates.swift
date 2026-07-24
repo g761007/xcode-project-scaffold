@@ -791,6 +791,10 @@ build/
 ## Generated from project.yml
 App/Info.plist
 
+## CocoaPods
+# Installed by `pod install`; the Podfile and Podfile.lock are the record.
+Pods/
+
 ## Swift Package Manager
 .build/
 .swiftpm/

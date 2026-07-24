@@ -52,6 +52,12 @@ extension GenerationPlanBuilder {
             path: "scaffold.yml",
             contents: configurationCoder.encode(configuration)
         ))
+        if usesPods(configuration) {
+            files.append(PlannedFile(
+                path: "Podfile",
+                contents: PodfileRenderer().render(configuration)
+            ))
+        }
 
         return files.sorted { $0.path < $1.path }
     }
@@ -102,6 +108,17 @@ extension GenerationPlanBuilder {
     }
 }
 
+// MARK: - Dependencies
+
+extension GenerationPlanBuilder {
+    /// Whether this configuration's pods reach the plan: only the modes that
+    /// read the cocoapods section do (§9).
+    private func usesPods(_ configuration: ProjectConfiguration) -> Bool {
+        configuration.dependencyManagement.mode == .cocoapods
+            || configuration.dependencyManagement.mode == .mixed
+    }
+}
+
 // MARK: - Commands
 
 extension GenerationPlanBuilder {
@@ -137,6 +154,17 @@ extension GenerationPlanBuilder {
                 arguments: ["generate"],
                 purpose: "Produce \(configuration.projectFileName) from project.yml"
             ))
+
+            // Pods need the project file the generator just produced, which is
+            // why skipping the generator skips them too — a pod install with
+            // no project to integrate into can only fail.
+            if usesPods(configuration) {
+                commands.append(PlannedCommand(
+                    executable: "pod",
+                    arguments: ["install"],
+                    purpose: "Install pods and produce \(configuration.project.name).xcworkspace"
+                ))
+            }
         }
 
         return commands

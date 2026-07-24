@@ -77,3 +77,43 @@ struct EnvironmentDoctorTests {
         #expect(required == ["git", "xcodegen"])
     }
 }
+
+/// Issue #63: how hard doctor insists on CocoaPods follows the configuration.
+@Suite("CocoaPods in the doctor's list")
+struct DoctorPodTests {
+    private func makeConfiguration(mode: DependencyMode) -> ProjectConfiguration {
+        ProjectConfiguration(
+            project: .init(name: "App", bundleIdentifier: "com.example.app"),
+            interface: .init(primary: .swiftUI),
+            dependencyManagement: .init(mode: mode)
+        )
+    }
+
+    @Test("pod is reported but optional with no configuration to consult")
+    func optionalWithoutConfiguration() {
+        let checks = EnvironmentDoctor(processRunner: FakeProcessRunner()).check()
+
+        let pod = checks.first { $0.name == "pod" }
+        #expect(pod != nil)
+        #expect(pod?.required == false)
+    }
+
+    @Test("pod is required exactly when the mode reads pods", arguments: [
+        (DependencyMode.disabled, false), (.spm, false), (.cocoapods, true), (.mixed, true)
+    ])
+    func requiredFollowsTheMode(mode: DependencyMode, required: Bool) {
+        let checks = EnvironmentDoctor(processRunner: FakeProcessRunner())
+            .check(for: makeConfiguration(mode: mode))
+
+        #expect(checks.first { $0.name == "pod" }?.required == required)
+    }
+
+    @Test("a cocoapods configuration on a machine without pod fails requirements")
+    func missingPodFailsWhenNeeded() {
+        let checks = EnvironmentDoctor(processRunner: FakeProcessRunner(missing: ["pod"]))
+            .check(for: makeConfiguration(mode: .cocoapods))
+
+        #expect(!checks.meetsRequirements)
+        #expect(checks.first { $0.name == "pod" }?.detail?.contains("brew install cocoapods") == true)
+    }
+}

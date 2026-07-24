@@ -5,12 +5,6 @@ import ScaffoldSchema
 // validator, the same two-group contract.
 
 extension ConfigurationValidator {
-    /// Which dependency modes this version can generate. cocoapods and mixed
-    /// stay behind the boundary until Podfile generation lands (#63); the
-    /// schema accepts them today, so the message says "not yet" rather than
-    /// "unrecognised".
-    private static let supportedDependencyModes: Set<DependencyMode> = [.disabled, .spm]
-
     func dependencyIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
         let dependencies = configuration.dependencyManagement
 
@@ -21,24 +15,18 @@ extension ConfigurationValidator {
             + crossManagerIssues(dependencies)
     }
 
+    /// Every mode generates as of #63, so the one boundary left is Bundler,
+    /// which waits for v0.6. XS0010 (mode not supported) died with the last
+    /// unsupported mode — the same way XS0001 and XS0006 went.
     private func capabilityDependencyIssues(_ dependencies: DependencyManagement) -> [ValidationIssue] {
-        var issues: [ValidationIssue] = []
+        guard dependencies.cocoapods?.bundler?.enabled == true else { return [] }
 
-        if let issue = unsupported(
-            dependencies.mode, of: Self.supportedDependencyModes,
-            as: "Dependency mode", code: .dependencyModeNotSupported, at: "dependencyManagement.mode"
-        ) {
-            issues.append(issue)
-        }
-        if dependencies.cocoapods?.bundler?.enabled == true {
-            issues.append(ValidationIssue(
-                code: .bundlerNotSupported,
-                message: "Bundler is not supported in this version.",
-                path: "dependencyManagement.cocoapods.bundler",
-                suggestion: "Remove the bundler section; it takes effect in v0.6."
-            ))
-        }
-        return issues
+        return [ValidationIssue(
+            code: .bundlerNotSupported,
+            message: "Bundler is not supported in this version.",
+            path: "dependencyManagement.cocoapods.bundler",
+            suggestion: "Remove the bundler section; it takes effect in v0.6."
+        )]
     }
 
     /// A declaration the mode never reads is a bug waiting to be found later,
