@@ -1,0 +1,3 @@
+A removal marker, not a test file. Its presence drops the variant's
+Tests/RootViewControllerTests.swift from an mvvm-c project, which no longer has a
+RootViewController to test. Only the path matters; this text is never generated.

@@ -35,7 +35,8 @@ struct MaterialiseTemplatesTests {
         Variant(name: "UIKitApp", interface: .uiKit, architecture: .minimal, includeExample: nil),
         Variant(name: "SwiftUIApp", interface: .swiftUI, architecture: .minimal, includeExample: nil),
         Variant(name: "UIKitMVVMApp", interface: .uiKit, architecture: .mvvm, includeExample: true),
-        Variant(name: "SwiftUIMVVMApp", interface: .swiftUI, architecture: .mvvm, includeExample: true)
+        Variant(name: "SwiftUIMVVMApp", interface: .swiftUI, architecture: .mvvm, includeExample: true),
+        Variant(name: "UIKitMVVMCApp", interface: .uiKit, architecture: .mvvmCoordinator, includeExample: true)
     ]
 
     @Test(

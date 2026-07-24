@@ -65,11 +65,22 @@ struct TemplateLibrary: Sendable {
     }
 
     /// Overlay files win over base files sharing their path; everything else in
-    /// both sets passes through.
+    /// both sets passes through. An overlay entry whose name ends in `.removed`
+    /// is a marker rather than a file: it drops the base file at the path it
+    /// names (minus the suffix) and is not itself emitted. A coordinator-based
+    /// example uses this to remove the single root screen it replaces with a
+    /// navigation stack, instead of leaving it behind as dead code.
     private func overlaid(_ base: [TemplateFile], with overlay: [TemplateFile]) -> [TemplateFile] {
         guard !overlay.isEmpty else { return base }
-        let replaced = Set(overlay.map(\.path))
-        return base.filter { !replaced.contains($0.path) } + overlay
+
+        let removalSuffix = ".removed"
+        let files = overlay.filter { !$0.path.hasSuffix(removalSuffix) }
+        let removed = overlay
+            .filter { $0.path.hasSuffix(removalSuffix) }
+            .map { String($0.path.dropLast(removalSuffix.count)) }
+
+        let superseded = Set(files.map(\.path)).union(removed)
+        return base.filter { !superseded.contains($0.path) } + files
     }
 
     /// The architecture's contribution to the README.
