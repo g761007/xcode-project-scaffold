@@ -199,7 +199,7 @@ extension InteractiveConfiguration {
     }
 
     private func askBundleIdentifier(for name: String, using prompter: some Prompter) throws -> String {
-        try freeText("Bundle identifier", default: Preset.bundleIdentifier(for: name), using: prompter)
+        try freeText("Bundle identifier", default: Variant.bundleIdentifier(for: name), using: prompter)
     }
 
     /// Every interface is offered on every platform. A pairing the platform does

@@ -131,44 +131,41 @@ struct GenerateCommandTests {
     }
 }
 
-/// §4.4: `init` still works — the same run it always did — but every use says
-/// it is going away and where to go instead.
-@Suite("The init command is deprecated")
-struct InitDeprecationTests {
-    @Test("init --preset still works, and warns on stderr")
-    func presetWarns() throws {
+/// ADR-0007's ending: the deprecation period expired in v0.6, and `init` is
+/// a tombstone — a clear pointer, never an unknown-command shrug, and still a
+/// JSON document when json was asked for.
+@Suite("The init command is removed")
+struct InitRemovalTests {
+    @Test("init refuses with the two replacements, and writes nothing")
+    func refusesWithPointer() throws {
         try withTemporaryDirectory { root in
             let destination = root.appendingPathComponent("App")
             let result = try xscaffold(
-                "init", "App", "--preset", "ios-uikit", "--destination", destination.path,
-                "--skip-git", "--skip-generate"
+                "init", "App", "--preset", "ios-uikit", "--destination", destination.path
             )
 
-            #expect(result.exitStatus == 0)
-            #expect(FileManager.default.fileExists(atPath: destination.path))
-            #expect(result.standardError.contains("deprecated"))
+            #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+            #expect(result.standardError.contains("removed in v0.6"))
             #expect(result.standardError.contains("generate --config"))
             #expect(result.standardError.contains("--variant"))
+            #expect(!FileManager.default.fileExists(atPath: destination.path))
         }
     }
 
-    @Test("init --config warns too, and the warning stays off a json caller's stdout")
-    func configWarnsOnStderrOnly() throws {
-        try withTemporaryDirectory { root in
-            let path = root.appendingPathComponent("scaffold.yml")
-            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
-            let destination = root.appendingPathComponent("Bookshelf")
+    @Test("the refusal is still a JSON document when json was asked for")
+    func refusalInJSON() throws {
+        let result = try xscaffold("init", "--config", "x.yml", "--output", "json")
+        let output = try decoded(result)
 
-            let result = try xscaffold(
-                "init", "--config", path.path, "--destination", destination.path,
-                "--skip-git", "--skip-generate", "--output", "json"
-            )
+        #expect(!output.ok)
+        #expect(output.command == "init")
+        #expect(output.exitCode == .invalidArguments)
+    }
 
-            #expect(result.standardError.contains("deprecated"))
+    @Test("the help no longer lists init")
+    func helpOmitsInit() throws {
+        let help = try xscaffold("--help").standardOutput
 
-            let lines = result.standardOutput.split(separator: "\n", omittingEmptySubsequences: true)
-            #expect(lines.count == 1)
-            #expect(try decoded(result).ok)
-        }
+        #expect(!help.contains("  init "))
     }
 }

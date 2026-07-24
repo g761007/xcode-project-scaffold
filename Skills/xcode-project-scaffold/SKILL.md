@@ -50,8 +50,8 @@ For a request with nothing in it beyond "an iOS app in SwiftUI", steps 3 to 5
 can be one line instead — `xscaffold new MyApp --variant ios-swiftui --yes`
 (variants: `ios-swiftui`, `ios-uikit`, `macos-swiftui`, `macos-appkit`). It
 derives the bundle identifier as `com.example.myapp`, so it suits someone who
-has not said what theirs is. The deprecated `init` still exists until v0.6 and
-warns on every run; do not use it in new work.
+has not said what theirs is. The old `init` was removed in v0.6; typing it
+gets a pointer to the two commands above.
 
 ## Reading the output
 

@@ -10,8 +10,10 @@ struct PlanFlagsTests {
     @Test("--files lists every file and command in text")
     func filesInText() throws {
         try withTemporaryDirectory { root in
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
             let result = try xscaffold(
-                "plan", "App", "--preset", "ios-uikit",
+                "plan", "--config", config.path,
                 "--destination", root.appendingPathComponent("App").path, "--files"
             )
 
@@ -26,14 +28,16 @@ struct PlanFlagsTests {
     @Test("--resolved-config shows the full configuration in text")
     func resolvedInText() throws {
         try withTemporaryDirectory { root in
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
             let result = try xscaffold(
-                "plan", "App", "--preset", "ios-uikit",
+                "plan", "--config", config.path,
                 "--destination", root.appendingPathComponent("App").path, "--resolved-config"
             )
 
             #expect(result.exitStatus == 0)
             #expect(result.standardOutput.contains("Resolved configuration:"))
-            #expect(result.standardOutput.contains("bundleIdentifier: com.example.app"))
+            #expect(result.standardOutput.contains("bundleIdentifier: com.example.bookshelf"))
         }
     }
 
@@ -41,17 +45,19 @@ struct PlanFlagsTests {
     func resolvedInJSON() throws {
         try withTemporaryDirectory { root in
             let destination = root.appendingPathComponent("App").path
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
 
             let with = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination,
+                "plan", "--config", config.path, "--destination", destination,
                 "--resolved-config", "--output", "json"
             ))
             let resolved = try #require(with.resolvedConfiguration)
-            #expect(resolved.project.name == "App")
-            #expect(resolved.project.bundleIdentifier == "com.example.app")
+            #expect(resolved.project.name == "Bookshelf")
+            #expect(resolved.project.bundleIdentifier == "com.example.bookshelf")
 
             let without = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination,
+                "plan", "--config", config.path, "--destination", destination,
                 "--output", "json"
             ))
             #expect(without.resolvedConfiguration == nil)
@@ -80,10 +86,12 @@ struct CapabilitiesTests {
     @Test("a generated scaffold.yml opens with the schema annotation")
     func schemaAnnotation() throws {
         try withTemporaryDirectory { root in
-            let destination = root.appendingPathComponent("App")
+            let destination = root.appendingPathComponent("Bookshelf")
+            let config = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: config, atomically: true, encoding: .utf8)
             try xscaffold(
-                "init", "App", "--preset", "ios-uikit", "--destination", destination.path,
-                "--skip-git", "--skip-generate"
+                "generate", "--config", config.path, "--destination", destination.path,
+                "--yes", "--skip-git", "--skip-generate"
             )
 
             let manifest = try String(

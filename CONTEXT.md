@@ -35,7 +35,7 @@ _Avoid_: profile、template、範本、（舊語意）平台組合
 ## 生成
 
 **GenerationPlan**:
-生成前算出的完整計畫——要建立哪些檔案、要執行哪些外部指令。`plan` 與 `init --dry-run` 輸出的就是它。
+生成前算出的完整計畫——要建立哪些檔案、要執行哪些外部指令。`plan` 輸出的就是它，`generate` 執行的也是它。
 _Avoid_: diff、changeset
 
 **PlannedFile**:

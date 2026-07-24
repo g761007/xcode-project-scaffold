@@ -18,8 +18,8 @@ answer a few questions  →  Configuration Preview  →  Generate / Save / Edit 
 ## ⚠️ Status: early — preview-first as of v0.4
 
 Six commands work: `new` (interactive, preview-first), `generate`
-(non-interactive, from a `scaffold.yml`), `validate`, `plan`, `doctor`, and the
-deprecated `init`. Four variants — iOS UIKit and SwiftUI, macOS SwiftUI and
+(non-interactive, from a `scaffold.yml`), `validate`, `plan`, `doctor` and
+`capabilities`. Four variants — iOS UIKit and SwiftUI, macOS SwiftUI and
 AppKit — are generated, built and tested on every push, plain and with an MVVM
 (or, on iOS UIKit, MVVM-C) example; a separate job checks that generated
 sources pass the linters they ship with. The Skill an agent drives all of this
@@ -280,9 +280,10 @@ configuration reads pods.
   [`Schemas/scaffold.schema.json`](Schemas/scaffold.schema.json), so editors
   validate while you type.
 
-### The deprecated `init`
+### `init` was removed in v0.6
 
-`init` still works but warns on every run, and goes away in v0.6:
+Its deprecation period ended as scheduled. Typing it gets a clear pointer,
+not an unknown-command error:
 
 ```text
 init --config existing.yml     →   generate --config existing.yml
