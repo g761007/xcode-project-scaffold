@@ -72,13 +72,31 @@ func makePlan(
 }
 
 /// Used by `plan` and by `init --dry-run`, which report the same thing under
-/// their own names.
-func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Reporter) throws {
+/// their own names. The two flags lengthen the text form; the JSON document
+/// already carries every file, so only the resolved configuration joins it.
+func reportPlan(
+    for project: ProjectOptions,
+    run: RunOptions,
+    listingFiles: Bool = false,
+    showingResolvedConfiguration: Bool = false,
+    to reporter: Reporter
+) throws {
     let (validated, warnings) = try resolveConfiguration(project, reportingTo: reporter)
     let plan = try makePlan(for: validated, options: run.generationOptions, reportingTo: reporter)
     let configuration = validated.configuration
     let destination = project.destinationURL(for: configuration)
     let overwrites = plan.overwrites(at: destination)
+
+    var text = "\(configuration.project.name) would be created at:\n"
+        + plan.summary(at: destination, overwriting: overwrites)
+    if listingFiles {
+        text += "\n\n" + plan.listing.joined(separator: "\n")
+    }
+    if showingResolvedConfiguration, let manifest = plan.files.first(where: { $0.path == "scaffold.yml" }) {
+        // The plan's own scaffold.yml is the resolved configuration, already
+        // rendered — the same bytes generating would write.
+        text += "\n\nResolved configuration:\n" + manifest.contents.trimmingCharacters(in: .newlines)
+    }
 
     reporter.succeed(
         CommandOutput(
@@ -86,10 +104,10 @@ func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Repor
             exitCode: .success,
             issues: warnings,
             destination: destination.path,
-            plan: PlanSummary(plan, overwrites: overwrites)
+            plan: PlanSummary(plan, overwrites: overwrites),
+            resolvedConfiguration: showingResolvedConfiguration ? configuration : nil
         ),
-        text: "\(configuration.project.name) would be created at:\n"
-            + plan.summary(at: destination, overwriting: overwrites)
+        text: text
     )
 }
 

@@ -15,10 +15,18 @@ struct PlanCommand: ParsableCommand {
     @OptionGroup var runOptions: RunOptions
     @OptionGroup var output: OutputOptions
 
+    @Flag(name: .customLong("files"), help: "List every file and command in the plan.")
+    var listFiles = false
+
+    @Flag(name: .customLong("resolved-config"), help: "Show the configuration with every default resolved.")
+    var showResolvedConfiguration = false
+
     func run() throws {
         try reportPlan(
             for: project,
             run: runOptions,
+            listingFiles: listFiles,
+            showingResolvedConfiguration: showResolvedConfiguration,
             to: Reporter(for: Self.self, format: output.format)
         )
     }
