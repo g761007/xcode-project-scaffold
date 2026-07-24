@@ -317,7 +317,7 @@ xscaffold new MyApp --variant ios-uikit
 xscaffold new MyApp --dependency-manager cocoapods
 xscaffold new MyApp --open
 xscaffold new MyApp --validate-build
-xscaffold new MyApp --no-git
+xscaffold new MyApp --skip-git
 xscaffold new MyApp --force
 
 其中:
@@ -2104,7 +2104,7 @@ v0.4.0:Distribution 與 Preview Workflow
 * --yes
 * --advanced
 * --open
-* --no-git
+* --skip-git(沿用既有 flag 名稱)
 * --force 兩級規則
 * Doctor 改善
 * 版本注入(§20.3)
@@ -2227,7 +2227,7 @@ CLI
 * 新增 --yes(new 已有,generate 補上)
 * 新增 --advanced
 * 新增 --open
-* 新增 --no-git
+* --skip-git 沿用既有名稱(不改名為 --no-git)
 * --validate-build 沿用既有名稱
 
 Configuration Flow
