@@ -122,21 +122,22 @@ struct NewCommand: ParsableCommand {
         if assumeYes {
             _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
             try writePlan(plan, to: destination, force: force, reportingTo: reporter)
-            if validateBuild {
-                try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
-            }
-            reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
-            return
+            return try finishGeneration(plan, warnings: warnings, for: configuration,
+                                        at: destination, reportingTo: reporter)
         }
 
-        switch try preview(plan, for: validated, warnings: warnings, at: destination, using: prompter,
-                           reportingTo: reporter)
-        {
+        // The preview and its menu (§4.2), with a generation failure mapped to
+        // the code it chose — the same mapping `writePlan` performs.
+        let outcome = try mappingGenerationFailure(reportingTo: reporter) {
+            try PreviewSession(force: force).run(
+                plan, for: validated, warnings: warnings, at: destination, using: prompter
+            )
+        }
+
+        switch outcome {
         case .generated:
-            if validateBuild {
-                try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
-            }
-            reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
+            try finishGeneration(plan, warnings: warnings, for: configuration,
+                                 at: destination, reportingTo: reporter)
 
         case let .savedManifest(manifest):
             reportSaved(manifest, at: destination, to: reporter)
@@ -148,6 +149,21 @@ struct NewCommand: ParsableCommand {
 }
 
 extension NewCommand {
+    /// Everything after the files are down, shared by the --yes path and the
+    /// menu's Generate: the build check if asked for, then the created report.
+    private func finishGeneration(
+        _ plan: GenerationPlan,
+        warnings: [ValidationIssue],
+        for configuration: ProjectConfiguration,
+        at destination: URL,
+        reportingTo reporter: Reporter
+    ) throws {
+        if validateBuild {
+            try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
+        }
+        reportCreated(plan, warnings: warnings, for: configuration, at: destination, to: reporter)
+    }
+
     private func collect(
         variant: Variant?,
         using prompter: some Prompter,
@@ -159,27 +175,6 @@ extension NewCommand {
             throw cancelled(using: prompter, reportingTo: reporter)
         } catch let InteractivePromptError.unresolvable(issue) {
             throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
-        }
-    }
-
-    /// The preview and its menu (§4.2), with a generation failure mapped to
-    /// the code it chose — the same mapping `writePlan` performs.
-    private func preview(
-        _ plan: GenerationPlan,
-        for validated: ValidatedConfiguration,
-        warnings: [ValidationIssue],
-        at destination: URL,
-        using prompter: some Prompter,
-        reportingTo reporter: Reporter
-    ) throws -> PreviewSession.Outcome {
-        do {
-            return try PreviewSession().run(
-                plan, for: validated, warnings: warnings, at: destination, force: force, using: prompter
-            )
-        } catch let error as GenerationError {
-            throw reporter.failure(error.exitCode, "\(error)")
-        } catch {
-            throw reporter.failure(.generationFailure, "\(error)")
         }
     }
 

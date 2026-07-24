@@ -10,9 +10,13 @@ import ScaffoldSchema
 /// and a scripted prompter can drive every path onto a real directory.
 public struct PreviewSession: Sendable {
     private let executor: PlanExecutor
+    /// How Generate lands the plan — `PlanExecutor`'s parameter, carried here
+    /// because the choice to force was made before the menu ever showed.
+    private let force: Bool
 
-    public init(processRunner: any ProcessRunner = SystemProcessRunner()) {
+    public init(processRunner: any ProcessRunner = SystemProcessRunner(), force: Bool = false) {
         executor = PlanExecutor(processRunner: processRunner)
+        self.force = force
     }
 
     public enum Outcome: Equatable, Sendable {
@@ -34,7 +38,6 @@ public struct PreviewSession: Sendable {
         for validated: ValidatedConfiguration,
         warnings: [ValidationIssue],
         at destination: URL,
-        force: Bool,
         using prompter: some Prompter
     ) throws -> Outcome {
         show(validated.configuration, plan: plan, warnings: warnings, at: destination, using: prompter)

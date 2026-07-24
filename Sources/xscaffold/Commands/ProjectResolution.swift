@@ -153,14 +153,23 @@ func cancelled(using prompter: some Prompter, reportingTo reporter: Reporter) ->
     }
 }
 
-/// Lays the plan on disk, mapping a generation failure to the code it chose.
-func writePlan(_ plan: GenerationPlan, to destination: URL, force: Bool, reportingTo reporter: Reporter) throws {
+/// Maps a generation failure to the code it chose, for any step that lands
+/// plan work on disk. One mapping, shared, so `new`'s menu and a plain write
+/// cannot report the same failure under different codes.
+func mappingGenerationFailure<T>(reportingTo reporter: Reporter, _ body: () throws -> T) throws -> T {
     do {
-        try PlanExecutor().execute(plan, at: destination, force: force)
+        return try body()
     } catch let error as GenerationError {
         throw reporter.failure(error.exitCode, "\(error)")
     } catch {
         throw reporter.failure(.generationFailure, "\(error)")
+    }
+}
+
+/// Lays the plan on disk, mapping a generation failure to the code it chose.
+func writePlan(_ plan: GenerationPlan, to destination: URL, force: Bool, reportingTo reporter: Reporter) throws {
+    try mappingGenerationFailure(reportingTo: reporter) {
+        try PlanExecutor().execute(plan, at: destination, force: force)
     }
 }
 

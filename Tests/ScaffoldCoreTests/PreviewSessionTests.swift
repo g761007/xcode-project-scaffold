@@ -53,7 +53,7 @@ struct PreviewSessionTests {
             let prompter = ScriptedPrompter(["1"])
 
             let outcome = try PreviewSession(processRunner: runner).run(
-                plan, for: validated, warnings: [], at: destination, force: false, using: prompter
+                plan, for: validated, warnings: [], at: destination, using: prompter
             )
 
             #expect(outcome == .generated)
@@ -73,7 +73,7 @@ struct PreviewSessionTests {
             let prompter = ScriptedPrompter(["2"])
 
             let outcome = try PreviewSession(processRunner: runner).run(
-                plan, for: validated, warnings: [], at: destination, force: false, using: prompter
+                plan, for: validated, warnings: [], at: destination, using: prompter
             )
 
             let manifest = destination.appendingPathComponent("scaffold.yml")
@@ -97,7 +97,7 @@ struct PreviewSessionTests {
             let prompter = ScriptedPrompter(["3"])
 
             let outcome = try PreviewSession(processRunner: runner).run(
-                plan, for: validated, warnings: [], at: destination, force: false, using: prompter
+                plan, for: validated, warnings: [], at: destination, using: prompter
             )
 
             #expect(outcome == .cancelled)
@@ -113,8 +113,7 @@ struct PreviewSessionTests {
             let destination = root.appendingPathComponent("Bookshelf")
 
             let outcome = try PreviewSession(processRunner: FakeProcessRunner()).run(
-                plan, for: validated, warnings: [], at: destination, force: false,
-                using: ScriptedPrompter([])
+                plan, for: validated, warnings: [], at: destination, using: ScriptedPrompter([])
             )
 
             #expect(outcome == .cancelled)
@@ -130,7 +129,7 @@ struct PreviewSessionTests {
             let prompter = ScriptedPrompter(["9", "3"])
 
             let outcome = try PreviewSession(processRunner: FakeProcessRunner()).run(
-                plan, for: validated, warnings: [], at: destination, force: false, using: prompter
+                plan, for: validated, warnings: [], at: destination, using: prompter
             )
 
             #expect(outcome == .cancelled)
@@ -151,12 +150,14 @@ struct PreviewSessionTests {
             )
 
             _ = try PreviewSession(processRunner: FakeProcessRunner()).run(
-                plan, for: validated, warnings: [warning], at: destination, force: false, using: prompter
+                plan, for: validated, warnings: [warning], at: destination, using: prompter
             )
 
             #expect(prompter.firstIndex(of: "Configuration Preview") != nil)
             #expect(prompter.shown.contains("  Project:       Bookshelf (com.example.bookshelf)"))
-            #expect(prompter.shown.contains { $0.hasPrefix("  Platform:") && $0.contains("iOS") && $0.contains("SwiftUI") })
+            #expect(prompter.shown.contains {
+                $0.hasPrefix("  Platform:") && $0.contains("iOS") && $0.contains("SwiftUI")
+            })
             #expect(prompter.shown.contains("  \(plan.files.count) files will be created."))
             #expect(prompter.shown.contains("    xcodegen generate"))
             #expect(prompter.shown.contains { $0.contains("Warning XS1301") })
