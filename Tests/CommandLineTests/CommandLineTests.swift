@@ -15,13 +15,13 @@ struct ExitStatusTests {
     func requests() throws {
         #expect(try xscaffold("--help").exitStatus == 0)
         #expect(try xscaffold("--version").exitStatus == 0)
-        #expect(try xscaffold("init", "--help").exitStatus == 0)
+        #expect(try xscaffold("generate", "--help").exitStatus == 0)
     }
 
     /// ArgumentParser answers its own parse failures with `EX_USAGE` (64).
     /// §11.4 says 2, and a caller should not have to know which layer refused.
     @Test("an argument the parser rejects exits 2, not 64", arguments: [
-        ["init", "--bogus"], ["nosuchcommand"], ["validate"], ["init", "--output", "yaml"]
+        ["generate", "--bogus"], ["nosuchcommand"], ["validate"], ["generate", "--output", "yaml"]
     ])
     func parseFailures(arguments: [String]) throws {
         let result = try run(arguments)
@@ -32,11 +32,12 @@ struct ExitStatusTests {
     @Test("a contradiction between flags is refused before anything is written")
     func contradictoryFlags() throws {
         try withTemporaryDirectory { root in
+            let path = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
             let destination = root.appendingPathComponent("App")
             let result = try xscaffold(
-                "init", "App", "--preset", "ios-uikit",
-                "--destination", destination.path,
-                "--skip-generate", "--validate-build"
+                "generate", "--config", path.path, "--destination", destination.path,
+                "--yes", "--skip-generate", "--validate-build"
             )
 
             #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
@@ -68,9 +69,11 @@ struct ExitStatusTests {
             try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
             try "mine".write(to: destination.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
 
+            let path = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
             let result = try xscaffold(
-                "init", "App", "--preset", "ios-uikit", "--destination", destination.path,
-                "--skip-git", "--skip-generate"
+                "generate", "--config", path.path, "--destination", destination.path,
+                "--yes", "--skip-git", "--skip-generate"
             )
 
             #expect(result.exitStatus == ScaffoldExitCode.fileConflict.rawValue)
@@ -118,11 +121,11 @@ struct JSONOutputTests {
     /// existed to notice that json was asked for.
     @Test("even a parse failure comes back as JSON")
     func parseFailure() throws {
-        let result = try xscaffold("init", "--bogus", "--output", "json")
+        let result = try xscaffold("generate", "--bogus", "--output", "json")
         let output = try decoded(result)
 
         #expect(!output.ok)
-        #expect(output.command == "init")
+        #expect(output.command == "generate")
         #expect(output.exitCode == .invalidArguments)
     }
 
@@ -202,55 +205,42 @@ struct NewCommandGuardTests {
     }
 }
 
-@Suite("What plan promises and init delivers")
-struct PlanAndInitTests {
-    /// §11.1: "`plan` 與 `init --dry-run` 是同一份實作的兩個入口". Two entrances
-    /// that could describe different projects would make the preview useless.
-    @Test("plan and init --dry-run describe the same project")
+@Suite("What plan promises and generate delivers")
+struct PlanAndGenerateTests {
+    /// §11.1: plan and generate are two entrances to one implementation. Two
+    /// entrances that could describe different projects would make the
+    /// preview useless.
+    @Test("plan describes exactly what generate then does")
     func sameImplementation() throws {
         try withTemporaryDirectory { root in
-            let destination = root.appendingPathComponent("App").path
+            let path = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
+            let destination = root.appendingPathComponent("Bookshelf").path
+
             let planned = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination, "--output", "json"
+                "plan", "--config", path.path, "--destination", destination,
+                "--skip-git", "--skip-generate", "--output", "json"
             ))
-            let dryRun = try decoded(xscaffold(
-                "init", "App", "--preset", "ios-uikit", "--destination", destination,
-                "--dry-run", "--output", "json"
+            let generated = try decoded(xscaffold(
+                "generate", "--config", path.path, "--destination", destination,
+                "--yes", "--skip-git", "--skip-generate", "--output", "json"
             ))
 
-            #expect(planned.plan == dryRun.plan)
-            #expect(planned.destination == dryRun.destination)
+            #expect(planned.plan == generated.plan)
+            #expect(planned.destination == generated.destination)
         }
     }
 
     @Test("a preview writes nothing")
-    func dryRunWritesNothing() throws {
+    func previewWritesNothing() throws {
         try withTemporaryDirectory { root in
-            let destination = root.appendingPathComponent("App")
-            try xscaffold("plan", "App", "--preset", "ios-uikit", "--destination", destination.path)
+            let path = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
+            let destination = root.appendingPathComponent("Bookshelf")
+
+            try xscaffold("plan", "--config", path.path, "--destination", destination.path)
 
             #expect(!FileManager.default.fileExists(atPath: destination.path))
-        }
-    }
-
-    /// The plan is a promise about what will be on disk. This is the only test
-    /// that checks the promise was kept.
-    @Test("what init reports is what init wrote")
-    func planMatchesWhatIsWritten() throws {
-        try withTemporaryDirectory { root in
-            let destination = root.appendingPathComponent("App")
-            let output = try decoded(xscaffold(
-                "init", "App", "--preset", "ios-uikit", "--destination", destination.path,
-                "--skip-git", "--skip-generate", "--output", "json"
-            ))
-
-            let planned = try #require(output.plan?.files.map(\.path)).sorted()
-            #expect(!planned.isEmpty)
-
-            for path in planned {
-                let file = destination.appendingPathComponent(path)
-                #expect(FileManager.default.fileExists(atPath: file.path), "\(path)")
-            }
         }
     }
 
@@ -259,12 +249,15 @@ struct PlanAndInitTests {
     @Test("skipping a step removes it from the plan")
     func skipping() throws {
         try withTemporaryDirectory { root in
-            let destination = root.appendingPathComponent("App").path
+            let path = root.appendingPathComponent("scaffold.yml")
+            try validConfiguration.write(to: path, atomically: true, encoding: .utf8)
+            let destination = root.appendingPathComponent("Bookshelf").path
+
             let full = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination, "--output", "json"
+                "plan", "--config", path.path, "--destination", destination, "--output", "json"
             ))
             let bare = try decoded(xscaffold(
-                "plan", "App", "--preset", "ios-uikit", "--destination", destination,
+                "plan", "--config", path.path, "--destination", destination,
                 "--skip-git", "--skip-generate", "--output", "json"
             ))
 

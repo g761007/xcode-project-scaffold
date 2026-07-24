@@ -1,17 +1,22 @@
 import ArgumentParser
+import Foundation
 import ScaffoldCore
 import ScaffoldSchema
 
-/// Shows what `init` would do. §11.1 makes this and `init --dry-run` two names
-/// for one thing, so both call `reportPlan`: a preview that could disagree with
-/// the run it previews would be worse than no preview.
+/// Shows what `generate` would do. §11.1 makes them two entrances to one
+/// implementation, so a preview cannot disagree with the run it previews.
 struct PlanCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "plan",
-        abstract: "Show what init would create. Writes nothing."
+        abstract: "Show what generate would create. Writes nothing."
     )
 
-    @OptionGroup var project: ProjectOptions
+    @Option(name: .customLong("config"), help: "Path to a scaffold.yml. Defaults to ./scaffold.yml.")
+    var configurationPath: String = "scaffold.yml"
+
+    @Option(name: .customLong("destination"), help: "Where the project would go. Defaults to ./<name>.")
+    var destination: String?
+
     @OptionGroup var runOptions: RunOptions
     @OptionGroup var output: OutputOptions
 
@@ -23,7 +28,8 @@ struct PlanCommand: ParsableCommand {
 
     func run() throws {
         try reportPlan(
-            for: project,
+            configurationAt: configurationPath,
+            destination: destination,
             run: runOptions,
             listingFiles: listFiles,
             showingResolvedConfiguration: showResolvedConfiguration,
