@@ -61,26 +61,64 @@ public struct PreviewSession: Sendable {
             let target = destination(validated.configuration)
             show(validated.configuration, plan: plan, warnings: warnings, at: target, using: prompter)
 
-            switch choose(using: prompter) {
-            case .generate:
-                try executor.execute(plan, at: target, force: force)
-                return .generated(validated, plan: plan, warnings: warnings, destination: target)
+            // The Show options return to the menu, not to a fresh preview;
+            // only an edit goes back around the outer loop, because only an
+            // edit changes what the preview would say.
+            menu: while true {
+                switch choose(using: prompter) {
+                case .generate:
+                    try executor.execute(plan, at: target, force: force)
+                    return .generated(validated, plan: plan, warnings: warnings, destination: target)
 
-            case .save:
-                return try .savedManifest(saveManifest(from: plan, at: target))
+                case .save:
+                    return try .savedManifest(saveManifest(from: plan, at: target))
 
-            case .edit:
-                guard let section = chooseSection(using: prompter) else { return .cancelled }
-                do {
-                    try interactive.reask(section, into: &answers, using: prompter)
-                } catch InteractivePromptError.cancelled {
+                case .edit:
+                    guard editSection(&answers, interactive: interactive, using: prompter) else {
+                        return .cancelled
+                    }
+                    break menu
+
+                case .showFiles:
+                    prompter.show("")
+                    plan.listing.forEach { prompter.show($0) }
+
+                case .showResolvedConfiguration:
+                    showResolvedConfiguration(from: plan, using: prompter)
+
+                case .cancel:
                     return .cancelled
                 }
-
-            case .cancel:
-                return .cancelled
             }
         }
+    }
+
+    /// Asks which section to edit and re-asks its questions. False when input
+    /// ended at either depth — the caller cancels, the same answer ended input
+    /// gives everywhere else.
+    private func editSection(
+        _ answers: inout PartialProjectConfiguration,
+        interactive: InteractiveConfiguration,
+        using prompter: some Prompter
+    ) -> Bool {
+        guard let section = chooseSection(using: prompter) else { return false }
+        do {
+            try interactive.reask(section, into: &answers, using: prompter)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// The resolved configuration is already in the plan, rendered: the
+    /// scaffold.yml it would write. Showing those bytes — rather than encoding
+    /// again — is what makes "what you saw is what was saved" literally true.
+    private func showResolvedConfiguration(from plan: GenerationPlan, using prompter: some Prompter) {
+        guard let manifest = plan.files.first(where: { $0.path == "scaffold.yml" }) else { return }
+        prompter.show("")
+        manifest.contents
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .forEach { prompter.show(String($0)) }
     }
 
     /// `resolveAnswers` has already looped until nothing is wrong, so the check
@@ -152,6 +190,8 @@ extension PreviewSession {
         case generate
         case save
         case edit
+        case showFiles
+        case showResolvedConfiguration
         case cancel
     }
 
@@ -164,14 +204,18 @@ extension PreviewSession {
             prompter.show("  1) Generate project")
             prompter.show("  2) Save scaffold.yml and exit")
             prompter.show("  3) Edit configuration")
-            prompter.show("  4) Cancel")
+            prompter.show("  4) Show complete file plan")
+            prompter.show("  5) Show resolved configuration")
+            prompter.show("  6) Cancel")
 
             switch prompter.readLine().map({ $0.trimmingCharacters(in: .whitespaces) }) {
             case "1": return .generate
             case "2": return .save
             case "3": return .edit
-            case "4", nil: return .cancel
-            default: prompter.show("Enter a number from 1 to 4.")
+            case "4": return .showFiles
+            case "5": return .showResolvedConfiguration
+            case "6", nil: return .cancel
+            default: prompter.show("Enter a number from 1 to 6.")
             }
         }
     }

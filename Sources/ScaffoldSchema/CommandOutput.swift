@@ -32,6 +32,10 @@ public struct CommandOutput: Codable, Equatable, Sendable {
     /// From `plan`, `init --dry-run` and `init`.
     public var plan: PlanSummary?
 
+    /// From `plan --resolved-config`: the configuration with every default
+    /// resolved — what an unanswered field will actually be.
+    public var resolvedConfiguration: ProjectConfiguration?
+
     /// From `doctor`.
     public var checks: [EnvironmentCheck]?
 
@@ -42,6 +46,7 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         issues: [ValidationIssue]? = nil,
         destination: String? = nil,
         plan: PlanSummary? = nil,
+        resolvedConfiguration: ProjectConfiguration? = nil,
         checks: [EnvironmentCheck]? = nil
     ) {
         ok = exitCode == .success
@@ -51,6 +56,7 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         self.issues = issues
         self.destination = destination
         self.plan = plan
+        self.resolvedConfiguration = resolvedConfiguration
         self.checks = checks
     }
 }

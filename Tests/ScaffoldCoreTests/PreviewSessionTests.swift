@@ -109,7 +109,7 @@ struct PreviewSessionTests {
         try withTemporaryDirectory { root in
             let runner = FakeProcessRunner()
 
-            let outcome = try runSession(answering: ScriptedPrompter(["4"]), runner: runner, in: root)
+            let outcome = try runSession(answering: ScriptedPrompter(["6"]), runner: runner, in: root)
 
             guard case .cancelled = outcome else {
                 Issue.record("expected .cancelled, got \(outcome)")
@@ -136,7 +136,7 @@ struct PreviewSessionTests {
     @Test("an answer that is not an option is asked again")
     func reasks() throws {
         try withTemporaryDirectory { root in
-            let prompter = ScriptedPrompter(["9", "4"])
+            let prompter = ScriptedPrompter(["9", "6"])
 
             _ = try runSession(answering: prompter, in: root)
 
@@ -147,7 +147,7 @@ struct PreviewSessionTests {
     @Test("the preview shows the configuration and the plan, then the menu")
     func previewContents() throws {
         try withTemporaryDirectory { root in
-            let prompter = ScriptedPrompter(["4"])
+            let prompter = ScriptedPrompter(["6"])
 
             _ = try runSession(answering: prompter, in: root)
 
@@ -160,7 +160,9 @@ struct PreviewSessionTests {
             #expect(prompter.shown.contains("  1) Generate project"))
             #expect(prompter.shown.contains("  2) Save scaffold.yml and exit"))
             #expect(prompter.shown.contains("  3) Edit configuration"))
-            #expect(prompter.shown.contains("  4) Cancel"))
+            #expect(prompter.shown.contains("  4) Show complete file plan"))
+            #expect(prompter.shown.contains("  5) Show resolved configuration"))
+            #expect(prompter.shown.contains("  6) Cancel"))
 
             let preview = try #require(prompter.firstIndex(of: "Configuration Preview"))
             let menu = try #require(prompter.firstIndex(of: "What next?"))
@@ -219,7 +221,7 @@ struct PreviewEditTests {
                 "3", // Edit again
                 "4", // section: build environments
                 "2", // the standard set
-                "4" // Cancel
+                "6" // Cancel
             ])
 
             let outcome = try runSession(answering: prompter, runner: runner, in: root)
@@ -244,7 +246,7 @@ struct PreviewEditTests {
                 "2", // platform: macOS
                 "1", // interface: UIKit — invalid on macOS (XS1002)
                 "3", // interface asked again: AppKit
-                "4" // Cancel
+                "6" // Cancel
             ])
 
             let outcome = try runSession(answering: prompter, in: root)
@@ -269,6 +271,50 @@ struct PreviewEditTests {
                 Issue.record("expected .cancelled, got \(outcome)")
                 return
             }
+            #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("Bookshelf").path))
+        }
+    }
+}
+
+// MARK: - Showing more
+
+/// Issue #45: the two Show options lengthen what the preview said, then come
+/// back to the menu — only an edit earns a fresh preview.
+@Suite("Showing more from the menu")
+struct PreviewShowTests {
+    @Test("Show complete file plan lists every file, then returns to the menu")
+    func showFiles() throws {
+        try withTemporaryDirectory { root in
+            let prompter = ScriptedPrompter(["4", "6"])
+
+            let outcome = try runSession(answering: prompter, in: root)
+
+            guard case .cancelled = outcome else {
+                Issue.record("expected .cancelled, got \(outcome)")
+                return
+            }
+            #expect(prompter.shown.contains("Files:"))
+            #expect(prompter.shown.contains("  project.yml"))
+            #expect(prompter.shown.contains("  scaffold.yml"))
+            #expect(prompter.shown.contains { $0.hasPrefix("  xcodegen generate") })
+            #expect(prompter.timesAsked("What next?") == 2, "back to the menu, not to a fresh preview")
+            #expect(prompter.timesAsked("Configuration Preview") == 1)
+        }
+    }
+
+    @Test("Show resolved configuration renders the manifest, then returns to the menu")
+    func showResolvedConfiguration() throws {
+        try withTemporaryDirectory { root in
+            let prompter = ScriptedPrompter(["5", "6"])
+
+            let outcome = try runSession(answering: prompter, in: root)
+
+            guard case .cancelled = outcome else {
+                Issue.record("expected .cancelled, got \(outcome)")
+                return
+            }
+            #expect(prompter.shown.contains { $0.contains("bundleIdentifier: com.example.bookshelf") })
+            #expect(prompter.timesAsked("What next?") == 2)
             #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("Bookshelf").path))
         }
     }

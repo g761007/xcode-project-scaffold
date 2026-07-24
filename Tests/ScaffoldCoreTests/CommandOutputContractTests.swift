@@ -122,6 +122,28 @@ struct CommandOutputContractTests {
         #expect(!clean.contains("overwrites"))
     }
 
+    /// Asserted by key rather than by the whole document: the configuration's
+    /// own wire format is pinned by the YAML contract tests, and repeating a
+    /// hundred lines of it here would test the same thing twice.
+    @Test("the resolved configuration joins the document only when asked for")
+    func resolvedConfiguration() throws {
+        let configuration = ProjectConfiguration(
+            project: .init(name: "App", bundleIdentifier: "com.example.app"),
+            interface: .init(primary: .swiftUI)
+        )
+
+        let with = try encoder.encode(CommandOutput(
+            command: "plan",
+            exitCode: .success,
+            resolvedConfiguration: configuration
+        ))
+        #expect(with.contains("\"resolvedConfiguration\":"))
+        #expect(with.contains("\"bundleIdentifier\":\"com.example.app\""))
+
+        let without = try encoder.encode(CommandOutput(command: "plan", exitCode: .success))
+        #expect(!without.contains("resolvedConfiguration"))
+    }
+
     @Test("doctor carries one entry per thing it looked for")
     func checks() throws {
         let output = CommandOutput(
