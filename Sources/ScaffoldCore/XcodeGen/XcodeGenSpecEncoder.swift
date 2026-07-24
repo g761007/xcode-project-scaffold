@@ -37,6 +37,15 @@ extension XcodeGenSpecEncoder {
         }
         pairs.append(("settings", map([("base", map(baseSettings))])))
 
+        if !spec.packages.isEmpty {
+            pairs.append(("packages", map(spec.packages.map { package in
+                (package.name, map([
+                    ("url", string(package.url)),
+                    (package.requirementKey, string(package.requirementValue))
+                ]))
+            })))
+        }
+
         var targets: [(String, Node)] = [(spec.name, node(forAppTargetIn: spec))]
         if let testTarget = spec.testTarget {
             targets.append((testTarget.name, node(for: testTarget, in: spec)))
@@ -73,7 +82,7 @@ extension XcodeGenSpecEncoder {
             })))
         }
 
-        return map([
+        var pairs: [(String, Node)] = [
             ("type", string(target.productType)),
             ("platform", string(spec.platform)),
             ("sources", sequence(target.sources.map(string))),
@@ -82,6 +91,17 @@ extension XcodeGenSpecEncoder {
                 ("path", string(target.infoPlist.path)),
                 ("properties", map(properties(of: target.infoPlist)))
             ]))
+        ]
+        if !target.packageProducts.isEmpty {
+            pairs.append(("dependencies", sequence(target.packageProducts.map(node(for:)))))
+        }
+        return map(pairs)
+    }
+
+    private func node(for product: XcodeGenSpec.PackageProductDependency) -> Node {
+        map([
+            ("package", string(product.packageName)),
+            ("product", string(product.productName))
         ])
     }
 
@@ -113,7 +133,9 @@ extension XcodeGenSpecEncoder {
             // Without this the target has no Info.plist and the build fails at
             // code signing. XcodeGen does not add one for test bundles.
             ("settings", map([("base", map([("GENERATE_INFOPLIST_FILE", boolean(true))]))])),
-            ("dependencies", sequence([map([("target", string(spec.name))])]))
+            ("dependencies", sequence(
+                [map([("target", string(spec.name))])] + target.packageProducts.map(node(for:))
+            ))
         ])
     }
 }

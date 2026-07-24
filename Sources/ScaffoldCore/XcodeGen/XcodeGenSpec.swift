@@ -21,6 +21,8 @@ struct XcodeGenSpec: Equatable, Sendable {
     var strictConcurrency: Bool
     /// Empty means "leave XcodeGen's own Debug and Release in place".
     var configurations: [Configuration]
+    /// Remote packages, in declaration order. Empty means no packages section.
+    var packages: [Package]
     var appTarget: AppTarget
     var testTarget: TestTarget?
     var schemes: [Scheme]
@@ -45,6 +47,23 @@ struct XcodeGenSpec: Equatable, Sendable {
         var infoPlist: InfoPlist
         /// Only for configurations that actually differ from the base.
         var overrides: [TargetOverride]
+        var packageProducts: [PackageProductDependency]
+    }
+
+    /// One remote package as XcodeGen writes it: the url, and the requirement
+    /// already translated to XcodeGen's own key (`from`, `exactVersion`,
+    /// `branch` or `revision`) — the builder decides, the encoder copies.
+    struct Package: Equatable, Sendable {
+        var name: String
+        var url: String
+        var requirementKey: String
+        var requirementValue: String
+    }
+
+    /// One product a target links, by the package that provides it.
+    struct PackageProductDependency: Equatable, Sendable {
+        var packageName: String
+        var productName: String
     }
 
     /// XcodeGen writes this file from the values here, so the project ships no
@@ -70,6 +89,7 @@ struct XcodeGenSpec: Equatable, Sendable {
     struct TestTarget: Equatable, Sendable {
         var name: String
         var sources: [String]
+        var packageProducts: [PackageProductDependency]
     }
 
     struct Scheme: Equatable, Sendable {

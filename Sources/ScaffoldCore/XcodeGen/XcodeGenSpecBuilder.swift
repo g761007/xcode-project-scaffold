@@ -28,6 +28,7 @@ struct XcodeGenSpecBuilder: Sendable {
             languageMode: project.language.languageMode.rawValue,
             strictConcurrency: project.language.languageMode == .v6,
             configurations: makeConfigurations(for: project),
+            packages: makePackages(for: project),
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
             schemes: schemes,
@@ -89,7 +90,8 @@ extension XcodeGenSpecBuilder {
                 includesLaunchScreen: isIOS,
                 includesSceneManifest: isIOS && project.interface.primary == .uiKit
             ),
-            overrides: makeOverrides(for: project)
+            overrides: makeOverrides(for: project),
+            packageProducts: packageProducts(for: project.project.name, in: project)
         )
     }
 
@@ -114,8 +116,54 @@ extension XcodeGenSpecBuilder {
 
         return XcodeGenSpec.TestTarget(
             name: "\(project.project.name)Tests",
-            sources: Self.testSourceDirectories
+            sources: Self.testSourceDirectories,
+            packageProducts: packageProducts(for: "\(project.project.name)Tests", in: project)
         )
+    }
+}
+
+// MARK: - Packages
+
+extension XcodeGenSpecBuilder {
+    /// Whether this configuration's packages reach the project file: only the
+    /// modes that read the spm section do (§9). The cocoapods half of `mixed`
+    /// is Podfile territory, not project.yml's.
+    private func usesPackages(_ project: ProjectConfiguration) -> Bool {
+        project.dependencyManagement.mode == .spm || project.dependencyManagement.mode == .mixed
+    }
+
+    private func makePackages(for project: ProjectConfiguration) -> [XcodeGenSpec.Package] {
+        guard usesPackages(project) else { return [] }
+
+        return (project.dependencyManagement.spm?.packages ?? []).map { package in
+            let requirement: (key: String, value: String) = switch package.requirement {
+            case let .from(version): ("from", version)
+            case let .exact(version): ("exactVersion", version)
+            case let .branch(name): ("branch", name)
+            case let .revision(hash): ("revision", hash)
+            }
+            return XcodeGenSpec.Package(
+                name: package.name,
+                url: package.url,
+                requirementKey: requirement.key,
+                requirementValue: requirement.value
+            )
+        }
+    }
+
+    /// The products a target links, in package declaration order — validation
+    /// has already confirmed every named target exists.
+    private func packageProducts(
+        for target: String,
+        in project: ProjectConfiguration
+    ) -> [XcodeGenSpec.PackageProductDependency] {
+        guard usesPackages(project) else { return [] }
+
+        return (project.dependencyManagement.spm?.packages ?? []).flatMap { package in
+            package.products
+                .filter { $0.targets.contains(target) }
+                .map { XcodeGenSpec.PackageProductDependency(packageName: package.name, productName: $0.name) }
+        }
     }
 }
 

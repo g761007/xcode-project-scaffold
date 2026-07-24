@@ -165,7 +165,6 @@ struct JSONOutputTests {
             let output = try decoded(result)
 
             #expect(result.exitStatus == ScaffoldExitCode.validationFailure.rawValue)
-            #expect(output.issues?.contains { $0.code == .dependencyModeNotSupported } == true)
             #expect(output.issues?.contains { $0.code == .emptyPackageURL } == true)
         }
     }
