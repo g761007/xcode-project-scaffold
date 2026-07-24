@@ -123,6 +123,7 @@ xscaffold generate                            # create one from ./scaffold.yml
 xscaffold validate scaffold.yml               # check a configuration
 xscaffold plan --config scaffold.yml          # show what generate would create
 xscaffold doctor                              # check the tools generation needs
+xscaffold capabilities                        # show what this version can generate
 ```
 
 ```text
@@ -261,7 +262,8 @@ $ xscaffold doctor --output json | jq '.checks[] | select(.found == false)'
 ```
 
 `ok`, `command` and `exitCode` are always present, and `message` on failure.
-`issues`, `plan`, `resolvedConfiguration`, `checks` and `destination` appear
+`issues`, `plan`, `resolvedConfiguration`, `checks`, `capabilities` and
+`destination` appear
 only when that command has them to report — an absent key, never `null`.
 `plan` carries file paths and sizes, not file contents, plus an `overwrites`
 list when a forced run would replace existing files.

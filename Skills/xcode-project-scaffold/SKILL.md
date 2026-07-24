@@ -10,10 +10,11 @@ description: Create a new Xcode project from a description in words, by writing 
 with one commit — and guarantees the same configuration produces the same
 project.
 
-Call the CLI directly. The commands this skill uses — `init`, `validate`, `plan`
-and `doctor` — take `--output json` and exit with a code that says what went
-wrong; a wrapper script would only hide both. If `xscaffold` is not on the PATH,
-say so and stop — it is installed with `make install` from its repository.
+Call the CLI directly. The commands this skill uses — `capabilities`,
+`validate`, `plan`, `generate` and `doctor` — take `--output json` and exit
+with a code that says what went wrong; a wrapper script would only hide both.
+If `xscaffold` is not on the PATH, say so and stop — it is installed with
+`brew install g761007/tap/xscaffold`, or `make install` from its repository.
 
 There is also an interactive `xscaffold new`, which asks a person questions at a
 terminal. It is not for this skill: an agent has the answers already, so it
@@ -21,33 +22,40 @@ writes a `scaffold.yml` and takes the declarative path below.
 
 ## The workflow
 
-1. **Check the machine.** `xscaffold doctor --output json`. Exit code `10` means
-   something a default `init` cannot proceed without is missing. Stop and name
-   it, rather than generating a project that fails half way through.
-2. **Write a `scaffold.yml`** from what the user asked for. Fields, defaults and
+1. **Ask what this version can do.** `xscaffold capabilities --output json`
+   lists the variants, architectures, dependency modes and test frameworks this
+   binary actually generates — consult it instead of guessing options.
+2. **Check the machine.** `xscaffold doctor --output json` (pass
+   `--config <path>` once the scaffold.yml exists — CocoaPods is required
+   exactly when the configuration reads pods). Exit code `10` means something
+   generation cannot proceed without is missing. Stop and name it, rather than
+   generating a project that fails half way through.
+3. **Write a `scaffold.yml`** from what the user asked for. Fields, defaults and
    allowed values are in `references/configuration-schema.md`. Put it outside
-   the destination: `init` writes its own copy into the project.
-3. **Validate it.** `xscaffold validate <path> --output json`. Fix what it
+   the destination: `generate` writes its own copy into the project.
+4. **Validate it.** `xscaffold validate <path> --output json`. Fix what it
    reports and validate again. Never generate from a configuration that has not
    come back clean.
-4. **Preview it.** `xscaffold plan --config <path> --output json`, and show the
+5. **Preview it.** `xscaffold plan --config <path> --output json`, and show the
    user what will be created before creating it.
-5. **Create it.** `xscaffold init --config <path> --output json`. Report the
-   `destination` it gives back.
+6. **Create it.** `xscaffold generate --config <path> --yes --output json`.
+   `--yes` is required for a non-interactive run — without it, `generate` asks
+   at a terminal, and refuses when there is none. Report the `destination` it
+   gives back.
 
-`--destination <path>` chooses where the project goes; without it, `init`
+`--destination <path>` chooses where the project goes; without it, `generate`
 creates `./<project.name>`.
 
-For a request with nothing in it beyond "an iOS app in SwiftUI", steps 2 to 4
-can be one preset instead — `xscaffold init MyApp --preset ios-swiftui`, or
-`--preset ios-uikit`. A preset derives the bundle identifier as
-`com.example.myapp`, so it suits someone who has not said what theirs is.
-`init` validates whatever it is given either way, and exits `4` if that fails;
-running `validate` first is how you get the issues before anything is written.
+For a request with nothing in it beyond "an iOS app in SwiftUI", steps 3 to 5
+can be one line instead — `xscaffold new MyApp --variant ios-swiftui --yes`
+(variants: `ios-swiftui`, `ios-uikit`, `macos-swiftui`, `macos-appkit`). It
+derives the bundle identifier as `com.example.myapp`, so it suits someone who
+has not said what theirs is. The deprecated `init` still exists until v0.6 and
+warns on every run; do not use it in new work.
 
 ## Reading the output
 
-These four commands answer with one JSON document on stdout, in the same
+These commands answer with one JSON document on stdout, in the same
 envelope, whether they succeeded or failed:
 
 ```json
@@ -99,7 +107,7 @@ Every rule in this version reports `error`. The envelope also carries
 - **Compatibility is `validate`'s.** It owns every rule about what combines with
   what. A configuration you believe is fine and have not run through it is a
   configuration you have not checked.
-- **The `.xcodeproj` is XcodeGen's.** `init` runs it. Never run it yourself, and
+- **The `.xcodeproj` is XcodeGen's.** `generate` runs it. Never run it yourself, and
   never hand-write a project file.
 - **A non-empty destination is the user's.** Exit code `6` says the directory
   already has something in it. `--force` overrides that; asking first is the

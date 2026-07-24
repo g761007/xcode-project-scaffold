@@ -36,7 +36,13 @@ architecture:
 generator:
   type: xcodegen
 
+dependencyManagement:
+  mode: none
+
 environments: []
+
+localization:
+  developmentLanguage: en
 
 quality:
   swiftlint: true
@@ -44,6 +50,10 @@ quality:
 
 testing:
   unit: swift-testing
+  ui:
+    enabled: false
+    framework: xctest
+    launchPerformanceTest: false
 
 git:
   defaultBranch: main
@@ -162,9 +172,18 @@ and its command from the `Makefile`'s `lint` recipe.
 | Key | Type | Default | Allowed |
 |---|---|---|---|
 | `unit` | enum | `swift-testing` | `swift-testing`, `xctest`, `none` |
+| `ui.enabled` | bool | `false` | |
+| `ui.framework` | enum | `xctest` | `xctest` |
+| `ui.launchPerformanceTest` | bool | `false` | |
 
 `none` removes the `Tests/` directory along with the test target. A test file
 that nothing compiles is worse than no test file.
+
+`ui` is configured apart from `unit` — either can be on alone. Enabled, the
+project grows a `UITests/` directory with a launch test and a smoke test (and
+a measured launch when `launchPerformanceTest` asks), plus a ui-testing target
+the scheme's test action runs. UI automation is XCUITest whichever unit
+framework is chosen, which is why `ui.framework` has one value.
 
 ### `git`
 
@@ -200,9 +219,75 @@ environments:
 | `configuration` | string | yes |
 | `bundleIdentifierSuffix` | string | no |
 | `displayNameSuffix` | string | no |
+| `values` | map of string to string | no |
 
 The suffixes are concatenated, not substituted: `com.example.myapp` plus `.dev`
 is `com.example.myapp.dev`, and `MyApp` plus `" Dev"` is `MyApp Dev`.
+
+`values` are per-environment build values: each key lands in
+`Configurations/<configuration>.xcconfig`, reaches the Info.plist as
+`KEY: $(KEY)`, and is read in code through the generated `AppConfiguration`
+(`API_BASE_URL` reads as `AppConfiguration.apiBaseURL`). Keys are ASCII
+letters, digits and underscores, not starting with a digit.
+
+### `secrets`
+
+What `scaffold.yml` may say about secrets, and all it may say: a key name and
+an obviously-fake example. There is no field for a real value — that absence
+is the design. Both `Configurations/Secrets.example.xcconfig` and the initial
+`Configurations/Secrets.xcconfig` are generated with the examples so a fresh
+clone builds; only the real file is git-ignored.
+
+```yaml
+secrets:
+  keys:
+    - name: API_KEY
+      example: sk-example-not-real
+```
+
+### `localization`
+
+| Key | Type | Default |
+|---|---|---|
+| `developmentLanguage` | string | `en` |
+| `languages` | list of strings | `[]` |
+
+An empty `languages` means "not localized" and generates nothing. A localized
+project lists every language it ships — the development language included —
+and each gets `Resources/<language>.lproj/Localizable.strings`.
+
+### `dependencyManagement`
+
+| Key | Type | Default | Allowed |
+|---|---|---|---|
+| `mode` | enum | `none` | `none`, `spm`, `cocoapods`, `mixed` |
+
+`none` reads nothing — declaring packages or pods under it is a validation
+error, not a silent ignore. SPM is the default recommendation; `mixed` runs
+both and refuses the same library arriving through each.
+
+Packages (`spm.packages`), each stating exactly one requirement inline:
+
+```yaml
+dependencyManagement:
+  mode: spm
+  spm:
+    packages:
+      - name: Alamofire
+        url: https://github.com/Alamofire/Alamofire.git
+        from: "5.9.0"          # or exact: / branch: / revision:
+        products:
+          - name: Alamofire
+            targets: [MyApp]
+```
+
+Products map to the generated targets by name — the app target and
+`<name>Tests`. Pods (`cocoapods.pods`), each stating exactly one source:
+`version`, `path`, or `git` with one of `tag`, `branch` or `commit`; a
+`subspecs` list expands to one pod line per subspec. `cocoapods.bundler`
+decodes now and takes effect in v0.6. Generation runs `pod install` after
+XcodeGen and verifies the workspace it produces; Build, Test and Open then
+drive the workspace.
 
 ## What this version generates
 

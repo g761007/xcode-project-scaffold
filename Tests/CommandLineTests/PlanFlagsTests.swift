@@ -58,3 +58,39 @@ struct PlanFlagsTests {
         }
     }
 }
+
+/// Issue #67: the agent's first stop, and the annotation that gives editors
+/// the schema.
+@Suite("Capabilities and the schema annotation")
+struct CapabilitiesTests {
+    @Test("capabilities reports what this version actually generates")
+    func capabilitiesJSON() throws {
+        let output = try decoded(xscaffold("capabilities", "--output", "json"))
+
+        let capabilities = try #require(output.capabilities)
+        #expect(output.command == "capabilities")
+        #expect(capabilities.variants.sorted()
+            == ["ios-swiftui", "ios-uikit", "macos-appkit", "macos-swiftui"])
+        #expect(capabilities.dependencyManagementModes.contains("mixed"))
+        #expect(!capabilities.testingFrameworks.contains("xctest"),
+                "what the validator rejects is not advertised")
+        #expect(capabilities.schemaVersions == [1])
+    }
+
+    @Test("a generated scaffold.yml opens with the schema annotation")
+    func schemaAnnotation() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("App")
+            try xscaffold(
+                "init", "App", "--preset", "ios-uikit", "--destination", destination.path,
+                "--skip-git", "--skip-generate"
+            )
+
+            let manifest = try String(
+                contentsOf: destination.appendingPathComponent("scaffold.yml"), encoding: .utf8
+            )
+            #expect(manifest.hasPrefix("# yaml-language-server: $schema="))
+            #expect(manifest.contains("Schemas/scaffold.schema.json"))
+        }
+    }
+}

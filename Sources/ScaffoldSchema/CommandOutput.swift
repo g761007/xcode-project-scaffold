@@ -39,6 +39,10 @@ public struct CommandOutput: Codable, Equatable, Sendable {
     /// From `doctor`.
     public var checks: [EnvironmentCheck]?
 
+    /// From `capabilities` (§19): what this binary can generate. A JSON value
+    /// here rather than in core, because the schema owns the wire.
+    public var capabilities: CapabilitiesDocument?
+
     public init(
         command: String,
         exitCode: ScaffoldExitCode,
@@ -47,7 +51,8 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         destination: String? = nil,
         plan: PlanSummary? = nil,
         resolvedConfiguration: ProjectConfiguration? = nil,
-        checks: [EnvironmentCheck]? = nil
+        checks: [EnvironmentCheck]? = nil,
+        capabilities: CapabilitiesDocument? = nil
     ) {
         ok = exitCode == .success
         self.command = command
@@ -58,6 +63,7 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         self.plan = plan
         self.resolvedConfiguration = resolvedConfiguration
         self.checks = checks
+        self.capabilities = capabilities
     }
 }
 
