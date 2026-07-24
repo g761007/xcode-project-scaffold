@@ -19,6 +19,7 @@ public struct ConfigurationValidator: Sendable {
             + architectureIssues(configuration)
             + fieldIssues(configuration)
             + environmentIssues(configuration)
+            + valueKeyIssues(configuration)
             + dependencyIssues(configuration)
     }
 }
