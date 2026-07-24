@@ -8,6 +8,68 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [0.4.0] — 2026-07-25
+
+### Added
+
+- **`generate` — the non-interactive generation entrance.** Reads an existing
+  `scaffold.yml` (`--config`, defaulting to `./scaffold.yml`), shows a summary
+  — including anything a forced run would overwrite — and asks before writing.
+  `--yes` skips the question but never the validation, the plan or the
+  destination rules; without a terminal and without `--yes` it refuses with
+  exit 2 rather than hanging a pipeline on a prompt no one can see.
+- **Preview-first `new`.** The questions end at a Configuration Preview and a
+  menu — Generate project, Save scaffold.yml and exit, Edit configuration,
+  Show complete file plan, Show resolved configuration, Cancel — and nothing
+  touches disk until an option says otherwise. Save writes the same bytes
+  generating would have written; Edit re-asks one section and comes back to a
+  fresh preview, as many rounds as it takes; Cancel exits 130 with nothing on
+  disk, from any depth.
+- **`--variant`.** The four platform × interface combinations move from
+  `--preset` to their CONTEXT.md name: `new MyApp --variant ios-uikit --yes`
+  is the one-line generation, needing no terminal. Typing `--preset` on `new`
+  gets "did you mean --variant?" instead of an unknown-option error.
+- **`new --advanced` and `new --open`.** Advanced appends questions for the
+  fields most projects leave at their defaults — organization name, deployment
+  target, unit test framework, the SwiftLint/SwiftFormat switches, the git
+  default branch. `--open` opens the generated project on success.
+- **`plan --files` and `plan --resolved-config`.** The preview's two Show
+  options as flags: the full file-and-command listing, and the configuration
+  with every default resolved — in text and JSON (`resolvedConfiguration`
+  joins the document only when asked for).
+- **Two-tier destination rules.** A directory already holding a project — an
+  `.xcodeproj`, `.xcworkspace`, `project.yml` or top-level Swift source — is
+  refused outright (`OUTPUT_DIRECTORY_HAS_PROJECT`), and no flag can downgrade
+  that. A merely non-empty directory (`OUTPUT_DIRECTORY_NOT_EMPTY`) admits
+  `--force`, which is what makes scaffolding inside a GitHub-starter clone
+  work; what a forced run would overwrite is listed in the plan, the preview
+  and the JSON (`overwrites`) before it happens. A directory holding only a
+  `scaffold.yml` needs no flag at all.
+- **Tag-triggered releases.** Pushing a `v*` tag runs the full test gate,
+  builds an arm64 + x86_64 universal binary, packages it with a SHA256,
+  creates the GitHub Release with the CHANGELOG section as its notes, and
+  smoke-tests the published artifact — `--version` must equal the tag, and a
+  one-line `new --variant --yes --validate-build` must produce a building
+  project. The version has one source: the tag, stamped at build time. Source
+  builds report `0.0.0-dev`.
+- **Community files.** CONTRIBUTING, SECURITY, a code of conduct, issue and PR
+  templates, and a terminal demo recorded from the real binary
+  (`Scripts/record-demo.sh`).
+
+### Deprecated
+
+- **`init`.** Still works, warns on every run — `generate --config` for
+  configurations, `new --variant --yes` for the one-line run — and is removed
+  in v0.6. The reasoning, including the preset→variant vocabulary move, is
+  ADR-0007.
+
+### Changed
+
+- The README now leads with the preview-first flow and the one-line Homebrew
+  install; every example matches the shipped CLI.
+- The `Preset` type is `Variant` in code, matching CONTEXT.md; a deprecated
+  alias keeps `init` compiling until it goes.
+
 ## [0.3.0] — 2026-07-24
 
 ### Added
