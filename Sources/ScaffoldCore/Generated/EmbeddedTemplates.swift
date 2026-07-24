@@ -41,6 +41,92 @@ model together and move shared types behind the view model, rather than adding a
 layer before there is code that needs it.
 
 """#,
+        "Architectures/mvvm/ios-swiftui/App/ContentView.swift": #"""
+import SwiftUI
+
+struct ContentView: View {
+    /// Owned by the view but created outside it, so a test — or a preview — can
+    /// supply its own. See App/GreetingViewModel.swift for the logic itself.
+    @State private var viewModel: GreetingViewModel
+
+    init(viewModel: GreetingViewModel = GreetingViewModel(title: "{{PROJECT_NAME}}")) {
+        _viewModel = State(initialValue: viewModel)
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(viewModel.title)
+                .font(.largeTitle)
+            Text(viewModel.tapCountText)
+            Button("Tap me") {
+                viewModel.registerTap()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+"""#,
+        "Architectures/mvvm/ios-swiftui/App/GreetingViewModel.swift": #"""
+import Observation
+
+/// The screen's state and behaviour, with no reference to SwiftUI.
+///
+/// `@Observable` lets the view read these properties and re-render when they
+/// change, so the view holds no logic and the view model can be tested on its
+/// own — see `Tests/GreetingViewModelTests.swift`.
+@MainActor
+@Observable
+final class GreetingViewModel {
+    let title: String
+    private(set) var tapCount = 0
+
+    init(title: String) {
+        self.title = title
+    }
+
+    var tapCountText: String {
+        "Tapped \(tapCount) time\(tapCount == 1 ? "" : "s")"
+    }
+
+    func registerTap() {
+        tapCount += 1
+    }
+}
+
+"""#,
+        "Architectures/mvvm/ios-swiftui/Tests/GreetingViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Greeting view model")
+struct GreetingViewModelTests {
+    @Test("it starts with no taps")
+    func startsWithNoTaps() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        #expect(viewModel.tapCount == 0)
+        #expect(viewModel.tapCountText == "Tapped 0 times")
+    }
+
+    @Test("registering a tap advances the count")
+    func registerTapAdvances() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        viewModel.registerTap()
+
+        #expect(viewModel.tapCount == 1)
+        #expect(viewModel.tapCountText == "Tapped 1 time")
+    }
+}
+
+"""#,
         "Architectures/mvvm/ios-uikit/App/GreetingViewModel.swift": #"""
 /// The screen's state and behaviour, with no reference to UIKit.
 ///

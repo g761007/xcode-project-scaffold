@@ -90,6 +90,21 @@ architecture:
 YML
 check MVVMApp --config "$root/mvvm-uikit.yml"
 
+# The same architecture on SwiftUI: the view observes an @Observable view model
+# instead of binding through a closure. It is the second interface that proves
+# the overlay's shared boundary, exactly as the two plain variants did in v0.1.
+cat > "$root/mvvm-swiftui.yml" <<'YML'
+project:
+  name: MVVMSwiftUIApp
+  bundleIdentifier: com.example.mvvmswiftuiapp
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+YML
+check MVVMSwiftUIApp --config "$root/mvvm-swiftui.yml"
+
 # Environments, which no preset produces and which the two runs above therefore
 # say nothing about. They earn a case of their own because they change the
 # generated schemes: the default scheme belongs to the Release environment, and
