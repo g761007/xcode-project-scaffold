@@ -1,0 +1,79 @@
+name: Bug report
+description: Something xscaffold did wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The versions, the command and the two documents
+        below answer most questions without a round trip — please fill in what
+        you can.
+  - type: input
+    id: xscaffold-version
+    attributes:
+      label: xscaffold version
+      description: "`xscaffold --version`"
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "26.1"
+    validations:
+      required: true
+  - type: input
+    id: xcode-version
+    attributes:
+      label: Xcode version
+      description: "`xcodebuild -version`"
+      placeholder: "26.4"
+    validations:
+      required: false
+  - type: input
+    id: xcodegen-version
+    attributes:
+      label: XcodeGen version
+      description: "`xcodegen version`, if generation is involved"
+      placeholder: "2.44.1"
+    validations:
+      required: false
+  - type: textarea
+    id: command
+    attributes:
+      label: The exact command you ran
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: scaffold-yml
+    attributes:
+      label: Your scaffold.yml
+      description: If the run involved one. Remove anything private first.
+      render: yaml
+    validations:
+      required: false
+  - type: textarea
+    id: plan-json
+    attributes:
+      label: plan --output json
+      description: >
+        The output of `xscaffold plan --config scaffold.yml --output json`
+        (or with the flags you used), if it runs at all.
+      render: json
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Output, exit code, and what landed (or did not) on disk.
+    validations:
+      required: true
