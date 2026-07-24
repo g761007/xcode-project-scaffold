@@ -87,60 +87,56 @@ struct NewCommand: ParsableCommand {
         let prompter = SystemPrompter()
         let variant = variantName.flatMap(Variant.named)
 
-        let configuration: ProjectConfiguration
-        if let variant, assumeYes {
-            // §4.2's one-line generation, the successor to init --preset: every
-            // question is answered — platform and interface by the variant, the
-            // name by its argument, the rest by their defaults — so no terminal
-            // is needed and none is consulted.
-            guard let name else {
-                throw reporter.failure(
-                    .invalidArguments,
-                    "A variant does not name the project. Try: xscaffold new MyApp --variant \(variant.name) --yes"
-                )
-            }
-            configuration = variant.configuration(projectName: name)
-        } else {
-            guard prompter.isInteractive else {
-                throw reporter.failure(
-                    .invalidArguments,
-                    "new needs a terminal to ask its questions. For a non-interactive run, use "
-                        + "generate --config <file>, or new <name> --variant <name> --yes."
-                )
-            }
-            configuration = try collect(variant: variant, using: prompter, reportingTo: reporter).resolved()
-        }
-
-        let (validated, warnings) = try checkConfiguration(
-            configuration, describedAs: "The answers", reportingTo: reporter
-        )
-        let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
-        let destination = destinationURL(for: configuration)
-
-        // --yes answered the menu in advance: generate. The summary still
-        // shows — the flag skips questions, never information (§4.2).
+        // --yes answered the menu in advance: no preview stop, straight to
+        // generation once the answers exist. The summary still shows — the
+        // flag skips questions, never information (§4.2).
         if assumeYes {
+            let configuration = try assumedConfiguration(variant: variant, using: prompter, reportingTo: reporter)
+            let (validated, warnings) = try checkConfiguration(
+                configuration, describedAs: "The answers", reportingTo: reporter
+            )
+            let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
+            let destination = destinationURL(for: configuration)
+
             _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
             try writePlan(plan, to: destination, force: force, reportingTo: reporter)
             return try finishGeneration(plan, warnings: warnings, for: configuration,
                                         at: destination, reportingTo: reporter)
         }
 
-        // The preview and its menu (§4.2), with a generation failure mapped to
-        // the code it chose — the same mapping `writePlan` performs.
-        let outcome = try mappingGenerationFailure(reportingTo: reporter) {
-            try PreviewSession(force: force).run(
-                plan, for: validated, warnings: warnings, at: destination, using: prompter
+        guard prompter.isInteractive else {
+            throw reporter.failure(
+                .invalidArguments,
+                "new needs a terminal to ask its questions. For a non-interactive run, use "
+                    + "generate --config <file>, or new <name> --variant <name> --yes."
             )
+        }
+        let answers = try collect(variant: variant, using: prompter, reportingTo: reporter)
+
+        // The preview loop (§4.2): resolve, validate, plan, preview, menu —
+        // and around again after every edit. A generation failure maps to the
+        // code it chose, the same mapping `writePlan` performs.
+        let outcome = try mappingGenerationFailure(reportingTo: reporter) {
+            do {
+                return try PreviewSession(force: force).run(
+                    answers: answers,
+                    destination: { destinationURL(for: $0) },
+                    makePlan: { try makePlan(for: $0, options: runOptions.generationOptions,
+                                             reportingTo: reporter) },
+                    using: prompter
+                )
+            } catch let InteractivePromptError.unresolvable(issue) {
+                throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
+            }
         }
 
         switch outcome {
-        case .generated:
-            try finishGeneration(plan, warnings: warnings, for: configuration,
+        case let .generated(validated, plan, warnings, destination):
+            try finishGeneration(plan, warnings: warnings, for: validated.configuration,
                                  at: destination, reportingTo: reporter)
 
         case let .savedManifest(manifest):
-            reportSaved(manifest, at: destination, to: reporter)
+            reportSaved(manifest, at: manifest.deletingLastPathComponent(), to: reporter)
 
         case .cancelled:
             throw cancelled(using: prompter, reportingTo: reporter)
@@ -149,6 +145,34 @@ struct NewCommand: ParsableCommand {
 }
 
 extension NewCommand {
+    /// The configuration a `--yes` run generates from: the one-line
+    /// variant-and-name path (no terminal needed, none consulted), or the
+    /// questions as usual with only the menu pre-answered.
+    private func assumedConfiguration(
+        variant: Variant?,
+        using prompter: some Prompter,
+        reportingTo reporter: Reporter
+    ) throws -> ProjectConfiguration {
+        if let variant {
+            guard let name else {
+                throw reporter.failure(
+                    .invalidArguments,
+                    "A variant does not name the project. Try: xscaffold new MyApp --variant \(variant.name) --yes"
+                )
+            }
+            return variant.configuration(projectName: name)
+        }
+
+        guard prompter.isInteractive else {
+            throw reporter.failure(
+                .invalidArguments,
+                "new needs a terminal to ask its questions. For a non-interactive run, use "
+                    + "generate --config <file>, or new <name> --variant <name> --yes."
+            )
+        }
+        return try collect(variant: nil, using: prompter, reportingTo: reporter).resolved()
+    }
+
     /// Everything after the files are down, shared by the --yes path and the
     /// menu's Generate: the build check if asked for, then the created report.
     private func finishGeneration(

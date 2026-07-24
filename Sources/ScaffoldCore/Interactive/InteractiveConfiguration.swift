@@ -52,6 +52,62 @@ public struct InteractiveConfiguration: Sendable {
     }
 }
 
+// MARK: - Editing a section
+
+extension InteractiveConfiguration {
+    /// One group of questions, as the preview's Edit menu offers them (§4.2).
+    /// Grouped by what is asked together, so editing never re-runs the whole
+    /// questionnaire.
+    public enum Section: CaseIterable, Sendable {
+        case project
+        case platform
+        case architecture
+        case environments
+
+        /// The label the Edit menu shows.
+        public var label: String {
+            switch self {
+            case .project: "Project name and bundle identifier"
+            case .platform: "Platform and interface"
+            case .architecture: "Architecture"
+            case .environments: "Build environments"
+            }
+        }
+    }
+
+    /// Asks one section's questions again, leaving every other answer as it
+    /// was. The result has not been re-validated: the caller sends it through
+    /// `resolveAnswers` next, which re-asks whatever the change broke.
+    public func reask(
+        _ section: Section,
+        into answers: inout PartialProjectConfiguration,
+        using prompter: some Prompter
+    ) throws {
+        switch section {
+        case .project:
+            answers.name = try askName(using: prompter)
+            answers.bundleIdentifier = try askBundleIdentifier(for: answers.name, using: prompter)
+        case .platform:
+            answers.platform = try askPlatform(using: prompter)
+            answers.interface = try askInterface(using: prompter)
+        case .architecture:
+            (answers.pattern, answers.includeExample) = try askArchitecture(using: prompter)
+        case .environments:
+            answers.environments = try askEnvironments(using: prompter)
+        }
+    }
+
+    /// The validation loop, for callers that changed answers after `collect`:
+    /// re-asks the question each failure points at until nothing is wrong, and
+    /// returns answers that are known to validate.
+    public func resolveAnswers(
+        _ answers: PartialProjectConfiguration,
+        using prompter: some Prompter
+    ) throws -> PartialProjectConfiguration {
+        try resolve(answers, using: prompter)
+    }
+}
+
 // MARK: - The validation loop
 
 extension InteractiveConfiguration {

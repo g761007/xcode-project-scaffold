@@ -161,6 +161,10 @@ func mappingGenerationFailure<T>(reportingTo reporter: Reporter, _ body: () thro
         return try body()
     } catch let error as GenerationError {
         throw reporter.failure(error.exitCode, "\(error)")
+    } catch let exit as ExitCode {
+        // Thrown by a step that already reported through the reporter; wrapping
+        // it again would report one failure twice under two codes.
+        throw exit
     } catch {
         throw reporter.failure(.generationFailure, "\(error)")
     }

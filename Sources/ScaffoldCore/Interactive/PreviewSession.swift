@@ -3,11 +3,13 @@ import ScaffoldSchema
 
 /// What `new` offers once the answers are complete (§4.2): the resolved
 /// configuration and its plan, shown before anything exists, then the choice —
-/// generate it, keep only the scaffold.yml for review, or leave nothing.
+/// generate it, keep only the scaffold.yml for review, edit a section and look
+/// again, or leave nothing.
 ///
-/// It asks *and* acts, so the promise each option makes — "Cancel leaves
-/// nothing", "Save writes one file" — is kept by the same type that made it,
-/// and a scripted prompter can drive every path onto a real directory.
+/// It owns the whole loop from answers to outcome — resolve, validate, plan,
+/// preview, menu, and around again after an edit — so the promise each option
+/// makes is kept by the type that made it, and a scripted prompter can drive
+/// every path, edits included, onto a real directory.
 public struct PreviewSession: Sendable {
     private let executor: PlanExecutor
     /// How Generate lands the plan — `PlanExecutor`'s parameter, carried here
@@ -19,9 +21,11 @@ public struct PreviewSession: Sendable {
         self.force = force
     }
 
-    public enum Outcome: Equatable, Sendable {
-        /// The plan was executed; the project is at the destination.
-        case generated
+    public enum Outcome: Sendable {
+        /// The plan was executed. Carries what the loop's last round settled
+        /// on, because an edit may have changed every part of it since the
+        /// caller last looked.
+        case generated(ValidatedConfiguration, plan: GenerationPlan, warnings: [ValidationIssue], destination: URL)
         /// Only scaffold.yml was written, at the returned location.
         case savedManifest(URL)
         /// Nothing was written.
@@ -31,26 +35,62 @@ public struct PreviewSession: Sendable {
     /// Shows the preview, asks until an option is chosen, and carries it out.
     /// Ended input is a cancellation, exactly as it is during the questions.
     ///
-    /// Takes a `ValidatedConfiguration` by design (§26): what is previewed is
-    /// what would generate, and an unvalidated configuration can do neither.
+    /// The destination arrives as a function of the configuration because an
+    /// edit can rename the project, and an unstated destination follows the
+    /// name; the plan arrives as a function for the same reason.
     public func run(
-        _ plan: GenerationPlan,
-        for validated: ValidatedConfiguration,
-        warnings: [ValidationIssue],
-        at destination: URL,
+        answers: PartialProjectConfiguration,
+        destination: (ProjectConfiguration) -> URL,
+        makePlan: (ValidatedConfiguration) throws -> GenerationPlan,
         using prompter: some Prompter
     ) throws -> Outcome {
-        show(validated.configuration, plan: plan, warnings: warnings, at: destination, using: prompter)
+        let interactive = InteractiveConfiguration()
+        var answers = answers
 
-        switch choose(using: prompter) {
-        case .generate:
-            try executor.execute(plan, at: destination, force: force)
-            return .generated
-        case .save:
-            return try .savedManifest(saveManifest(from: plan, at: destination))
-        case .cancel:
-            return .cancelled
+        while true {
+            let validated: ValidatedConfiguration
+            let warnings: [ValidationIssue]
+            do {
+                answers = try interactive.resolveAnswers(answers, using: prompter)
+                (validated, warnings) = checked(answers)
+            } catch InteractivePromptError.cancelled {
+                return .cancelled
+            }
+
+            let plan = try makePlan(validated)
+            let target = destination(validated.configuration)
+            show(validated.configuration, plan: plan, warnings: warnings, at: target, using: prompter)
+
+            switch choose(using: prompter) {
+            case .generate:
+                try executor.execute(plan, at: target, force: force)
+                return .generated(validated, plan: plan, warnings: warnings, destination: target)
+
+            case .save:
+                return try .savedManifest(saveManifest(from: plan, at: target))
+
+            case .edit:
+                guard let section = chooseSection(using: prompter) else { return .cancelled }
+                do {
+                    try interactive.reask(section, into: &answers, using: prompter)
+                } catch InteractivePromptError.cancelled {
+                    return .cancelled
+                }
+
+            case .cancel:
+                return .cancelled
+            }
         }
+    }
+
+    /// `resolveAnswers` has already looped until nothing is wrong, so the check
+    /// cannot come back invalid; the compiler cannot know that, and the next
+    /// reader should.
+    private func checked(_ answers: PartialProjectConfiguration) -> (ValidatedConfiguration, [ValidationIssue]) {
+        guard case let .valid(validated, warnings) = ConfigurationValidator().check(answers.resolved()) else {
+            preconditionFailure("resolveAnswers returned answers that do not validate")
+        }
+        return (validated, warnings)
     }
 }
 
@@ -105,12 +145,13 @@ extension PreviewSession {
     }
 }
 
-// MARK: - The menu
+// MARK: - The menus
 
 extension PreviewSession {
     private enum Choice {
         case generate
         case save
+        case edit
         case cancel
     }
 
@@ -122,14 +163,36 @@ extension PreviewSession {
             prompter.show("What next?")
             prompter.show("  1) Generate project")
             prompter.show("  2) Save scaffold.yml and exit")
-            prompter.show("  3) Cancel")
+            prompter.show("  3) Edit configuration")
+            prompter.show("  4) Cancel")
 
             switch prompter.readLine().map({ $0.trimmingCharacters(in: .whitespaces) }) {
             case "1": return .generate
             case "2": return .save
-            case "3", nil: return .cancel
-            default: prompter.show("Enter a number from 1 to 3.")
+            case "3": return .edit
+            case "4", nil: return .cancel
+            default: prompter.show("Enter a number from 1 to 4.")
             }
+        }
+    }
+
+    /// Which section to edit. `nil` is ended input — the caller cancels, the
+    /// same answer ended input gives everywhere else.
+    private func chooseSection(using prompter: some Prompter) -> InteractiveConfiguration.Section? {
+        let sections = InteractiveConfiguration.Section.allCases
+        while true {
+            prompter.show("")
+            prompter.show("Edit which part?")
+            for (index, section) in sections.enumerated() {
+                prompter.show("  \(index + 1)) \(section.label)")
+            }
+
+            guard let line = prompter.readLine() else { return nil }
+            let number = Int(line.trimmingCharacters(in: .whitespaces))
+            if let number, sections.indices.contains(number - 1) {
+                return sections[number - 1]
+            }
+            prompter.show("Enter a number from 1 to \(sections.count).")
         }
     }
 }
