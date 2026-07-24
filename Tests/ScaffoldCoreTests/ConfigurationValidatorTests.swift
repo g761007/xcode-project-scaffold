@@ -30,6 +30,15 @@ struct ValidConfigurationTests {
 
         #expect(codes(configuration).isEmpty)
     }
+
+    @Test("an mvvm project that includes its example is valid")
+    func mvvmWithExampleIsValid() {
+        let configuration = ProjectConfiguration.validBaseline.with {
+            $0.architecture = .init(pattern: .mvvm, includeExample: true)
+        }
+
+        #expect(codes(configuration).isEmpty)
+    }
 }
 
 @Suite("Capability boundary — valid in the domain, not built yet")
@@ -46,17 +55,34 @@ struct CapabilityBoundaryTests {
         #expect(!codes(.validBaseline).contains(.productTypeNotSupported))
     }
 
-    @Test("every architecture but minimal is rejected", arguments: [
-        ArchitecturePattern.mvvm, .mvvmCoordinator, .clean
-    ])
-    func architecture(pattern: ArchitecturePattern) {
-        #expect(codes(.validBaseline.with { $0.architecture.pattern = pattern })
+    @Test("clean is rejected as an unsupported architecture")
+    func unsupportedArchitecture() {
+        #expect(codes(.validBaseline.with { $0.architecture.pattern = .clean })
             .contains(.architectureNotSupported))
     }
 
-    @Test("minimal architecture is accepted")
-    func minimalArchitectureIsAccepted() {
-        #expect(!codes(.validBaseline).contains(.architectureNotSupported))
+    @Test("minimal, mvvm and mvvm-c are supported architectures", arguments: [
+        ArchitecturePattern.minimal, .mvvm, .mvvmCoordinator
+    ])
+    func supportedArchitecture(pattern: ArchitecturePattern) {
+        #expect(!codes(.validBaseline.with { $0.architecture.pattern = pattern })
+            .contains(.architectureNotSupported))
+    }
+
+    /// MVVM-C is supported, but only on UIKit. The baseline is UIKit, so
+    /// switching to SwiftUI is the one change that should trip the rule.
+    @Test("MVVM-C is rejected for SwiftUI, accepted for UIKit")
+    func coordinatorRequiresUIKit() {
+        let onSwiftUI = ProjectConfiguration.validBaseline.with {
+            $0.interface = .init(primary: .swiftUI)
+            $0.architecture.pattern = .mvvmCoordinator
+        }
+        #expect(codes(onSwiftUI).contains(.coordinatorRequiresUIKit))
+
+        let onUIKit = ProjectConfiguration.validBaseline.with {
+            $0.architecture.pattern = .mvvmCoordinator
+        }
+        #expect(!codes(onUIKit).contains(.coordinatorRequiresUIKit))
     }
 
     @Test("Tuist is rejected, XcodeGen is not")
@@ -144,5 +170,21 @@ struct CompatibilityTests {
             $0.interface = .init(primary: .appKit, lifecycle: .appDelegate)
         }
         #expect(!codes(allowed).contains(.appDelegateRequiresAppKit))
+    }
+
+    /// `minimal` has no example, so an explicit `includeExample: true` is a
+    /// contradiction — never valid, unlike an unstated value, which just
+    /// resolves to "no example".
+    @Test("an example on minimal is rejected, an example on mvvm is not")
+    func exampleUnavailableForArchitecture() {
+        let rejected = ProjectConfiguration.validBaseline.with {
+            $0.architecture = .init(pattern: .minimal, includeExample: true)
+        }
+        #expect(codes(rejected).contains(.exampleUnavailableForArchitecture))
+
+        let allowed = ProjectConfiguration.validBaseline.with {
+            $0.architecture = .init(pattern: .mvvm, includeExample: true)
+        }
+        #expect(!codes(allowed).contains(.exampleUnavailableForArchitecture))
     }
 }

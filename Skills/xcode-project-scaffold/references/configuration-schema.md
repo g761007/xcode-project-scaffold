@@ -245,6 +245,7 @@ release may help.
 | `XS0006` | Interface not supported |
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
+| `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 
@@ -255,6 +256,7 @@ release may help.
 | `XS1101` | The `swiftui` lifecycle requires SwiftUI |
 | `XS1102` | The `app-delegate-scene-delegate` lifecycle requires UIKit |
 | `XS1103` | The `app-delegate` lifecycle requires AppKit |
+| `XS1201` | `includeExample` requires an architecture that has an example |
 | `XS1301` | Bundle identifier is not reverse-DNS |
 | `XS1302` | Deployment target is not a version number |
 | `XS1304` | Project or environment name cannot be used as a target or scheme name |

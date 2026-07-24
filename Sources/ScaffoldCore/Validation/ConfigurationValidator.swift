@@ -16,6 +16,7 @@ public struct ConfigurationValidator: Sendable {
         capabilityIssues(configuration)
             + interfaceIssues(configuration)
             + lifecycleIssues(configuration)
+            + architectureIssues(configuration)
             + fieldIssues(configuration)
             + environmentIssues(configuration)
     }
@@ -30,7 +31,10 @@ extension ConfigurationValidator {
         static let platforms: Set<ApplePlatform> = [.iOS]
         static let productTypes: Set<ProductType> = [.application]
         static let interfaces: Set<UIFramework> = [.uiKit, .swiftUI]
-        static let architectures: Set<ArchitecturePattern> = [.minimal]
+        /// MVVM-C is supported only on UIKit; that further restriction is a
+        /// separate rule (`coordinatorRequiresUIKit`), because it is a pairing,
+        /// not a blanket "this pattern is unsupported".
+        static let architectures: Set<ArchitecturePattern> = [.minimal, .mvvm, .mvvmCoordinator]
         static let generators: Set<GeneratorKind> = [.xcodegen]
         /// `disabled` is supported in the sense that a project can have no
         /// tests. XCTest is not: there are no templates written against it.
@@ -69,8 +73,27 @@ extension ConfigurationValidator {
             unsupported(
                 configuration.testing.unit, of: Supported.testFrameworks,
                 as: "Test framework", code: .testFrameworkNotSupported, at: "testing.unit"
-            )
+            ),
+            coordinatorInterfaceIssue(configuration)
         ].compactMap(\.self)
+    }
+
+    /// MVVM-C is supported, but only on UIKit — it is a UIKit navigation
+    /// pattern. SwiftUI's analogue (a router over `NavigationStack`) is not
+    /// built yet, which makes this a boundary rather than an impossibility, so
+    /// it says "in this version" like the other capability codes. AppKit is
+    /// already refused by `interfaceNotSupported`, so this only fires for
+    /// SwiftUI.
+    private func coordinatorInterfaceIssue(_ configuration: ProjectConfiguration) -> ValidationIssue? {
+        guard configuration.architecture.pattern == .mvvmCoordinator,
+              configuration.interface.primary == .swiftUI else { return nil }
+
+        return ValidationIssue(
+            code: .coordinatorRequiresUIKit,
+            message: "MVVM-C is not supported for SwiftUI in this version.",
+            path: "architecture.pattern",
+            suggestion: "Use the uikit interface for mvvm-c, or the mvvm architecture for swiftui."
+        )
     }
 
     /// Every capability-boundary issue is built here, so the "in this version"
@@ -139,6 +162,24 @@ extension ConfigurationValidator {
             path: "interface.lifecycle",
             suggestion: "Remove interface.lifecycle to use "
                 + "'\(interface.impliedLifecycle.rawValue)', the default for \(interface.displayName)."
+        )]
+    }
+
+    /// Asking for an example from a pattern that has none is a contradiction,
+    /// not a "not yet" — `minimal` is the bare skeleton and will never carry
+    /// one. An unstated `includeExample` is fine: it resolves to "no example"
+    /// for such a pattern. Only an explicit `true` is wrong.
+    private func architectureIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
+        guard configuration.architecture.includeExample == true,
+              !configuration.architecture.pattern.hasExample else { return [] }
+
+        return [ValidationIssue(
+            code: .exampleUnavailableForArchitecture,
+            message: "Architecture '\(configuration.architecture.pattern.rawValue)' has no example, "
+                + "so architecture.includeExample cannot be true.",
+            path: "architecture.includeExample",
+            suggestion: "Remove architecture.includeExample, or choose an architecture that has "
+                + "one, such as mvvm."
         )]
     }
 }

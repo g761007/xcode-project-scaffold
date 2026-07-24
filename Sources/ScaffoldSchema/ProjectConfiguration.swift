@@ -151,13 +151,32 @@ extension ProjectConfiguration {
     public struct Architecture: Codable, Equatable, Sendable {
         public var pattern: ArchitecturePattern
 
-        public init(pattern: ArchitecturePattern? = nil) {
+        /// Whether to generate the pattern's example. Optional because "not
+        /// stated" is a third state distinct from `true` and `false`: an
+        /// unstated value follows the pattern (`generatesExample`), so choosing
+        /// `mvvm` gets an example without asking while `minimal` never does. A
+        /// stated `true` on a pattern with no example is rejected by validation
+        /// rather than silently ignored. Nil is omitted on encode.
+        public var includeExample: Bool?
+
+        public init(pattern: ArchitecturePattern? = nil, includeExample: Bool? = nil) {
             self.pattern = pattern ?? ConfigurationDefaults.architecture
+            self.includeExample = includeExample
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            try self.init(pattern: container.decodeIfPresent(ArchitecturePattern.self, forKey: .pattern))
+            try self.init(
+                pattern: container.decodeIfPresent(ArchitecturePattern.self, forKey: .pattern),
+                includeExample: container.decodeIfPresent(Bool.self, forKey: .includeExample)
+            )
+        }
+
+        /// Whether the generated project includes the pattern's example,
+        /// resolving an unstated `includeExample` against the pattern: patterns
+        /// with an example include it by default, `minimal` has none to include.
+        public var generatesExample: Bool {
+            includeExample ?? pattern.hasExample
         }
     }
 
