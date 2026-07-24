@@ -755,22 +755,6 @@ the original intent stays visible. Changing it does not change the project.
 }
 
 """#,
-        "Shared/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": #"""
-{
-  "images" : [
-    {
-      "idiom" : "universal",
-      "platform" : "ios",
-      "size" : "1024x1024"
-    }
-  ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-
-"""#,
         "Shared/Resources/Assets.xcassets/Contents.json": #"""
 {
   "info" : {
@@ -805,6 +789,22 @@ struct {{PROJECT_NAME}}App: App {
             ContentView()
         }
     }
+}
+
+"""#,
+        "Variants/ios-swiftui/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": #"""
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
 }
 
 """#,
@@ -890,6 +890,22 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
     }
+}
+
+"""#,
+        "Variants/ios-uikit/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": #"""
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
 }
 
 """#,
