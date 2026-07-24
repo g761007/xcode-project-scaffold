@@ -26,6 +26,12 @@ struct ArchitectureExampleTests {
         $0.architecture = .init(pattern: .mvvm, includeExample: true)
     }
 
+    static let mvvmMacOSAppKit = ProjectConfiguration.validBaseline.with {
+        $0.product.platform = .macOS
+        $0.interface = .init(primary: .appKit)
+        $0.architecture = .init(pattern: .mvvm, includeExample: true)
+    }
+
     static let mvvmcUIKit = ProjectConfiguration.validBaseline.with {
         $0.architecture = .init(pattern: .mvvmCoordinator, includeExample: true)
     }
@@ -132,6 +138,33 @@ struct ArchitectureExampleTests {
         ])
     }
 
+    /// macOS AppKit MVVM replaces the screen with a view-model-driven
+    /// NSViewController and adds the framework-free view model — the same shape
+    /// as UIKit's, injected at the view's own initialiser rather than a scene.
+    @Test("a macOS AppKit MVVM project replaces the controller and adds a view model")
+    func macOSAppKitFileList() throws {
+        let plan = try planner.makePlan(for: Self.mvvmMacOSAppKit)
+
+        #expect(plan.files.map(\.path) == [
+            ".gitignore",
+            ".swiftformat",
+            ".swiftlint.yml",
+            "App/AppDelegate.swift",
+            "App/GreetingViewModel.swift",
+            "App/RootViewController.swift",
+            "App/main.swift",
+            "Makefile",
+            "README.md",
+            "Resources/Assets.xcassets/AccentColor.colorset/Contents.json",
+            "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+            "Resources/Assets.xcassets/Contents.json",
+            "Tests/GreetingViewModelTests.swift",
+            "Tests/RootViewControllerTests.swift",
+            "project.yml",
+            "scaffold.yml"
+        ])
+    }
+
     /// The SwiftUI view observes an `@Observable` view model — the same seam as
     /// UIKit's, reached through a different framework idiom (§3, ADR-0004).
     @Test("the SwiftUI view observes a view model")
@@ -159,7 +192,7 @@ struct ArchitectureExampleTests {
     }
 
     @Test("the MVVM note and its diagram reach the README",
-          arguments: [Self.mvvmUIKit, Self.mvvmSwiftUI, Self.mvvmMacOSSwiftUI])
+          arguments: [Self.mvvmUIKit, Self.mvvmSwiftUI, Self.mvvmMacOSSwiftUI, Self.mvvmMacOSAppKit])
     func architectureInReadme(configuration: ProjectConfiguration) throws {
         let readme = try #require(planner.makePlan(for: configuration).files.first { $0.path == "README.md" })
 
@@ -168,7 +201,9 @@ struct ArchitectureExampleTests {
     }
 
     @Test("no example leaves a placeholder behind",
-          arguments: [Self.mvvmUIKit, Self.mvvmSwiftUI, Self.mvvmMacOSSwiftUI, Self.mvvmcUIKit])
+          arguments: [
+              Self.mvvmUIKit, Self.mvvmSwiftUI, Self.mvvmMacOSSwiftUI, Self.mvvmMacOSAppKit, Self.mvvmcUIKit
+          ])
     func noPlaceholders(configuration: ProjectConfiguration) throws {
         for file in try planner.makePlan(for: configuration).files {
             #expect(!file.contents.contains("{{"), "\(file.path)")

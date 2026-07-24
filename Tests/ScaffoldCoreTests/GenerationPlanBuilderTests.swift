@@ -91,6 +91,10 @@ struct GenerationPlanContractTests {
         .validBaseline.with {
             $0.product.platform = .macOS
             $0.interface = .init(primary: .swiftUI)
+        },
+        .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .appKit)
         }
     ])
     func noPlaceholdersSurvive(configuration: ProjectConfiguration) throws {
@@ -99,6 +103,48 @@ struct GenerationPlanContractTests {
         for file in plan.files {
             #expect(!file.contents.contains("{{"), "\(file.path)")
             #expect(!file.path.contains("{{"), "\(file.path)")
+        }
+    }
+
+    @Test("a macOS AppKit project is built in code, with no scene delegate")
+    func macosAppKitFileList() throws {
+        let plan = try planner.makePlan(for: .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .appKit)
+        })
+
+        #expect(plan.files.map(\.path) == [
+            ".gitignore",
+            ".swiftformat",
+            ".swiftlint.yml",
+            "App/AppDelegate.swift",
+            "App/RootViewController.swift",
+            "App/main.swift",
+            "Makefile",
+            "README.md",
+            "Resources/Assets.xcassets/AccentColor.colorset/Contents.json",
+            "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+            "Resources/Assets.xcassets/Contents.json",
+            "Tests/RootViewControllerTests.swift",
+            "project.yml",
+            "scaffold.yml"
+        ])
+    }
+
+    /// ADR-0006: the AppKit variants carry no Interface Builder files. A
+    /// storyboard or MainMenu.xib would reintroduce the machine-generated XML
+    /// that XcodeGen exists to keep out of the project file.
+    @Test("the AppKit variant ships no storyboard or xib", arguments: [ArchitecturePattern.minimal, .mvvm])
+    func appKitHasNoInterfaceBuilderFiles(pattern: ArchitecturePattern) throws {
+        let plan = try planner.makePlan(for: .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .appKit)
+            $0.architecture.pattern = pattern
+        })
+
+        for file in plan.files {
+            #expect(!file.path.hasSuffix(".storyboard"), "\(file.path)")
+            #expect(!file.path.hasSuffix(".xib"), "\(file.path)")
         }
     }
 
@@ -267,14 +313,15 @@ struct GenerationPlanCommandTests {
 
 @Suite("Templates that do not exist")
 struct TemplateSelectionTests {
-    /// macOS AppKit passes validation now but has no templates until M4, so a
-    /// plan for it is a template lookup that finds nothing. Failing with a clear
-    /// message beats producing a project with no sources in it.
+    /// A platform × interface with no variant directory. macos-uikit is such a
+    /// combination — validation rejects it (XS1001), but makePlan does not
+    /// validate, so it reaches the template lookup and finds nothing. Failing
+    /// with a clear message beats producing a project with no sources in it.
     @Test("a variant with no templates is an error")
     func unknownVariant() throws {
         let configuration = ProjectConfiguration.validBaseline.with {
             $0.product.platform = .macOS
-            $0.interface = .init(primary: .appKit)
+            $0.interface = .init(primary: .uiKit)
         }
 
         #expect(throws: TemplateNotFoundError.self) {

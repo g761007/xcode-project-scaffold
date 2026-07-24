@@ -291,6 +291,126 @@ struct RootViewControllerTests {
 }
 
 """#,
+        "Architectures/mvvm/macos-appkit/App/GreetingViewModel.swift": #"""
+/// The screen's state and behaviour, with no reference to UIKit.
+///
+/// Keeping the logic here — not in the view controller — is what makes the extra
+/// type worthwhile: the view model can be tested on its own, without a running
+/// view. See `Tests/GreetingViewModelTests.swift`.
+@MainActor
+final class GreetingViewModel {
+    let title: String
+    private(set) var tapCount = 0
+
+    /// Called when the state changes, so the view knows to re-render. A plain
+    /// closure keeps the view model free of any UI framework; a larger app might
+    /// reach for Observation or Combine instead.
+    var onChange: (() -> Void)?
+
+    init(title: String) {
+        self.title = title
+    }
+
+    var tapCountText: String {
+        "Tapped \(tapCount) time\(tapCount == 1 ? "" : "s")"
+    }
+
+    func registerTap() {
+        tapCount += 1
+        onChange?()
+    }
+}
+
+"""#,
+        "Architectures/mvvm/macos-appkit/App/RootViewController.swift": #"""
+import AppKit
+
+final class RootViewController: NSViewController {
+    private let viewModel: GreetingViewModel
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let tapCountLabel = NSTextField(labelWithString: "")
+    private lazy var tapButton = NSButton(title: "Tap me", target: self, action: #selector(handleTap))
+
+    /// The view model is created outside the view but defaulted here, so the app
+    /// gets a working screen and a test can still supply its own. See
+    /// App/GreetingViewModel.swift for the logic itself.
+    init(viewModel: GreetingViewModel = GreetingViewModel(title: "{{PROJECT_NAME}}")) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used; this view is created in code.")
+    }
+
+    /// No storyboard or XIB: the view hierarchy is built in code (ADR-0006).
+    override func loadView() {
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 300))
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        titleLabel.stringValue = viewModel.title
+        titleLabel.font = .systemFont(ofSize: 36, weight: .semibold)
+
+        let stack = NSStackView(views: [titleLabel, tapCountLabel, tapButton])
+        stack.orientation = .vertical
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+
+        // Re-render whenever the view model changes, and once for the first state.
+        viewModel.onChange = { [weak self] in self?.render() }
+        render()
+    }
+
+    @objc private func handleTap() {
+        viewModel.registerTap()
+    }
+
+    private func render() {
+        tapCountLabel.stringValue = viewModel.tapCountText
+    }
+}
+
+"""#,
+        "Architectures/mvvm/macos-appkit/Tests/GreetingViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Greeting view model")
+struct GreetingViewModelTests {
+    @Test("it starts with no taps")
+    func startsWithNoTaps() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        #expect(viewModel.tapCount == 0)
+        #expect(viewModel.tapCountText == "Tapped 0 times")
+    }
+
+    @Test("registering a tap advances the count and notifies the view")
+    func registerTapNotifies() {
+        let viewModel = GreetingViewModel(title: "Demo")
+        var changes = 0
+        viewModel.onChange = { changes += 1 }
+
+        viewModel.registerTap()
+
+        #expect(viewModel.tapCount == 1)
+        #expect(viewModel.tapCountText == "Tapped 1 time")
+        #expect(changes == 1)
+    }
+}
+
+"""#,
         "Architectures/mvvm/macos-swiftui/App/ContentView.swift": #"""
 import SwiftUI
 
@@ -1010,6 +1130,189 @@ struct RootViewControllerTests {
         controller.loadViewIfNeeded()
 
         #expect(controller.view.backgroundColor == .systemBackground)
+    }
+}
+
+"""#,
+        "Variants/macos-appkit/App/AppDelegate.swift": #"""
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var window: NSWindow?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.mainMenu = makeMainMenu()
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "{{PROJECT_NAME}}"
+        window.contentViewController = RootViewController()
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.window = window
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
+    /// The menu bar, built in code rather than from MainMenu.xib (ADR-0006):
+    /// just enough to be a well-behaved app — About and Quit, and an Edit menu
+    /// so the standard text shortcuts work in any control. Extend it here.
+    private func makeMainMenu() -> NSMenu {
+        let mainMenu = NSMenu()
+        let appName = ProcessInfo.processInfo.processName
+
+        let appItem = NSMenuItem()
+        mainMenu.addItem(appItem)
+        let appMenu = NSMenu()
+        appItem.submenu = appMenu
+        appMenu.addItem(
+            withTitle: "About \(appName)",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            keyEquivalent: ""
+        )
+        appMenu.addItem(.separator())
+        appMenu.addItem(
+            withTitle: "Quit \(appName)",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+
+        let editItem = NSMenuItem()
+        mainMenu.addItem(editItem)
+        let editMenu = NSMenu(title: "Edit")
+        editItem.submenu = editMenu
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        return mainMenu
+    }
+}
+
+"""#,
+        "Variants/macos-appkit/App/RootViewController.swift": #"""
+import AppKit
+
+final class RootViewController: NSViewController {
+    /// No storyboard or XIB: the view hierarchy is built in code (ADR-0006).
+    override func loadView() {
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 300))
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let greeting = NSTextField(labelWithString: "{{PROJECT_NAME}}")
+        greeting.font = .systemFont(ofSize: 36, weight: .semibold)
+        greeting.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(greeting)
+
+        NSLayoutConstraint.activate([
+            greeting.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            greeting.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+}
+
+"""#,
+        "Variants/macos-appkit/App/main.swift": #"""
+import AppKit
+
+// The app is assembled entirely in code: no MainMenu.xib, no storyboard. Those
+// are machine-generated XML — the same merge-conflict source this project uses
+// XcodeGen to keep out of the project file (ADR-0006). This file is the
+// executable's entry point, standing in for @NSApplicationMain.
+let application = NSApplication.shared
+let delegate = AppDelegate()
+application.delegate = delegate
+application.setActivationPolicy(.regular)
+application.run()
+
+"""#,
+        "Variants/macos-appkit/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": #"""
+{
+  "images" : [
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "16x16"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "16x16"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "32x32"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "32x32"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "128x128"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "128x128"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "256x256"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "256x256"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "1x",
+      "size" : "512x512"
+    },
+    {
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "512x512"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+
+"""#,
+        "Variants/macos-appkit/Tests/RootViewControllerTests.swift": #"""
+import AppKit
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Root view controller")
+struct RootViewControllerTests {
+    @Test("loading the view builds its content in code")
+    func viewLoads() {
+        let controller = RootViewController()
+
+        controller.loadViewIfNeeded()
+
+        #expect(!controller.view.subviews.isEmpty)
     }
 }
 
