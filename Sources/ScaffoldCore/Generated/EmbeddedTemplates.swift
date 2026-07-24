@@ -22,6 +22,189 @@ If you later want a named pattern — MVVM, MVVM-C, Clean — introduce it when
 there is enough code to justify it, not before.
 
 """#,
+        "Architectures/mvvm/architecture.md": #"""
+**MVVM.** The screen is split into a *view* and a *view model*. The view owns no
+logic: it shows what the view model exposes and forwards user actions to it, then
+re-renders when the view model reports a change. The view model holds the state
+and the behaviour and has no reference to any UI framework, so it can be tested
+without a running view — see `Tests/`.
+
+```mermaid
+flowchart LR
+    View -- "user actions" --> ViewModel
+    ViewModel -- "state + change notifications" --> View
+    ViewModel --> Model
+```
+
+The example lives in `App/`. As the app grows, keep each feature's view and view
+model together and move shared types behind the view model, rather than adding a
+layer before there is code that needs it.
+
+"""#,
+        "Architectures/mvvm/ios-uikit/App/GreetingViewModel.swift": #"""
+/// The screen's state and behaviour, with no reference to UIKit.
+///
+/// Keeping the logic here — not in the view controller — is what makes the extra
+/// type worthwhile: the view model can be tested on its own, without a running
+/// view. See `Tests/GreetingViewModelTests.swift`.
+@MainActor
+final class GreetingViewModel {
+    let title: String
+    private(set) var tapCount = 0
+
+    /// Called when the state changes, so the view knows to re-render. A plain
+    /// closure keeps the view model free of any UI framework; a larger app might
+    /// reach for Observation or Combine instead.
+    var onChange: (() -> Void)?
+
+    init(title: String) {
+        self.title = title
+    }
+
+    var tapCountText: String {
+        "Tapped \(tapCount) time\(tapCount == 1 ? "" : "s")"
+    }
+
+    func registerTap() {
+        tapCount += 1
+        onChange?()
+    }
+}
+
+"""#,
+        "Architectures/mvvm/ios-uikit/App/RootViewController.swift": #"""
+import UIKit
+
+final class RootViewController: UIViewController {
+    private let viewModel: GreetingViewModel
+    private let titleLabel = UILabel()
+    private let tapCountLabel = UILabel()
+    private let tapButton = UIButton(configuration: .filled())
+
+    init(viewModel: GreetingViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used; this view is created in code.")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        view.backgroundColor = .systemBackground
+
+        titleLabel.text = viewModel.title
+        titleLabel.font = .preferredFont(forTextStyle: .largeTitle)
+        titleLabel.adjustsFontForContentSizeCategory = true
+
+        tapCountLabel.font = .preferredFont(forTextStyle: .body)
+        tapCountLabel.adjustsFontForContentSizeCategory = true
+
+        tapButton.setTitle("Tap me", for: .normal)
+        tapButton.addAction(
+            UIAction { [weak self] _ in self?.viewModel.registerTap() },
+            for: .touchUpInside
+        )
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, tapCountLabel, tapButton])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+
+        // Re-render whenever the view model changes, and once for the first state.
+        viewModel.onChange = { [weak self] in self?.render() }
+        render()
+    }
+
+    private func render() {
+        tapCountLabel.text = viewModel.tapCountText
+    }
+}
+
+"""#,
+        "Architectures/mvvm/ios-uikit/App/SceneDelegate.swift": #"""
+import UIKit
+
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+
+        // The view model is created here and injected into the view, so the view
+        // holds no logic of its own — see App/GreetingViewModel.swift.
+        let viewModel = GreetingViewModel(title: "{{PROJECT_NAME}}")
+        let window = UIWindow(windowScene: windowScene)
+        window.rootViewController = RootViewController(viewModel: viewModel)
+        window.makeKeyAndVisible()
+        self.window = window
+    }
+}
+
+"""#,
+        "Architectures/mvvm/ios-uikit/Tests/GreetingViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Greeting view model")
+struct GreetingViewModelTests {
+    @Test("it starts with no taps")
+    func startsWithNoTaps() {
+        let viewModel = GreetingViewModel(title: "Demo")
+
+        #expect(viewModel.tapCount == 0)
+        #expect(viewModel.tapCountText == "Tapped 0 times")
+    }
+
+    @Test("registering a tap advances the count and notifies the view")
+    func registerTapNotifies() {
+        let viewModel = GreetingViewModel(title: "Demo")
+        var changes = 0
+        viewModel.onChange = { changes += 1 }
+
+        viewModel.registerTap()
+
+        #expect(viewModel.tapCount == 1)
+        #expect(viewModel.tapCountText == "Tapped 1 time")
+        #expect(changes == 1)
+    }
+}
+
+"""#,
+        "Architectures/mvvm/ios-uikit/Tests/RootViewControllerTests.swift": #"""
+import Testing
+import UIKit
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Root view controller")
+struct RootViewControllerTests {
+    @Test("loading the view gives it a background")
+    func viewLoads() {
+        let controller = RootViewController(viewModel: GreetingViewModel(title: "Demo"))
+
+        controller.loadViewIfNeeded()
+
+        #expect(controller.view.backgroundColor == .systemBackground)
+    }
+}
+
+"""#,
         "Shared/.gitignore": #"""
 ## macOS
 .DS_Store

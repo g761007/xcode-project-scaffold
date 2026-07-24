@@ -17,21 +17,41 @@ import Testing
 struct MaterialiseTemplatesTests {
     static let root = ProcessInfo.processInfo.environment["MATERIALISE_ROOT"]
 
+    /// One generated project to lay on disk. The architecture example ships its
+    /// own sources, so it needs a case of its own — the plain variants would
+    /// never render `GreetingViewModel` for a linter to read.
+    struct Variant: Sendable, CustomStringConvertible {
+        let name: String
+        let interface: UIFramework
+        let architecture: ArchitecturePattern
+        let includeExample: Bool?
+
+        var description: String {
+            name
+        }
+    }
+
+    static let variants: [Variant] = [
+        Variant(name: "UIKitApp", interface: .uiKit, architecture: .minimal, includeExample: nil),
+        Variant(name: "SwiftUIApp", interface: .swiftUI, architecture: .minimal, includeExample: nil),
+        Variant(name: "UIKitMVVMApp", interface: .uiKit, architecture: .mvvm, includeExample: true)
+    ]
+
     @Test(
         "write a project per variant",
         .enabled(if: root != nil, "set MATERIALISE_ROOT to enable"),
-        arguments: [UIFramework.uiKit, .swiftUI]
+        arguments: variants
     )
-    func write(interface: UIFramework) throws {
+    func write(variant: Variant) throws {
         let root = try #require(Self.root)
-        let name = interface == .uiKit ? "UIKitApp" : "SwiftUIApp"
-        let destination = URL(fileURLWithPath: root).appendingPathComponent(name)
+        let destination = URL(fileURLWithPath: root).appendingPathComponent(variant.name)
 
         let plan = try GenerationPlanBuilder().makePlan(
             for: .validBaseline.with {
-                $0.project.name = name
-                $0.project.bundleIdentifier = "com.example.\(name.lowercased())"
-                $0.interface = .init(primary: interface)
+                $0.project.name = variant.name
+                $0.project.bundleIdentifier = "com.example.\(variant.name.lowercased())"
+                $0.interface = .init(primary: variant.interface)
+                $0.architecture = .init(pattern: variant.architecture, includeExample: variant.includeExample)
             },
             // No commands, so nothing here needs git or XcodeGen: this exists to
             // put files where a linter can read them.

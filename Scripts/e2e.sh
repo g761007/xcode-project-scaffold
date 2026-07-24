@@ -75,6 +75,21 @@ check() {
 check UIKitApp --preset ios-uikit
 check SwiftUIApp --preset ios-swiftui
 
+# The MVVM architecture example, which no preset produces: it replaces the app's
+# main screen with a view and a concrete view model, and ships its own tests.
+# The plain variants above never compile that code, so it earns a run of its own.
+cat > "$root/mvvm-uikit.yml" <<'YML'
+project:
+  name: MVVMApp
+  bundleIdentifier: com.example.mvvmapp
+interface:
+  primary: uikit
+architecture:
+  pattern: mvvm
+  includeExample: true
+YML
+check MVVMApp --config "$root/mvvm-uikit.yml"
+
 # Environments, which no preset produces and which the two runs above therefore
 # say nothing about. They earn a case of their own because they change the
 # generated schemes: the default scheme belongs to the Release environment, and
