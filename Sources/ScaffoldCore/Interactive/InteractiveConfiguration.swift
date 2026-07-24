@@ -21,17 +21,21 @@ public enum InteractivePromptError: Error, Equatable, Sendable {
 public struct InteractiveConfiguration: Sendable {
     public init() {}
 
-    /// - Parameter name: a project name already given on the command line, if
-    ///   any; when present, the name question is skipped.
+    /// Every parameter but the prompter is an answer already given on the
+    /// command line, if any; a question that has its answer is not asked. The
+    /// name comes as its own argument, the platform and interface together as a
+    /// `--variant` (§17.1) — which is why they arrive as one.
+    ///
     /// - Throws: `InteractivePromptError`.
     public func collect(
         name initialName: String?,
+        variant: Variant? = nil,
         using prompter: some Prompter
     ) throws -> PartialProjectConfiguration {
-        let platform = try askPlatform(using: prompter)
+        let platform = try variant?.platform ?? askPlatform(using: prompter)
         let name = try initialName ?? askName(using: prompter)
         let bundleIdentifier = try askBundleIdentifier(for: name, using: prompter)
-        let interface = try askInterface(using: prompter)
+        let interface = try variant?.interface ?? askInterface(using: prompter)
         let (pattern, includeExample) = try askArchitecture(using: prompter)
         let environments = try askEnvironments(using: prompter)
 
