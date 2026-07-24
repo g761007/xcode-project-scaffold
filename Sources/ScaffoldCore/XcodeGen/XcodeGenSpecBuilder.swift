@@ -29,6 +29,7 @@ struct XcodeGenSpecBuilder: Sendable {
             languageMode: project.language.languageMode.rawValue,
             strictConcurrency: project.language.languageMode == .v6,
             configurations: makeConfigurations(for: project),
+            configFiles: makeConfigFiles(for: project),
             packages: makePackages(for: project),
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
@@ -76,6 +77,42 @@ extension XcodeGenSpecBuilder {
     }
 }
 
+// MARK: - Environment values
+
+extension XcodeGenSpecBuilder {
+    /// Which xcconfig each configuration reads (§14). Environments with
+    /// anything to say get their file; a project with secrets but no
+    /// environments attaches the secrets file to XcodeGen's own Debug and
+    /// Release, so the keys still resolve.
+    private func makeConfigFiles(for project: ProjectConfiguration) -> [XcodeGenSpec.ConfigFile] {
+        let hasSecrets = project.secrets?.keys.isEmpty == false
+
+        let environmentFiles = project.environments
+            .filter { !$0.values.isEmpty || hasSecrets }
+            .map { environment in
+                XcodeGenSpec.ConfigFile(
+                    configuration: environment.configuration,
+                    path: "Configurations/\(environment.configuration).xcconfig"
+                )
+            }
+
+        if environmentFiles.isEmpty, hasSecrets {
+            return ["Debug", "Release"].map {
+                XcodeGenSpec.ConfigFile(configuration: $0, path: ConfigurationDefaults.secretsFile)
+            }
+        }
+        return environmentFiles
+    }
+
+    /// Sorted, because the Info.plist properties should not churn with
+    /// dictionary order.
+    private func valueKeys(of project: ProjectConfiguration) -> [String] {
+        let environmentKeys = project.environments.flatMap(\.values.keys)
+        let secretKeys = (project.secrets?.keys ?? []).map(\.name)
+        return Array(Set(environmentKeys + secretKeys)).sorted()
+    }
+}
+
 // MARK: - Targets
 
 extension XcodeGenSpecBuilder {
@@ -89,6 +126,7 @@ extension XcodeGenSpecBuilder {
             sources: Self.appSourceDirectories,
             infoPlist: XcodeGenSpec.InfoPlist(
                 path: Self.infoPlistPath,
+                valueKeys: valueKeys(of: project),
                 includesLaunchScreen: isIOS,
                 includesSceneManifest: isIOS && project.interface.primary == .uiKit
             ),

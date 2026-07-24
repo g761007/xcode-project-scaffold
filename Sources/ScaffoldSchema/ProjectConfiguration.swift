@@ -18,6 +18,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
     public var generator: Generator
     public var dependencyManagement: DependencyManagement
     public var environments: [Environment]
+    public var secrets: Secrets?
     public var quality: Quality
     public var testing: Testing
     public var git: Git
@@ -32,6 +33,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         generator: Generator? = nil,
         dependencyManagement: DependencyManagement? = nil,
         environments: [Environment]? = nil,
+        secrets: Secrets? = nil,
         quality: Quality? = nil,
         testing: Testing? = nil,
         git: Git? = nil
@@ -45,6 +47,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         self.generator = generator ?? Generator()
         self.dependencyManagement = dependencyManagement ?? DependencyManagement()
         self.environments = environments ?? []
+        self.secrets = secrets
         self.quality = quality ?? Quality()
         self.testing = testing ?? Testing()
         self.git = git ?? Git()
@@ -62,6 +65,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
             generator: container.decodeIfPresent(Generator.self, forKey: .generator),
             dependencyManagement: container.decodeIfPresent(DependencyManagement.self, forKey: .dependencyManagement),
             environments: container.decodeIfPresent([Environment].self, forKey: .environments),
+            secrets: container.decodeIfPresent(Secrets.self, forKey: .secrets),
             quality: container.decodeIfPresent(Quality.self, forKey: .quality),
             testing: container.decodeIfPresent(Testing.self, forKey: .testing),
             git: container.decodeIfPresent(Git.self, forKey: .git)
@@ -271,22 +275,81 @@ extension ProjectConfiguration {
 }
 
 /// One build variant of the project: a build configuration, a scheme, and the
-/// bundle identifier and display name it ships under.
+/// bundle identifier and display name it ships under — plus the values (§14)
+/// its builds carry, reaching code through the Info.plist.
 public struct Environment: Codable, Equatable, Sendable {
     public var name: String
     public var configuration: String
     public var bundleIdentifierSuffix: String?
     public var displayNameSuffix: String?
+    public var values: [String: String]
+
+    enum CodingKeys: String, CodingKey {
+        case name, configuration, bundleIdentifierSuffix, displayNameSuffix, values
+    }
 
     public init(
         name: String,
         configuration: String,
         bundleIdentifierSuffix: String? = nil,
-        displayNameSuffix: String? = nil
+        displayNameSuffix: String? = nil,
+        values: [String: String] = [:]
     ) {
         self.name = name
         self.configuration = configuration
         self.bundleIdentifierSuffix = bundleIdentifierSuffix
         self.displayNameSuffix = displayNameSuffix
+        self.values = values
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            name: container.decode(String.self, forKey: .name),
+            configuration: container.decode(String.self, forKey: .configuration),
+            bundleIdentifierSuffix: container.decodeIfPresent(String.self, forKey: .bundleIdentifierSuffix),
+            displayNameSuffix: container.decodeIfPresent(String.self, forKey: .displayNameSuffix),
+            values: container.decodeIfPresent([String: String].self, forKey: .values) ?? [:]
+        )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(configuration, forKey: .configuration)
+        try container.encodeIfPresent(bundleIdentifierSuffix, forKey: .bundleIdentifierSuffix)
+        try container.encodeIfPresent(displayNameSuffix, forKey: .displayNameSuffix)
+        if !values.isEmpty {
+            try container.encode(values, forKey: .values)
+        }
+    }
+}
+
+/// What `scaffold.yml` may say about secrets, and all it may say (§14): the
+/// key's name and an example value. There is no field for an actual secret —
+/// that absence is the design, not an omission. The real file lives at the
+/// conventional `Configurations/Secrets.xcconfig`, git-ignored.
+public struct Secrets: Codable, Equatable, Sendable {
+    public var keys: [SecretKey]
+
+    public init(keys: [SecretKey] = []) {
+        self.keys = keys
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(keys: container.decodeIfPresent([SecretKey].self, forKey: .keys) ?? [])
+    }
+
+    public struct SecretKey: Codable, Equatable, Sendable {
+        public var name: String
+        /// Written into the example file, and into the initial real file so a
+        /// fresh clone builds — obviously fake, so it gets replaced.
+        public var example: String
+
+        public init(name: String, example: String) {
+            self.name = name
+            self.example = example
+        }
     }
 }

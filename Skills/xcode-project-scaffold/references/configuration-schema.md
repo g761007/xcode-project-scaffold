@@ -287,6 +287,7 @@ release may help.
 | `XS1304` | Project or environment name cannot be used as a target or scheme name |
 | `XS1401` | Two environments share a name |
 | `XS1402` | Two environments share a build configuration |
+| `XS1403` | An environment value or secret key cannot be a build setting |
 | `XS1501` | A package name is declared more than once |
 | `XS1502` | A package has an empty url |
 | `XS1503` | A product maps to a target the project does not generate |

@@ -49,7 +49,8 @@ extension ProjectConfiguration {
                 name: "development",
                 configuration: "Debug",
                 bundleIdentifierSuffix: ".dev",
-                displayNameSuffix: " Dev"
+                displayNameSuffix: " Dev",
+                values: ["API_BASE_URL": "https://dev.example.com"]
             ),
             Environment(
                 name: "production",
@@ -58,6 +59,7 @@ extension ProjectConfiguration {
                 displayNameSuffix: nil
             )
         ],
+        secrets: Secrets(keys: [.init(name: "API_KEY", example: "example-123")]),
         quality: Quality(swiftlint: false, swiftformat: false),
         testing: Testing(unit: .xctest, ui: UITesting(
             enabled: true,

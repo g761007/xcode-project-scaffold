@@ -58,6 +58,7 @@ extension GenerationPlanBuilder {
                 contents: PodfileRenderer().render(configuration)
             ))
         }
+        files.append(contentsOf: environmentFiles(for: configuration))
 
         return files.sorted { $0.path < $1.path }
     }
@@ -105,6 +106,54 @@ extension GenerationPlanBuilder {
             return "\t@echo \"No linters are enabled for this project.\""
         }
         return commands.map { "\t\($0)" }.joined(separator: "\n")
+    }
+}
+
+// MARK: - Environment values and secrets
+
+extension GenerationPlanBuilder {
+    /// What §14 lands on disk: one xcconfig per configuration that has
+    /// anything to say, the secrets pair when keys are declared, and the typed
+    /// accessor whenever any key exists to access.
+    private func environmentFiles(for configuration: ProjectConfiguration) -> [PlannedFile] {
+        let renderer = EnvironmentFilesRenderer()
+        let hasSecrets = configuration.secrets?.keys.isEmpty == false
+        var files: [PlannedFile] = []
+
+        let speaking = configuration.environments.filter { !$0.values.isEmpty || hasSecrets }
+        for environment in speaking {
+            files.append(PlannedFile(
+                path: "Configurations/\(environment.configuration).xcconfig",
+                contents: renderer.environmentFile(for: environment, includingSecrets: hasSecrets)
+            ))
+        }
+
+        if let secrets = configuration.secrets, hasSecrets {
+            // The same content twice on purpose: the example is the record,
+            // and the real file starts as a copy so a fresh clone builds —
+            // only the real one is git-ignored.
+            let contents = renderer.secretsFile(for: secrets)
+            files.append(PlannedFile(path: "Configurations/Secrets.example.xcconfig", contents: contents))
+            files.append(PlannedFile(path: ConfigurationDefaults.secretsFile, contents: contents))
+        }
+
+        let keys = valueKeys(of: configuration)
+        if !keys.isEmpty {
+            files.append(PlannedFile(
+                path: "App/AppConfiguration.swift",
+                contents: renderer.appConfigurationSource(valueKeys: keys)
+            ))
+        }
+
+        return files
+    }
+
+    /// Every key a build can inject: each environment's values and every
+    /// secret, deduplicated — the accessor and the Info.plist want the union.
+    private func valueKeys(of configuration: ProjectConfiguration) -> [String] {
+        let environmentKeys = configuration.environments.flatMap(\.values.keys)
+        let secretKeys = (configuration.secrets?.keys ?? []).map(\.name)
+        return Array(Set(environmentKeys + secretKeys))
     }
 }
 

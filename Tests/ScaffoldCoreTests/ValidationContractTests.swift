@@ -134,6 +134,17 @@ struct ValidationContractTests {
             }
         ),
         ValidationTrigger(
+            code: .invalidValueKey,
+            message: "Value key '9BAD-KEY' cannot be used as a build setting.",
+            configuration: .validBaseline.with {
+                $0.environments = [Environment(
+                    name: "development",
+                    configuration: "Debug",
+                    values: ["9BAD-KEY": "x"]
+                )]
+            }
+        ),
+        ValidationTrigger(
             code: .bundlerNotSupported,
             message: "Bundler is not supported in this version.",
             configuration: .validBaseline.with {

@@ -38,4 +38,6 @@ public enum ConfigurationDefaults {
     public static let launchPerformanceTest = false
 
     public static let defaultBranch = "main"
+
+    public static let secretsFile = "Configurations/Secrets.xcconfig"
 }

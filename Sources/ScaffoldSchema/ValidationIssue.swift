@@ -61,6 +61,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     // XS14xx — environments.
     case duplicateEnvironmentName = "XS1401"
     case duplicateBuildConfiguration = "XS1402"
+    case invalidValueKey = "XS1403"
 
     // XS15xx — dependencies.
     case duplicatePackageName = "XS1501"
@@ -102,6 +103,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .invalidProjectName,
              .duplicateEnvironmentName,
              .duplicateBuildConfiguration,
+             .invalidValueKey,
              .duplicatePackageName,
              .emptyPackageURL,
              .unknownProductTarget,

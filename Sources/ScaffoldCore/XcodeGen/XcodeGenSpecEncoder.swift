@@ -31,6 +31,10 @@ extension XcodeGenSpecEncoder {
             })))
         }
 
+        if !spec.configFiles.isEmpty {
+            pairs.append(("configFiles", map(spec.configFiles.map { ($0.configuration, string($0.path)) })))
+        }
+
         var baseSettings: [(String, Node)] = [("SWIFT_VERSION", string(spec.languageMode))]
         if spec.strictConcurrency {
             baseSettings.append(("SWIFT_STRICT_CONCURRENCY", string("complete")))
@@ -114,6 +118,8 @@ extension XcodeGenSpecEncoder {
         var properties: [(String, Node)] = [
             ("CFBundleDisplayName", string("$(PRODUCT_DISPLAY_NAME)"))
         ]
+
+        properties += infoPlist.valueKeys.map { key in (key, string("$(\(key))")) }
 
         if infoPlist.includesLaunchScreen {
             properties.append(("UILaunchScreen", map([])))

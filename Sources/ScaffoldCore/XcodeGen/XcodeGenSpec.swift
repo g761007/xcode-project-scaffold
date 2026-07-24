@@ -21,6 +21,8 @@ struct XcodeGenSpec: Equatable, Sendable {
     var strictConcurrency: Bool
     /// Empty means "leave XcodeGen's own Debug and Release in place".
     var configurations: [Configuration]
+    /// The xcconfig each configuration reads (§14); empty means none.
+    var configFiles: [ConfigFile]
     /// Remote packages, in declaration order. Empty means no packages section.
     var packages: [Package]
     var appTarget: AppTarget
@@ -38,6 +40,11 @@ struct XcodeGenSpec: Equatable, Sendable {
     struct Configuration: Equatable, Sendable {
         var name: String
         var optimized: Bool
+    }
+
+    struct ConfigFile: Equatable, Sendable {
+        var configuration: String
+        var path: String
     }
 
     struct AppTarget: Equatable, Sendable {
@@ -72,6 +79,9 @@ struct XcodeGenSpec: Equatable, Sendable {
     /// second file that can drift away from it.
     struct InfoPlist: Equatable, Sendable {
         var path: String
+        /// Declared environment and secret keys, each written as `KEY:
+        /// $(KEY)` so the active configuration's xcconfig decides the value.
+        var valueKeys: [String]
         /// iOS 14 and later can describe the launch screen inline, so the
         /// project ships no storyboard at all. Not applicable to macOS.
         var includesLaunchScreen: Bool

@@ -791,6 +791,10 @@ build/
 ## Generated from project.yml
 App/Info.plist
 
+## Secrets
+# Real values live here; Secrets.example.xcconfig is the committed record.
+Configurations/Secrets.xcconfig
+
 ## CocoaPods
 # Installed by `pod install`; the Podfile and Podfile.lock are the record.
 Pods/
