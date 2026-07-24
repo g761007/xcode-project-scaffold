@@ -8,7 +8,7 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
-## [0.3.0] — Unreleased
+## [0.3.0] — 2026-07-24
 
 ### Added
 
