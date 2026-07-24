@@ -11,19 +11,23 @@ public enum ValidationSeverity: String, Codable, Sendable, CaseIterable {
 /// never help, or abandons something that ships next month.
 public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     // XS0xxx — capability boundary.
-    case platformNotSupported = "XS0001"
+    //
+    // XS0001 (platform) and XS0006 (interface) were removed once macOS and
+    // AppKit became supported: with every platform and interface accepted, no
+    // configuration could reach them, and a code no configuration can trigger
+    // is dead — the same reason XS0002 and the old XS1201 were dropped.
     case productTypeNotSupported = "XS0003"
     case architectureNotSupported = "XS0004"
     case generatorNotSupported = "XS0005"
-    case interfaceNotSupported = "XS0006"
     /// The floor is xscaffold's own, not the SDK's, so it moves when the
     /// templates start supporting older releases. That makes it a boundary,
     /// not an impossibility.
     case deploymentTargetNotSupported = "XS0007"
     case testFrameworkNotSupported = "XS0008"
-    /// MVVM-C on SwiftUI: valid one day (a SwiftUI router), not built yet, so a
-    /// boundary rather than an impossibility — SwiftUI does have a coordinator
-    /// analogue, unlike, say, UIKit on macOS.
+    /// MVVM-C requires UIKit. On SwiftUI (a router over `NavigationStack`) and
+    /// on AppKit (a window-driven coordinator) an analogue exists but is not
+    /// built yet, so this is a boundary rather than an impossibility — it says
+    /// "in this version".
     case coordinatorRequiresUIKit = "XS0009"
 
     // XS10xx — platform and interface pairings.
@@ -63,11 +67,9 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// reclassification.
     public var category: Category {
         switch self {
-        case .platformNotSupported,
-             .productTypeNotSupported,
+        case .productTypeNotSupported,
              .architectureNotSupported,
              .generatorNotSupported,
-             .interfaceNotSupported,
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
              .coordinatorRequiresUIKit:

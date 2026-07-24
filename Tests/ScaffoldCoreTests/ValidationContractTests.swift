@@ -22,11 +22,6 @@ struct ValidationTrigger: Sendable, CustomStringConvertible {
 struct ValidationContractTests {
     static let triggers: [ValidationTrigger] = [
         ValidationTrigger(
-            code: .platformNotSupported,
-            message: "Platform 'macos' is not supported in this version.",
-            configuration: .validBaseline.with { $0.product.platform = .macOS }
-        ),
-        ValidationTrigger(
             code: .productTypeNotSupported,
             message: "Product type 'framework' is not supported in this version.",
             configuration: .validBaseline.with { $0.product.type = .framework }
@@ -42,11 +37,6 @@ struct ValidationContractTests {
             configuration: .validBaseline.with { $0.generator.type = .tuist }
         ),
         ValidationTrigger(
-            code: .interfaceNotSupported,
-            message: "Interface 'appkit' is not supported in this version.",
-            configuration: .validBaseline.with { $0.interface = .init(primary: .appKit) }
-        ),
-        ValidationTrigger(
             code: .deploymentTargetNotSupported,
             message: "Deployment target '12.0' is below 15.0, the minimum supported in this version.",
             configuration: .validBaseline.with { $0.product.deploymentTarget = "12.0" }
@@ -58,7 +48,7 @@ struct ValidationContractTests {
         ),
         ValidationTrigger(
             code: .coordinatorRequiresUIKit,
-            message: "MVVM-C is not supported for SwiftUI in this version.",
+            message: "MVVM-C is only available on UIKit in this version.",
             configuration: .validBaseline.with {
                 $0.interface = .init(primary: .swiftUI)
                 $0.architecture.pattern = .mvvmCoordinator

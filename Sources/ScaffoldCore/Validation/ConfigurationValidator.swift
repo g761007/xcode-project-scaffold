@@ -28,9 +28,7 @@ extension ConfigurationValidator {
     /// Everything else in the schema's domain decodes fine and is rejected
     /// here, so the message can say "not yet" instead of "unrecognised".
     private enum Supported {
-        static let platforms: Set<ApplePlatform> = [.iOS]
         static let productTypes: Set<ProductType> = [.application]
-        static let interfaces: Set<UIFramework> = [.uiKit, .swiftUI]
         /// MVVM-C is supported only on UIKit; that further restriction is a
         /// separate rule (`coordinatorRequiresUIKit`), because it is a pairing,
         /// not a blanket "this pattern is unsupported".
@@ -51,16 +49,8 @@ extension ConfigurationValidator {
     private func capabilityIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
         [
             unsupported(
-                configuration.product.platform, of: Supported.platforms,
-                as: "Platform", code: .platformNotSupported, at: "product.platform"
-            ),
-            unsupported(
                 configuration.product.type, of: Supported.productTypes,
                 as: "Product type", code: .productTypeNotSupported, at: "product.type"
-            ),
-            unsupported(
-                configuration.interface.primary, of: Supported.interfaces,
-                as: "Interface", code: .interfaceNotSupported, at: "interface.primary"
             ),
             unsupported(
                 configuration.architecture.pattern, of: Supported.architectures,
@@ -79,20 +69,20 @@ extension ConfigurationValidator {
     }
 
     /// MVVM-C is supported, but only on UIKit — it is a UIKit navigation
-    /// pattern. SwiftUI's analogue (a router over `NavigationStack`) is not
-    /// built yet, which makes this a boundary rather than an impossibility, so
-    /// it says "in this version" like the other capability codes. AppKit is
-    /// already refused by `interfaceNotSupported`, so this only fires for
-    /// SwiftUI.
+    /// pattern. On SwiftUI (a router over `NavigationStack`) and on AppKit (a
+    /// window-driven coordinator) the analogue is not built yet, which makes
+    /// this a boundary rather than an impossibility, so it says "in this
+    /// version" like the other capability codes. It fires for any non-UIKit
+    /// interface.
     private func coordinatorInterfaceIssue(_ configuration: ProjectConfiguration) -> ValidationIssue? {
         guard configuration.architecture.pattern == .mvvmCoordinator,
-              configuration.interface.primary == .swiftUI else { return nil }
+              configuration.interface.primary != .uiKit else { return nil }
 
         return ValidationIssue(
             code: .coordinatorRequiresUIKit,
-            message: "MVVM-C is not supported for SwiftUI in this version.",
+            message: "MVVM-C is only available on UIKit in this version.",
             path: "architecture.pattern",
-            suggestion: "Use the uikit interface for mvvm-c, or the mvvm architecture for swiftui."
+            suggestion: "Use the uikit interface for mvvm-c, or the mvvm architecture instead."
         )
     }
 

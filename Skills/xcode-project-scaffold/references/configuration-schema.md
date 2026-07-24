@@ -252,14 +252,12 @@ release may help.
 
 | Code | Meaning |
 |---|---|
-| `XS0001` | Platform not supported |
 | `XS0003` | Product type not supported |
 | `XS0004` | Architecture not supported |
 | `XS0005` | Generator not supported |
-| `XS0006` | Interface not supported |
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
-| `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI |
+| `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 

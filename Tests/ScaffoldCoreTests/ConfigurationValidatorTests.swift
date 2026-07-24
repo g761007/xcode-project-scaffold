@@ -39,16 +39,24 @@ struct ValidConfigurationTests {
 
         #expect(codes(configuration).isEmpty)
     }
+
+    /// macOS is accepted by validation now; the templates that generate it
+    /// arrive with M3/M4. At this layer a macOS project is clean on either of
+    /// its interfaces — SwiftUI, or AppKit with its implied app-delegate
+    /// lifecycle.
+    @Test("a macOS project is valid on SwiftUI and AppKit", arguments: [UIFramework.swiftUI, .appKit])
+    func macOSIsValid(interface: UIFramework) {
+        let configuration = ProjectConfiguration.validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: interface)
+        }
+
+        #expect(codes(configuration).isEmpty)
+    }
 }
 
 @Suite("Capability boundary — valid in the domain, not built yet")
 struct CapabilityBoundaryTests {
-    @Test("macOS is rejected, iOS is not")
-    func platform() {
-        #expect(codes(.validBaseline.with { $0.product.platform = .macOS }).contains(.platformNotSupported))
-        #expect(!codes(.validBaseline).contains(.platformNotSupported))
-    }
-
     @Test("framework is rejected, application is not")
     func productType() {
         #expect(codes(.validBaseline.with { $0.product.type = .framework }).contains(.productTypeNotSupported))
@@ -69,15 +77,23 @@ struct CapabilityBoundaryTests {
             .contains(.architectureNotSupported))
     }
 
-    /// MVVM-C is supported, but only on UIKit. The baseline is UIKit, so
-    /// switching to SwiftUI is the one change that should trip the rule.
-    @Test("MVVM-C is rejected for SwiftUI, accepted for UIKit")
+    /// MVVM-C is supported, but only on UIKit. The baseline is UIKit, so any
+    /// switch away from it — to SwiftUI, or to AppKit on macOS — should trip
+    /// the rule.
+    @Test("MVVM-C is rejected for SwiftUI and AppKit, accepted for UIKit")
     func coordinatorRequiresUIKit() {
         let onSwiftUI = ProjectConfiguration.validBaseline.with {
             $0.interface = .init(primary: .swiftUI)
             $0.architecture.pattern = .mvvmCoordinator
         }
         #expect(codes(onSwiftUI).contains(.coordinatorRequiresUIKit))
+
+        let onAppKit = ProjectConfiguration.validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .appKit)
+            $0.architecture.pattern = .mvvmCoordinator
+        }
+        #expect(codes(onAppKit).contains(.coordinatorRequiresUIKit))
 
         let onUIKit = ProjectConfiguration.validBaseline.with {
             $0.architecture.pattern = .mvvmCoordinator
@@ -89,17 +105,6 @@ struct CapabilityBoundaryTests {
     func generator() {
         #expect(codes(.validBaseline.with { $0.generator.type = .tuist }).contains(.generatorNotSupported))
         #expect(!codes(.validBaseline).contains(.generatorNotSupported))
-    }
-
-    @Test("AppKit is rejected, UIKit and SwiftUI are not", arguments: [UIFramework.uiKit, .swiftUI])
-    func interface(accepted: UIFramework) {
-        let rejected = ProjectConfiguration.validBaseline.with {
-            $0.interface = .init(primary: .appKit)
-        }
-        #expect(codes(rejected).contains(.interfaceNotSupported))
-
-        let allowed = ProjectConfiguration.validBaseline.with { $0.interface = .init(primary: accepted) }
-        #expect(!codes(allowed).contains(.interfaceNotSupported))
     }
 }
 

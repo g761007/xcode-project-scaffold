@@ -96,7 +96,7 @@ extension ProjectConfiguration {
         public init(platform: ApplePlatform? = nil, type: ProductType? = nil, deploymentTarget: String? = nil) {
             self.platform = platform ?? ConfigurationDefaults.platform
             self.type = type ?? ConfigurationDefaults.productType
-            self.deploymentTarget = deploymentTarget ?? ConfigurationDefaults.deploymentTarget
+            self.deploymentTarget = deploymentTarget ?? ConfigurationDefaults.deploymentTarget(for: self.platform)
         }
 
         public init(from decoder: any Decoder) throws {

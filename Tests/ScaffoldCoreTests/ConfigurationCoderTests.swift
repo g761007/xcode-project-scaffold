@@ -41,6 +41,24 @@ struct ConfigurationDefaultsTests {
         #expect(configuration.git.defaultBranch == "main")
     }
 
+    /// iOS is covered by the minimal document above; macOS has its own floor.
+    /// The default is resolved against the platform, so a macOS project does not
+    /// inherit iOS's "18.0" — a version that does not exist on macOS.
+    @Test("the deployment target default follows the platform")
+    func deploymentTargetDefaultsByPlatform() throws {
+        let macOS = try coder.decode("""
+        project:
+          name: MyApp
+          bundleIdentifier: com.example.myapp
+        product:
+          platform: macos
+        interface:
+          primary: swiftui
+        """)
+
+        #expect(macOS.product.deploymentTarget == "15.0")
+    }
+
     @Test("lifecycle follows from the interface when it is not stated")
     func lifecycleIsImpliedByInterface() throws {
         let uiKit = try coder.decode(Self.minimalDocument)
