@@ -40,4 +40,6 @@ public enum ConfigurationDefaults {
     public static let defaultBranch = "main"
 
     public static let secretsFile = "Configurations/Secrets.xcconfig"
+
+    public static let developmentLanguage = "en"
 }

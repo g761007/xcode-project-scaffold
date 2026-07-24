@@ -26,6 +26,7 @@ struct XcodeGenSpecBuilder: Sendable {
             name: project.project.name,
             platform: xcodeGenPlatform(project.product.platform),
             deploymentTarget: project.product.deploymentTarget,
+            developmentLanguage: developmentLanguage(of: project),
             languageMode: project.language.languageMode.rawValue,
             strictConcurrency: project.language.languageMode == .v6,
             configurations: makeConfigurations(for: project),
@@ -74,6 +75,20 @@ extension XcodeGenSpecBuilder {
             $0.configuration == Self.debugConfigurationName
         }
         return usesConventionalName ? Self.debugConfigurationName : first.configuration
+    }
+}
+
+// MARK: - Localization
+
+extension XcodeGenSpecBuilder {
+    /// Stated only when it says something: a localized project, or a
+    /// development language that is not Xcode's own default. Everything else
+    /// leaves project.yml exactly as it was.
+    private func developmentLanguage(of project: ProjectConfiguration) -> String? {
+        let localization = project.localization
+        let isDefault = localization.developmentLanguage == ConfigurationDefaults.developmentLanguage
+        guard !localization.languages.isEmpty || !isDefault else { return nil }
+        return localization.developmentLanguage
     }
 }
 

@@ -288,6 +288,8 @@ release may help.
 | `XS1401` | Two environments share a name |
 | `XS1402` | Two environments share a build configuration |
 | `XS1403` | An environment value or secret key cannot be a build setting |
+| `XS1601` | languages omits the development language |
+| `XS1602` | A language is listed more than once |
 | `XS1501` | A package name is declared more than once |
 | `XS1502` | A package has an empty url |
 | `XS1503` | A product maps to a target the project does not generate |

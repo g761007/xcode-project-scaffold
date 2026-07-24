@@ -34,6 +34,8 @@ struct YAMLContractTests {
     dependencyManagement:
       mode: none
     environments: []
+    localization:
+      developmentLanguage: en
     quality:
       swiftlint: true
       swiftformat: true

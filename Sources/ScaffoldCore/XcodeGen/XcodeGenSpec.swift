@@ -17,6 +17,9 @@ struct XcodeGenSpec: Equatable, Sendable {
     /// XcodeGen's own spelling — `iOS`, not `ios`.
     var platform: String
     var deploymentTarget: String
+    /// Emitted into XcodeGen's options only when it says something — a
+    /// localized project, or a non-default development language.
+    var developmentLanguage: String?
     var languageMode: String
     var strictConcurrency: Bool
     /// Empty means "leave XcodeGen's own Debug and Release in place".

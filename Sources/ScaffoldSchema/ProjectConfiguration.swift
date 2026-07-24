@@ -19,6 +19,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
     public var dependencyManagement: DependencyManagement
     public var environments: [Environment]
     public var secrets: Secrets?
+    public var localization: Localization
     public var quality: Quality
     public var testing: Testing
     public var git: Git
@@ -34,6 +35,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         dependencyManagement: DependencyManagement? = nil,
         environments: [Environment]? = nil,
         secrets: Secrets? = nil,
+        localization: Localization? = nil,
         quality: Quality? = nil,
         testing: Testing? = nil,
         git: Git? = nil
@@ -48,6 +50,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         self.dependencyManagement = dependencyManagement ?? DependencyManagement()
         self.environments = environments ?? []
         self.secrets = secrets
+        self.localization = localization ?? Localization()
         self.quality = quality ?? Quality()
         self.testing = testing ?? Testing()
         self.git = git ?? Git()
@@ -66,6 +69,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
             dependencyManagement: container.decodeIfPresent(DependencyManagement.self, forKey: .dependencyManagement),
             environments: container.decodeIfPresent([Environment].self, forKey: .environments),
             secrets: container.decodeIfPresent(Secrets.self, forKey: .secrets),
+            localization: container.decodeIfPresent(Localization.self, forKey: .localization),
             quality: container.decodeIfPresent(Quality.self, forKey: .quality),
             testing: container.decodeIfPresent(Testing.self, forKey: .testing),
             git: container.decodeIfPresent(Git.self, forKey: .git)
@@ -321,6 +325,41 @@ public struct Environment: Codable, Equatable, Sendable {
         try container.encodeIfPresent(displayNameSuffix, forKey: .displayNameSuffix)
         if !values.isEmpty {
             try container.encode(values, forKey: .values)
+        }
+    }
+}
+
+/// Which languages the project speaks (§16). An omitted section means the
+/// development language alone, and no lproj structure is generated — a
+/// single-language project has nothing to localize.
+public struct Localization: Codable, Equatable, Sendable {
+    public var developmentLanguage: String
+    /// Every language the project ships, the development language included.
+    /// Empty means "not localized": no lproj directories are generated.
+    public var languages: [String]
+
+    public init(developmentLanguage: String? = nil, languages: [String] = []) {
+        self.developmentLanguage = developmentLanguage ?? ConfigurationDefaults.developmentLanguage
+        self.languages = languages
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case developmentLanguage, languages
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            developmentLanguage: container.decodeIfPresent(String.self, forKey: .developmentLanguage),
+            languages: container.decodeIfPresent([String].self, forKey: .languages) ?? []
+        )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(developmentLanguage, forKey: .developmentLanguage)
+        if !languages.isEmpty {
+            try container.encode(languages, forKey: .languages)
         }
     }
 }
