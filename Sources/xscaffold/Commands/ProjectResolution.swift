@@ -101,9 +101,45 @@ extension GenerationPlan {
     }
 }
 
-// The last steps of a run, shared by `init` and `new` so the two cannot drift:
-// both write through the same executor, verify a build the same way and report
-// success in the same shape.
+// The last steps of a run, shared by `init`, `new` and `generate` so they
+// cannot drift: all write through the same executor, verify a build the same
+// way and report success in the same shape.
+
+/// Shows the plan and asks once more before writing, unless `--yes` — which
+/// skips the question but not the summary. Shared by `new` and `generate`, so
+/// the two confirmations cannot come to read differently.
+func confirmed(
+    _ plan: GenerationPlan,
+    at destination: URL,
+    using prompter: some Prompter,
+    assumeYes: Bool
+) -> Bool {
+    prompter.show("")
+    prompter.show("This will create:")
+    prompter.show(plan.summary(at: destination))
+    guard !assumeYes else { return true }
+
+    prompter.show("")
+    prompter.show("Create it? [Y/n]:")
+    guard let line = prompter.readLine() else { return false }
+
+    let answer = line.trimmingCharacters(in: .whitespaces).lowercased()
+    return answer.isEmpty || answer == "y" || answer == "yes"
+}
+
+/// A "no" or an ended input is a cancellation, not an answer of "don't
+/// generate": both leave with 130 and nothing on disk. In text it says so on
+/// stderr and carries no message of its own; under json the document still has
+/// to appear (§11.3), agreeing with the code the process is about to exit with.
+func cancelled(using prompter: some Prompter, reportingTo reporter: Reporter) -> ExitCode {
+    switch reporter.format {
+    case .text:
+        prompter.show("Cancelled; nothing was created.")
+        return ExitCode(ScaffoldExitCode.userCancelled.rawValue)
+    case .json:
+        return reporter.failure(.userCancelled, "Cancelled; nothing was created.")
+    }
+}
 
 /// Lays the plan on disk, mapping a generation failure to the code it chose.
 func writePlan(_ plan: GenerationPlan, to destination: URL, force: Bool, reportingTo reporter: Reporter) throws {

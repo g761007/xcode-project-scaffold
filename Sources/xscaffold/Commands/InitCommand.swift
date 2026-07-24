@@ -3,7 +3,10 @@ import Foundation
 import ScaffoldCore
 import ScaffoldSchema
 
-/// The one command that writes anything (§1): configuration in, project out.
+/// Deprecated (§4.4): `generate` has taken over `--config`, and `new --variant
+/// --yes` the one-line `--preset` run. Until v0.6 it keeps doing exactly what
+/// it always did — the same shared pipeline — but every run says on stderr
+/// where to go instead, so scripts have a version to migrate in.
 ///
 /// It holds no rules of its own — parsing, validation, planning and writing all
 /// belong to `ScaffoldCore` (§18.2). What lives here is the mapping between
@@ -12,8 +15,12 @@ import ScaffoldSchema
 struct InitCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "init",
-        abstract: "Create a project from a preset or a scaffold.yml.",
+        abstract: "Create a project from a preset or a scaffold.yml. (Deprecated)",
         discussion: """
+        Deprecated, and removed in v0.6. Use 'generate --config <file>' for a
+        configuration, or 'new <name> --variant <variant> --yes' for a one-line
+        project.
+
         Pass exactly one of --preset or --config.
 
           xscaffold init MyApp --preset ios-uikit
@@ -54,6 +61,13 @@ struct InitCommand: ParsableCommand {
 
     func run() throws {
         let reporter = Reporter(for: Self.self, format: output.format)
+
+        // On stderr through `note`, so a json caller's stdout stays one
+        // document; on every run, including --dry-run, because every run is one
+        // a script has to migrate before v0.6.
+        reporter.note("warning: 'init' is deprecated and will be removed in v0.6. Use "
+            + "'xscaffold generate --config <file>' instead of 'init --config', or "
+            + "'xscaffold new <name> --variant <variant> --yes' instead of 'init --preset'.")
 
         // Same implementation as `plan`, under this command's name: a preview
         // that could disagree with the run it previews would be worse than none.
