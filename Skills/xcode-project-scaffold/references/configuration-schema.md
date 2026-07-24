@@ -126,6 +126,17 @@ There is no `interface.secondary`. Mixed-interface projects are not supported.
 | Key | Type | Default | Allowed |
 |---|---|---|---|
 | `pattern` | enum | `minimal` | `minimal`, `mvvm`, `mvvm-c`, `clean` |
+| `includeExample` | boolean | per pattern | `true`, `false` |
+
+`minimal` imposes no layering. `mvvm` and `mvvm-c` replace the app's main screen
+with a worked example built in that style — a view and a concrete view model,
+and for `mvvm-c` a coordinator driving a two-screen flow.
+
+`includeExample` is a third state, not just a boolean: **left out**, it follows
+the pattern — a pattern with an example includes it, `minimal` has none — so
+choosing `mvvm` gets the example without stating anything. Set it to `false` to
+get the pattern's structure and README notes without the example code, or omit
+it. Setting it `true` on `minimal`, which has no example, is `XS1201`.
 
 ### `generator`
 
@@ -201,10 +212,13 @@ Every value listed above decodes. Only these generate; the rest are rejected by
 | `product.platform` | `ios` |
 | `product.type` | `application` |
 | `interface.primary` | `uikit`, `swiftui` |
-| `architecture.pattern` | `minimal` |
+| `architecture.pattern` | `minimal`, `mvvm`; `mvvm-c` on `uikit` only |
 | `generator.type` | `xcodegen` |
 | `testing.unit` | `swift-testing`, `none` |
 | `product.deploymentTarget` | iOS `15.0` or later |
+
+`mvvm-c` is a UIKit navigation pattern; on `swiftui` it is `XS0009` — not
+supported in this version, rather than never. `mvvm` works on both interfaces.
 
 ## Rules `validate` enforces
 

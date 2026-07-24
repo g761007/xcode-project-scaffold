@@ -8,16 +8,17 @@ scaffold.yml  →  xscaffold init  →  a project that builds, tests and lints
 
 ---
 
-## ⚠️ Status: early — all four commands work
+## ⚠️ Status: early — five commands work
 
-`init`, `validate`, `plan` and `doctor` are implemented, with `--output json`
-and the exit codes below. Both v0.1 variants — UIKit and SwiftUI — are
-generated, built and tested against a simulator on every push; a separate job
-checks that generated sources pass the linters they ship with. The Skill an
+`init`, `new`, `validate`, `plan` and `doctor` are implemented, with
+`--output json` (bar the interactive `new`) and the exit codes below. The iOS
+variants — UIKit and SwiftUI — are generated, built and tested against a
+simulator on every push, plain and with an MVVM or MVVM-C example; a separate
+job checks that generated sources pass the linters they ship with. The Skill an
 agent drives all of this with is in
 [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/).
 
-Every milestone planned for v0.1 is now implemented.
+v0.2 adds the MVVM and MVVM-C architectures and the interactive `new` command.
 
 Track the scope and milestones in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md).
@@ -40,18 +41,21 @@ one — source files, `project.yml`, lint and format configuration, a `Makefile`
 build environments and a git repository — and guarantees that the same
 configuration produces the same project.
 
-It is designed to be driven three ways:
+It is designed to be driven four ways:
 
 ```bash
 xscaffold init --preset ios-uikit MyApp        # presets
 xscaffold init --config scaffold.yml           # declarative
+xscaffold new                                  # interactive — a few questions
+                                               #   at the terminal
                                                # or by an AI agent, via the
                                                # bundled Skill, which writes
                                                # scaffold.yml and calls the CLI
 ```
 
-The machine-readable path is a first-class use case, not an afterthought:
-every command supports `--output json` and returns a meaningful exit code.
+The machine-readable path is a first-class use case, not an afterthought: every
+command but the interactive `new` supports `--output json`, and all of them
+return a meaningful exit code.
 
 ## What it deliberately does not do
 
@@ -106,6 +110,7 @@ toolchain.
 
 ```bash
 xscaffold init MyApp --preset ios-uikit       # create a project
+xscaffold new                                 # create one interactively
 xscaffold validate scaffold.yml               # check a configuration
 xscaffold plan MyApp --preset ios-uikit       # show what init would create
 xscaffold doctor                              # check the tools init needs
@@ -140,6 +145,19 @@ you can change it. Use `--config` when it has to be right from the start.
 Execution behaviour lives in flags, never in `scaffold.yml` — the configuration
 file describes the *project*, not a particular run.
 
+### Creating a project interactively
+
+`xscaffold new` asks for the name, bundle identifier, interface, architecture,
+whether to include the pattern's example, and the environments, then generates
+the project through the same pipeline `init` runs. It offers every choice and
+lets `validate` decide, re-asking a question when a combination is refused — it
+holds no rules of its own.
+
+`new` needs a terminal; for a scriptable run, use `init`. It shares `init`'s
+`--destination`, `--force`, `--skip-git`, `--skip-generate` and
+`--validate-build`; `--yes` skips the final confirmation. Cancelling — a "no" at
+the confirmation, or Ctrl-C — exits `130` and writes nothing.
+
 Generating into a destination that already exists and is not empty fails with
 exit code 6; `--force` writes into it anyway, replacing files the plan produces
 and leaving everything else alone. **xscaffold only ever deletes what it
@@ -173,7 +191,7 @@ sizes, not file contents.
 2   invalid CLI arguments          8   external command failure
 3   configuration parsing failure  9   build validation failure
 4   configuration validation       10  environment requirement missing
-5   template resolution failure
+5   template resolution failure    130 cancelled (new)
 ```
 
 ### Minimal `scaffold.yml`
@@ -220,6 +238,12 @@ git:
 
 The full field reference is in
 [`docs/plans/xcode-project-scaffold-plan.md`](docs/plans/xcode-project-scaffold-plan.md) §4.
+
+For an architecture with a worked example, set `architecture.pattern` to `mvvm`
+or `mvvm-c` (`mvvm-c` on UIKit only). `architecture.includeExample` controls
+whether the example is generated: left out it follows the pattern, so `mvvm`
+gets the example without stating it; set `false` for the structure and notes
+without the example code.
 
 Note that `language.languageMode` is Xcode's `SWIFT_VERSION` build setting — a
 *language mode*, whose only valid values are `5` and `6`. It is not a compiler

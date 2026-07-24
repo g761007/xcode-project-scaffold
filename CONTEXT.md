@@ -18,6 +18,10 @@ _Avoid_: source of truth、manifest
 `scaffold.yml` 解析並填入預設值後的完整 Swift 值。生成流程的唯一輸入。
 _Avoid_: config object、settings、options
 
+**PartialProjectConfiguration**:
+`new` 互動收集到的高訊號欄位，在套用預設值與驗證之前的樣子。它只帶 prompt 問到的欄位，`resolved()` 交給 `ProjectConfiguration` 補齊其餘。它讓 prompt 能在不懂任何相容性規則的情況下收集輸入——產出一份這個值，由驗證層而非 prompt 決定能不能生成。
+_Avoid_: answers、draft config、partial
+
 **Preset**:
 一組具名的 `ProjectConfiguration` 預設值。它是預設值集合，不是模板。
 _Avoid_: profile、template、範本
@@ -53,6 +57,10 @@ _Avoid_: 暫存檔、temp 目錄、工作區
 **ProcessRunner**:
 執行外部指令的唯一介面，輸入是 `ProcessInvocation`（指令、參數、工作目錄），輸出是 `ProcessResult`（結束狀態與兩個輸出串流）。所有子行程都必須經過它，測試才能在不真的執行任何指令的情況下檢查一次執行會做什麼。
 _Avoid_: shell、executor、command runner
+
+**Prompter**:
+互動輸入的唯一介面：顯示一行問題、讀一行答案、以及這是不是可作答的終端機。`new` 的所有互動都必須經過它，測試才能用腳本化答案驅動整個收集流程而不需真的終端機。與 `ProcessRunner` 是同一種東西，方向相反。
+_Avoid_: input reader、console、readLine
 
 **Placeholder**:
 模板裡的 `{{NAME}}`。渲染時必須有對應的值，否則是錯誤。
@@ -97,8 +105,16 @@ _Avoid_: template、flavor、combination、組合
 _Avoid_: base、common、共用層
 
 **Architecture Overlay**:
-疊加在 Variant 之上、描述架構慣例的一層。
+疊加在 Variant 之上、描述架構慣例的一層。它一定貢獻一段架構說明與 Mermaid 圖給生成專案的 README；當該 pattern 有範例且專案沒關掉時，還貢獻**範例**原始碼，以同路徑取代 Variant 的預設主畫面。
 _Avoid_: pattern layer、architecture template
+
+**範例（Example）**:
+Architecture Overlay 為 `mvvm`／`mvvm-c` 生成的一段可運作程式碼——取代 App 主畫面的 View 與具體 ViewModel（MVVM-C 再加 Coordinator 與兩畫面流程）。它是可以直接刪或擴充的實作，不是抽象基底層。由 `architecture.includeExample` 控制生不生。
+_Avoid_: sample、boilerplate、樣板
+
+**Coordinator**:
+MVVM-C 範例裡掌管導航的物件：View 回報意圖（選取），由 Coordinator 而非 View 決定下一個畫面並推入。導航因此離開了 View 與 ViewModel。
+_Avoid_: router、navigator（作為 MVVM-C 語境的同義詞時）
 
 ## 專案內容
 
