@@ -102,6 +102,96 @@ struct GenerationPlanContractTests {
     }
 }
 
+/// The architecture example (ADR-0004): for a pattern that ships one and a
+/// project that keeps it, the example's sources replace the variant's default
+/// screen. `minimal`, and any project that opts out, is untouched — the
+/// UIKit/SwiftUI file lists above still hold because `validBaseline` is minimal.
+@Suite("The architecture example")
+struct ArchitectureExampleTests {
+    static let mvvmUIKit = ProjectConfiguration.validBaseline.with {
+        $0.architecture = .init(pattern: .mvvm, includeExample: true)
+    }
+
+    @Test("a UIKit MVVM project replaces the screen and adds a view model")
+    func fileList() throws {
+        let plan = try planner.makePlan(for: Self.mvvmUIKit)
+
+        #expect(plan.files.map(\.path) == [
+            ".gitignore",
+            ".swiftformat",
+            ".swiftlint.yml",
+            "App/AppDelegate.swift",
+            "App/GreetingViewModel.swift",
+            "App/RootViewController.swift",
+            "App/SceneDelegate.swift",
+            "Makefile",
+            "README.md",
+            "Resources/Assets.xcassets/AccentColor.colorset/Contents.json",
+            "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+            "Resources/Assets.xcassets/Contents.json",
+            "Tests/GreetingViewModelTests.swift",
+            "Tests/RootViewControllerTests.swift",
+            "project.yml",
+            "scaffold.yml"
+        ])
+    }
+
+    @Test("the view is driven by the view model, injected at the scene")
+    func replacesTheScreen() throws {
+        let plan = try planner.makePlan(for: Self.mvvmUIKit)
+
+        let view = try #require(plan.files.first { $0.path == "App/RootViewController.swift" })
+        #expect(view.contents.contains("viewModel: GreetingViewModel"))
+
+        let scene = try #require(plan.files.first { $0.path == "App/SceneDelegate.swift" })
+        #expect(scene.contents.contains("RootViewController(viewModel:"))
+    }
+
+    /// The example is sources only — a single app target, no change to the spec
+    /// (ADR-0004), so project.yml must be byte-identical to the plain variant's.
+    @Test("the example does not touch project.yml")
+    func projectYMLUnchanged() throws {
+        let plain = try planner.makePlan(for: .validBaseline)
+        let example = try planner.makePlan(for: Self.mvvmUIKit)
+
+        let plainYML = try #require(plain.files.first { $0.path == "project.yml" }).contents
+        let exampleYML = try #require(example.files.first { $0.path == "project.yml" }).contents
+        #expect(exampleYML == plainYML)
+    }
+
+    @Test("the MVVM note and its diagram reach the README")
+    func architectureInReadme() throws {
+        let plan = try planner.makePlan(for: Self.mvvmUIKit)
+
+        let readme = try #require(plan.files.first { $0.path == "README.md" })
+        #expect(readme.contents.contains("**MVVM.**"))
+        #expect(readme.contents.contains("```mermaid"))
+    }
+
+    @Test("the example leaves no placeholder behind")
+    func noPlaceholders() throws {
+        for file in try planner.makePlan(for: Self.mvvmUIKit).files {
+            #expect(!file.contents.contains("{{"), "\(file.path)")
+            #expect(!file.path.contains("{{"), "\(file.path)")
+        }
+    }
+
+    /// Opting out drops every example source but keeps the pattern's README
+    /// note — the plain variant screen stands in. M4 covers this path in full.
+    @Test("with the example off, the plain screen and the note both remain")
+    func exampleOff() throws {
+        let plan = try planner.makePlan(for: .validBaseline.with {
+            $0.architecture = .init(pattern: .mvvm, includeExample: false)
+        })
+
+        #expect(!plan.files.contains { $0.path == "App/GreetingViewModel.swift" })
+        #expect(plan.files.contains { $0.path == "App/RootViewController.swift" })
+
+        let readme = try #require(plan.files.first { $0.path == "README.md" })
+        #expect(readme.contents.contains("**MVVM.**"))
+    }
+}
+
 /// M4 already omits the test target when unit testing is off, and omits nothing
 /// for the quality switches. If the file list ignored them too, a project would
 /// get a `Tests/` directory nothing compiles and a `.swiftlint.yml` it asked

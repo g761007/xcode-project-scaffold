@@ -30,10 +30,11 @@ struct TemplateFile: Equatable, Sendable {
 /// - `Variants/<platform>-<interface>` — the application sources. Variants
 ///   share no source code with one another, so they are whole directories
 ///   rather than fragments.
-/// - `Architectures/<pattern>` — not files. In this version the architecture
-///   contributes a passage of prose to the README and nothing else, because a
-///   tree of empty folders and unused base protocols is the first thing anyone
-///   deletes from a generated project.
+/// - `Architectures/<pattern>` — a passage of prose and a diagram for the
+///   README (via `architectureDescription`), and, for a pattern that ships an
+///   example, source files under `<pattern>/<variant>` that replace the
+///   variant's default screen (ADR-0004). It never generates empty folders or
+///   unused base protocols — the first things anyone deletes from a project.
 struct TemplateLibrary: Sendable {
     private let templates: [String: String]
 
@@ -49,9 +50,26 @@ struct TemplateLibrary: Sendable {
             throw TemplateNotFoundError(message: "No templates for variant '\(variant)'.")
         }
 
+        // The architecture example, when the project asks for one, stands in for
+        // the variant's default screen: its files replace the variant's at the
+        // same path and add any new ones (ADR-0004). A pattern with no example,
+        // or a project that opted out, contributes nothing here — so `minimal`,
+        // and any project with the example turned off, behaves exactly as before.
+        let example = configuration.architecture.generatesExample
+            ? files(under: "Architectures/\(configuration.architecture.pattern.rawValue)/\(variant)")
+            : []
+
         // Ordering is settled after rendering, because rendering changes paths.
-        return (files(under: "Shared") + specific)
+        return overlaid(files(under: "Shared") + specific, with: example)
             .filter { include($0, for: configuration) }
+    }
+
+    /// Overlay files win over base files sharing their path; everything else in
+    /// both sets passes through.
+    private func overlaid(_ base: [TemplateFile], with overlay: [TemplateFile]) -> [TemplateFile] {
+        guard !overlay.isEmpty else { return base }
+        let replaced = Set(overlay.map(\.path))
+        return base.filter { !replaced.contains($0.path) } + overlay
     }
 
     /// The architecture's contribution to the README.
