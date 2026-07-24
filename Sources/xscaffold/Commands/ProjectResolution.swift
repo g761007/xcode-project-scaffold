@@ -257,6 +257,6 @@ private func createdText(
     }
 
     lines.append("Open it with:")
-    lines.append("  open \(destination.appendingPathComponent(configuration.projectFileName).path)")
+    lines.append("  open \(destination.appendingPathComponent(ProjectContainer(for: configuration).fileName).path)")
     return lines.joined(separator: "\n")
 }

@@ -80,6 +80,12 @@ _Avoid_: backend、engine
 `ProjectConfiguration` 與 `project.yml` 之間的中介值。它描述要寫出什麼，不描述怎麼寫。所有決定都在這一層，序列化器不自行發明任何值。
 _Avoid_: project spec、YAML model
 
+**ProjectContainer**:
+生成專案被驅動的容器：`.xcodeproj` 本體，或（CocoaPods／mixed 時）`pod install` 產生的
+`.xcworkspace`。Build、Test、Open 一律由它決定 `-project` 或 `-workspace`，規則只寫一次，
+呼叫端不得各自判斷 dependency manager。
+_Avoid_: workspace flag、project kind
+
 **CommandOutput**:
 `--output json` 時每個指令寫到 stdout 的那份文件，成功與失敗共用一種信封。`ok`、`command` 與 `exitCode` 永遠都在，`message` 在失敗時出現，其餘欄位（`issues`、`plan`、`checks`、`destination`）有話說才出現。
 _Avoid_: response、payload、回傳值
