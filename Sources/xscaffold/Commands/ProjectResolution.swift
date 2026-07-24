@@ -22,9 +22,9 @@ func readConfiguration(at path: String, reportingTo reporter: Reporter) throws -
     }
 }
 
-/// Stops the run if the configuration cannot be generated, and returns what did
-/// not stop it — the warnings, which are worth reporting and worth continuing
-/// past.
+/// Stops the run if the configuration cannot be generated, and returns what
+/// survived: the configuration wrapped as proof, and the warnings — which are
+/// worth reporting and worth continuing past.
 ///
 /// Every problem is reported rather than the first, so someone fixing five
 /// mistakes runs the command once instead of five times.
@@ -32,21 +32,22 @@ func checkConfiguration(
     _ configuration: ProjectConfiguration,
     describedAs subject: String,
     reportingTo reporter: Reporter
-) throws -> [ValidationIssue] {
-    let issues = ConfigurationValidator().validate(configuration)
-    guard !issues.contains(where: { $0.severity == .error }) else {
+) throws -> (validated: ValidatedConfiguration, warnings: [ValidationIssue]) {
+    switch ConfigurationValidator().check(configuration) {
+    case let .invalid(issues):
         throw reporter.failure(.validationFailure, "\(subject) cannot be generated.", issues: issues)
+    case let .valid(validated, warnings):
+        return (validated, warnings)
     }
-    return issues
 }
 
 /// Where the user's arguments become a project that is known to be generatable.
 func resolveConfiguration(
     _ options: ProjectOptions,
     reportingTo reporter: Reporter
-) throws -> (configuration: ProjectConfiguration, warnings: [ValidationIssue]) {
+) throws -> (validated: ValidatedConfiguration, warnings: [ValidationIssue]) {
     let configuration = try options.configuration(reportingTo: reporter)
-    let warnings = try checkConfiguration(
+    let (validated, warnings) = try checkConfiguration(
         configuration,
         describedAs: "The configuration",
         reportingTo: reporter
@@ -55,16 +56,16 @@ func resolveConfiguration(
     for warning in warnings {
         reporter.note(warning.report)
     }
-    return (configuration, warnings)
+    return (validated, warnings)
 }
 
 func makePlan(
-    for configuration: ProjectConfiguration,
+    for validated: ValidatedConfiguration,
     options: GenerationOptions,
     reportingTo reporter: Reporter
 ) throws -> GenerationPlan {
     do {
-        return try GenerationPlanBuilder().makePlan(for: configuration, options: options)
+        return try GenerationPlanBuilder().makePlan(for: validated, options: options)
     } catch {
         throw reporter.failure(.templateResolutionFailure, "\(error)")
     }
@@ -73,8 +74,9 @@ func makePlan(
 /// Used by `plan` and by `init --dry-run`, which report the same thing under
 /// their own names.
 func reportPlan(for project: ProjectOptions, run: RunOptions, to reporter: Reporter) throws {
-    let (configuration, warnings) = try resolveConfiguration(project, reportingTo: reporter)
-    let plan = try makePlan(for: configuration, options: run.generationOptions, reportingTo: reporter)
+    let (validated, warnings) = try resolveConfiguration(project, reportingTo: reporter)
+    let plan = try makePlan(for: validated, options: run.generationOptions, reportingTo: reporter)
+    let configuration = validated.configuration
     let destination = project.destinationURL(for: configuration)
 
     reporter.succeed(

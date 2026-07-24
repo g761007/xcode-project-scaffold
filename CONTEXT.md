@@ -22,6 +22,10 @@ _Avoid_: config object、settings、options
 `new` 互動收集到的高訊號欄位，在套用預設值與驗證之前的樣子。它只帶 prompt 問到的欄位，`resolved()` 交給 `ProjectConfiguration` 補齊其餘。它讓 prompt 能在不懂任何相容性規則的情況下收集輸入——產出一份這個值，由驗證層而非 prompt 決定能不能生成。
 _Avoid_: answers、draft config、partial
 
+**ValidatedConfiguration**:
+通過驗證的 `ProjectConfiguration` 的證明包裝。只有 `ConfigurationValidator` 能建構它，而生成入口只接受它——一份沒過驗證的設定，在編譯期就到不了生成。它是證明，不是第二種設定型別。
+_Avoid_: checked config、safe config
+
 **Preset**:
 一組具名的 `ProjectConfiguration` 預設值。它是預設值集合，不是模板。
 _Avoid_: profile、template、範本

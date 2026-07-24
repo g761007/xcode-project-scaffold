@@ -313,10 +313,14 @@ struct GenerationPlanCommandTests {
 
 @Suite("Templates that do not exist")
 struct TemplateSelectionTests {
+    private let library = TemplateLibrary()
+
     /// A platform × interface with no variant directory. macos-uikit is such a
-    /// combination — validation rejects it (XS1001), but makePlan does not
-    /// validate, so it reaches the template lookup and finds nothing. Failing
-    /// with a clear message beats producing a project with no sources in it.
+    /// combination — validation rejects it (XS1001), and `ValidatedConfiguration`
+    /// keeps it out of `makePlan` entirely, so the library's own lookup is the
+    /// layer that still sees one. The guard matters for the day the validator's
+    /// supported set outgrows the shipped templates: failing with a clear
+    /// message beats producing a project with no sources in it.
     @Test("a variant with no templates is an error")
     func unknownVariant() throws {
         let configuration = ProjectConfiguration.validBaseline.with {
@@ -325,7 +329,7 @@ struct TemplateSelectionTests {
         }
 
         #expect(throws: TemplateNotFoundError.self) {
-            try planner.makePlan(for: configuration)
+            try library.files(for: configuration)
         }
     }
 
@@ -336,7 +340,7 @@ struct TemplateSelectionTests {
         }
 
         #expect(throws: TemplateNotFoundError.self) {
-            try planner.makePlan(for: configuration)
+            try library.architectureDescription(for: configuration)
         }
     }
 }

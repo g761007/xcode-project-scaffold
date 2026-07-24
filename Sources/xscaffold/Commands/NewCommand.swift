@@ -60,8 +60,10 @@ struct NewCommand: ParsableCommand {
         }
 
         let configuration = try collect(using: prompter, reportingTo: reporter).resolved()
-        let warnings = try checkConfiguration(configuration, describedAs: "The answers", reportingTo: reporter)
-        let plan = try makePlan(for: configuration, options: runOptions.generationOptions, reportingTo: reporter)
+        let (validated, warnings) = try checkConfiguration(
+            configuration, describedAs: "The answers", reportingTo: reporter
+        )
+        let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
         let destination = destinationURL(for: configuration)
 
         guard confirmed(plan, at: destination, using: prompter) else {

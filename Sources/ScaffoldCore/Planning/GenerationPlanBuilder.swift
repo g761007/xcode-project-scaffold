@@ -14,11 +14,15 @@ public struct GenerationPlanBuilder: Sendable {
 
     public init() {}
 
+    /// Takes the proof, not the configuration: `ValidatedConfiguration` can
+    /// only come from the validator, so an unvalidated configuration cannot
+    /// reach this entry no matter which command is calling.
     public func makePlan(
-        for configuration: ProjectConfiguration,
+        for validated: ValidatedConfiguration,
         options: GenerationOptions = GenerationOptions()
     ) throws -> GenerationPlan {
-        try GenerationPlan(
+        let configuration = validated.configuration
+        return try GenerationPlan(
             files: files(for: configuration),
             commands: commands(for: configuration, options: options)
         )

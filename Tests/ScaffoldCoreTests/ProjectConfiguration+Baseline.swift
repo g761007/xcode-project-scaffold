@@ -17,6 +17,35 @@ extension ProjectConfiguration {
         mutate(&copy)
         return copy
     }
+
+    /// The proof `makePlan` requires. Fixtures are valid by construction, so a
+    /// throw here means the fixture is broken, not the code under test.
+    func validated() throws -> ValidatedConfiguration {
+        switch ConfigurationValidator().check(self) {
+        case let .valid(validated, _): validated
+        case let .invalid(issues): throw BrokenFixture(issues: issues)
+        }
+    }
+}
+
+struct BrokenFixture: Error, CustomStringConvertible {
+    let issues: [ValidationIssue]
+    var description: String {
+        "The fixture no longer validates:\n"
+            + issues.map { "\($0.code.rawValue): \($0.message)" }.joined(separator: "\n")
+    }
+}
+
+extension GenerationPlanBuilder {
+    /// Validates then plans, keeping test call sites in the shape they were
+    /// written in — and making a fixture that stops being generatable fail
+    /// loudly here instead of as a template lookup error downstream.
+    func makePlan(
+        for configuration: ProjectConfiguration,
+        options: GenerationOptions = GenerationOptions()
+    ) throws -> GenerationPlan {
+        try makePlan(for: configuration.validated(), options: options)
+    }
 }
 
 /// Shared by every validation suite: the codes a configuration produces, in

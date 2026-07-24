@@ -21,7 +21,7 @@ struct ValidateCommand: ParsableCommand {
     func run() throws {
         let reporter = Reporter(for: Self.self, format: output.format)
         let configuration = try readConfiguration(at: path, reportingTo: reporter)
-        let warnings = try checkConfiguration(configuration, describedAs: path, reportingTo: reporter)
+        let (_, warnings) = try checkConfiguration(configuration, describedAs: path, reportingTo: reporter)
 
         reporter.succeed(
             CommandOutput(command: reporter.command, exitCode: .success, issues: warnings),

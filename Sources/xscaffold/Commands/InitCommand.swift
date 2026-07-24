@@ -61,8 +61,9 @@ struct InitCommand: ParsableCommand {
             return try reportPlan(for: project, run: runOptions, to: reporter)
         }
 
-        let (configuration, warnings) = try resolveConfiguration(project, reportingTo: reporter)
-        let plan = try makePlan(for: configuration, options: runOptions.generationOptions, reportingTo: reporter)
+        let (validated, warnings) = try resolveConfiguration(project, reportingTo: reporter)
+        let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
+        let configuration = validated.configuration
         let destination = project.destinationURL(for: configuration)
 
         try writePlan(plan, to: destination, force: force, reportingTo: reporter)

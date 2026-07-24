@@ -344,6 +344,43 @@ extension ConfigurationValidator {
     }
 }
 
+// MARK: - The proof
+
+/// A `ProjectConfiguration` that is known to have passed validation.
+///
+/// The only way to obtain one is `ConfigurationValidator.check`, and the
+/// generation entry accepts nothing else — so a configuration that skipped
+/// validation cannot reach generation, by construction rather than by
+/// discipline. The wrapper adds no behaviour of its own: it is proof, not a
+/// second configuration type.
+public struct ValidatedConfiguration: Sendable {
+    public let configuration: ProjectConfiguration
+
+    fileprivate init(_ configuration: ProjectConfiguration) {
+        self.configuration = configuration
+    }
+}
+
+/// What `check` decides: the configuration wrapped as proof, or the issues
+/// that stopped it. Warnings travel with the valid case — they do not stop a
+/// run, but they are still worth reporting.
+public enum ValidationOutcome: Sendable {
+    case valid(ValidatedConfiguration, warnings: [ValidationIssue])
+    case invalid([ValidationIssue])
+}
+
+extension ConfigurationValidator {
+    /// `validate`, with the outcome carried in the type instead of left for
+    /// every caller to re-derive from severities.
+    public func check(_ configuration: ProjectConfiguration) -> ValidationOutcome {
+        let issues = validate(configuration)
+        guard !issues.contains(where: { $0.severity == .error }) else {
+            return .invalid(issues)
+        }
+        return .valid(ValidatedConfiguration(configuration), warnings: issues)
+    }
+}
+
 // MARK: - Formatting
 
 extension ConfigurationValidator {
