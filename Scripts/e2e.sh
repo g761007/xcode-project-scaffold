@@ -1,15 +1,18 @@
 #!/bin/bash
 #
-# The end-to-end layer of §12.1: create a project per preset with the real
-# binary, then put the real toolchain through it — `xscaffold init`, which runs
-# git and XcodeGen itself, followed by `xcodebuild build` and `xcodebuild test`.
+# The end-to-end layer of §12.1: create a project per variant with the real
+# binary, then put the real toolchain through it — `xscaffold generate` (or the
+# one-line `new --variant --yes`), which runs git, XcodeGen and — for the
+# dependency matrix — CocoaPods itself, followed by `xcodebuild build` and
+# `xcodebuild test`.
 #
 # It exists for what the layers below it cannot see. Contract snapshots compare
 # file lists and `project.yml`; they do not compile anything, so a template that
 # renders perfectly well and does not build, or a `project.yml` that XcodeGen
 # accepts and Xcode rejects, reaches here untouched.
 #
-# Run it with `make e2e`. It needs xcodegen on the PATH and a git identity.
+# Run it with `make e2e`. It needs xcodegen and pod on the PATH, a git
+# identity, and network access for package resolution and pod installs.
 
 set -euo pipefail
 
@@ -58,7 +61,7 @@ check() {
 
     echo
     echo "==> $name"
-    "$xscaffold" init "$name" "$@" --destination "$root/$name"
+    "$xscaffold" generate "$@" --yes --destination "$root/$name"
 
     # Separately from the test run, which would build anyway: a compile error
     # and a failing test are different problems, and this says which one it is.
@@ -82,7 +85,7 @@ check_macos() {
 
     echo
     echo "==> $name (macOS)"
-    "$xscaffold" init "$name" "$@" --destination "$root/$name"
+    "$xscaffold" generate "$@" --yes --destination "$root/$name"
 
     xcodebuild build -project "$project" -scheme "$name" \
         -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -quiet
@@ -90,8 +93,32 @@ check_macos() {
         -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
 }
 
-check UIKitApp --preset ios-uikit
-check SwiftUIApp --preset ios-swiftui
+one_line() {
+    local name="$1" variant="$2"
+    echo
+    echo "==> $name (new --variant $variant --yes)"
+    "$xscaffold" new "$name" --variant "$variant" --yes --destination "$root/$name"
+
+    xcodebuild build -project "$root/$name/$name.xcodeproj" -scheme "$name" \
+        -destination "id=$udid" -quiet
+    xcodebuild test -project "$root/$name/$name.xcodeproj" -scheme "$name" \
+        -destination "id=$udid"
+}
+
+one_line_macos() {
+    local name="$1" variant="$2"
+    echo
+    echo "==> $name (new --variant $variant --yes, macOS)"
+    "$xscaffold" new "$name" --variant "$variant" --yes --destination "$root/$name"
+
+    xcodebuild build -project "$root/$name/$name.xcodeproj" -scheme "$name" \
+        -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO -quiet
+    xcodebuild test -project "$root/$name/$name.xcodeproj" -scheme "$name" \
+        -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
+}
+
+one_line UIKitApp ios-uikit
+one_line SwiftUIApp ios-swiftui
 
 # The MVVM architecture example, which no preset produces: it replaces the app's
 # main screen with a view and a concrete view model, and ships its own tests.
@@ -166,8 +193,8 @@ check EnvApp --config "$root/environments.yml"
 # the MVVM overlay ships its own sources, so each interface earns a run of its
 # own — SwiftUI observing an @Observable model, AppKit driving one through a
 # closure from a code-built NSViewController with no storyboard or xib.
-check_macos MacSwiftUIApp --preset macos-swiftui
-check_macos MacAppKitApp --preset macos-appkit
+one_line_macos MacSwiftUIApp macos-swiftui
+one_line_macos MacAppKitApp macos-appkit
 
 cat > "$root/mvvm-macos-swiftui.yml" <<'YML'
 project:
@@ -197,5 +224,108 @@ architecture:
 YML
 check_macos MacMVVMAppKitApp --config "$root/mvvm-macos-appkit.yml"
 
+# The dependency matrix (§24.3): representative combinations, not a Cartesian
+# product. SPM must resolve on first build; CocoaPods must produce the
+# workspace pod install exists for, and the workspace — not the project — must
+# build and test, because that is the container users are told to open.
+check_pods() {
+    local name="$1" config="$2" destination_flags=("${@:3}")
+    local workspace="$root/$name/$name.xcworkspace"
+
+    echo
+    echo "==> $name (CocoaPods)"
+    "$xscaffold" generate --config "$config" --yes --destination "$root/$name"
+
+    test -f "$root/$name/Podfile" || { echo "Podfile missing"; exit 1; }
+    test -d "$workspace" || { echo "workspace missing"; exit 1; }
+
+    xcodebuild build -workspace "$workspace" -scheme "$name" "${destination_flags[@]}" -quiet
+    xcodebuild test -workspace "$workspace" -scheme "$name" "${destination_flags[@]}"
+}
+
+cat > "$root/spm.yml" <<'YML'
+project:
+  name: SPMApp
+  bundleIdentifier: com.example.spmapp
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+dependencyManagement:
+  mode: spm
+  spm:
+    packages:
+      - name: swift-collections
+        url: https://github.com/apple/swift-collections.git
+        from: "1.1.0"
+        products:
+          - name: Collections
+            targets: [SPMApp]
+YML
+check SPMApp --config "$root/spm.yml"
+
+cat > "$root/pods.yml" <<'YML'
+project:
+  name: PodsApp
+  bundleIdentifier: com.example.podsapp
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_pods PodsApp "$root/pods.yml" -destination "id=$udid"
+
+cat > "$root/mixed.yml" <<'YML'
+project:
+  name: MixedApp
+  bundleIdentifier: com.example.mixedapp
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+dependencyManagement:
+  mode: mixed
+  spm:
+    packages:
+      - name: swift-collections
+        url: https://github.com/apple/swift-collections.git
+        from: "1.1.0"
+        products:
+          - name: Collections
+            targets: [MixedApp]
+  cocoapods:
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_pods MixedApp "$root/mixed.yml" -destination "id=$udid"
+
+cat > "$root/pods-macos.yml" <<'YML'
+project:
+  name: MacPodsApp
+  bundleIdentifier: com.example.macpodsapp
+product:
+  platform: macos
+interface:
+  primary: appkit
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_pods MacPodsApp "$root/pods-macos.yml" \
+    -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
+
 echo
-echo "Every variant generated, built and tested."
+echo "Every variant and dependency combination generated, built and tested."

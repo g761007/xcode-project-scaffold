@@ -233,6 +233,53 @@ destination and moved in atomically; if a run fails after creating the
 destination, the destination is removed; if it was already there, it is left
 as it is and the error says so.
 
+### Dependencies
+
+`dependencyManagement.mode` is `none`, `spm`, `cocoapods` or `mixed` — SPM is
+the default recommendation; CocoaPods exists for the teams that need it, and
+`mixed` runs both while refusing the same library arriving through each.
+
+```yaml
+dependencyManagement:
+  mode: spm
+  spm:
+    packages:
+      - name: Alamofire
+        url: https://github.com/Alamofire/Alamofire.git
+        from: "5.9.0"          # or exact: / branch: / revision:
+        products:
+          - name: Alamofire
+            targets: [MyApp]
+```
+
+Packages land in `project.yml` and resolve on first build. Pods state exactly
+one source each — `version`, `path`, or `git` with one of `tag`, `branch` or
+`commit` — and xscaffold writes the Podfile, runs `pod install` after XcodeGen,
+verifies the workspace it produced, and drives Build, Test and Open through
+that workspace from then on. `doctor` requires CocoaPods exactly when the
+configuration reads pods.
+
+### Project essentials
+
+- **UI tests** — `testing.ui.enabled` grows a ui-testing target with a launch
+  test and a smoke test (`launchPerformanceTest` adds a measured launch),
+  configured apart from `testing.unit`.
+- **Environment values** — `environments[].values` become per-configuration
+  `.xcconfig` files, reach the Info.plist as `$(KEY)` references, and are read
+  in code through the generated `AppConfiguration` (`API_BASE_URL` reads as
+  `AppConfiguration.apiBaseURL`).
+- **Secrets** — `secrets.keys` may state a name and an obviously-fake example,
+  and nothing else; `Secrets.example.xcconfig` is the committed record, the
+  real `Secrets.xcconfig` starts as a copy and is git-ignored.
+- **Localization** — `localization.languages` generates one
+  `Resources/<language>.lproj/Localizable.strings` per shipped language.
+- **Machine-readable capabilities** — `xscaffold capabilities --output json`
+  lists what this binary actually generates, sourced from the same sets the
+  validator enforces. Generated `scaffold.yml` files carry a
+  `yaml-language-server` annotation pointing at
+  [`Schemas/scaffold.schema.json`](Schemas/scaffold.schema.json), so editors
+  validate while you type.
+
 ### The deprecated `init`
 
 `init` still works but warns on every run, and goes away in v0.6:

@@ -32,8 +32,8 @@ jobs:
       - name: Unit and contract tests
         run: swift test
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install XcodeGen and CocoaPods
+        run: brew install xcodegen cocoapods
 
       - name: Configure a git identity
         run: |
@@ -106,8 +106,8 @@ jobs:
           echo "tag ${GITHUB_REF_NAME#v}, binary $reported"
           test "$reported" = "${GITHUB_REF_NAME#v}"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install XcodeGen and CocoaPods
+        run: brew install xcodegen cocoapods
 
       - name: Configure a git identity
         run: |
