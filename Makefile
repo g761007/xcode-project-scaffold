@@ -21,7 +21,7 @@ test: ## Run the test suite
 	swift test
 
 .PHONY: e2e
-e2e: ## Generate, build and test every variant (requires xcodegen and Xcode)
+e2e: ## Generate, build and test every variant and dependency combination (requires xcodegen, cocoapods and Xcode)
 	Scripts/e2e.sh
 
 .PHONY: lint

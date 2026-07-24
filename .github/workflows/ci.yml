@@ -49,8 +49,8 @@ jobs:
           swift --version
           xcodebuild -version
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install XcodeGen and CocoaPods
+        run: brew install xcodegen cocoapods
 
       # A default `init` makes the first commit, and a fresh runner has nobody
       # to attribute it to.
