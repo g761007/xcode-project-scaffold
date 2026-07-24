@@ -80,7 +80,7 @@ struct InitCommand: ParsableCommand {
         let configuration = validated.configuration
         let destination = project.destinationURL(for: configuration)
 
-        try writePlan(plan, to: destination, force: force, reportingTo: reporter)
+        try writePlan(plan, to: destination, force: force, for: configuration, reportingTo: reporter)
         if validateBuild {
             try verifyBuild(of: configuration, at: destination, reportingTo: reporter)
         }

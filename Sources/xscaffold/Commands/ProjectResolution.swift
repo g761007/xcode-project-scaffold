@@ -188,10 +188,18 @@ func mappingGenerationFailure<T>(reportingTo reporter: Reporter, _ body: () thro
     }
 }
 
-/// Lays the plan on disk, mapping a generation failure to the code it chose.
-func writePlan(_ plan: GenerationPlan, to destination: URL, force: Bool, reportingTo reporter: Reporter) throws {
+/// Lays the plan on disk, mapping a generation failure to the code it chose,
+/// and confirms the container the run promised — the workspace, when pods ran.
+func writePlan(
+    _ plan: GenerationPlan,
+    to destination: URL,
+    force: Bool,
+    for configuration: ProjectConfiguration,
+    reportingTo reporter: Reporter
+) throws {
     try mappingGenerationFailure(reportingTo: reporter) {
         try PlanExecutor().execute(plan, at: destination, force: force)
+        try ProjectContainer(for: configuration).verifyProduced(by: plan, at: destination)
     }
 }
 

@@ -110,7 +110,7 @@ struct NewCommand: ParsableCommand {
             let destination = destinationURL(for: configuration)
 
             _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
-            try writePlan(plan, to: destination, force: force, reportingTo: reporter)
+            try writePlan(plan, to: destination, force: force, for: configuration, reportingTo: reporter)
             return try finishGeneration(plan, warnings: warnings, for: configuration,
                                         at: destination, reportingTo: reporter)
         }

@@ -24,6 +24,10 @@ public enum GenerationError: Error, Equatable, Sendable {
     case unsafePlannedPath(String)
     case executableNotFound(String)
     case commandFailed(PlannedCommand, exitStatus: Int32, output: String)
+    /// pod install returned success and the workspace it exists to produce is
+    /// not there — possible with a degenerate Podfile, and better found now
+    /// than by the first xcodebuild.
+    case workspaceNotProduced(String)
 
     /// A failure that could not be undone, because the destination was not
     /// xscaffold's to remove (§10.2). Wraps the failure rather than replacing it
@@ -46,6 +50,8 @@ extension GenerationError {
             .environmentRequirementMissing
         case .commandFailed:
             .externalCommandFailure
+        case .workspaceNotProduced:
+            .generationFailure
         case .unsafePlannedPath:
             .generationFailure
         // What could not be undone does not change why it failed.
@@ -87,6 +93,10 @@ extension GenerationError: CustomStringConvertible {
             "`\(command.displayString)` "
                 + "failed with exit status \(exitStatus), while trying to: \(command.purpose)."
                 + (output.isEmpty ? "" : "\n\(output.trimmingCharacters(in: .whitespacesAndNewlines))")
+
+        case let .workspaceNotProduced(fileName):
+            "pod install finished, but '\(fileName)' was not produced. "
+                + "Run `pod install` in the project to see what CocoaPods decided."
 
         case let .failedLeavingFiles(underlying, destination):
             "\(underlying)\n"

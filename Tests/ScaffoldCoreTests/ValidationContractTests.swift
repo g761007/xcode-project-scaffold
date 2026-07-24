@@ -134,11 +134,6 @@ struct ValidationContractTests {
             }
         ),
         ValidationTrigger(
-            code: .dependencyModeNotSupported,
-            message: "Dependency mode 'cocoapods' is not supported in this version.",
-            configuration: .validBaseline.with { $0.dependencyManagement.mode = .cocoapods }
-        ),
-        ValidationTrigger(
             code: .bundlerNotSupported,
             message: "Bundler is not supported in this version.",
             configuration: .validBaseline.with {

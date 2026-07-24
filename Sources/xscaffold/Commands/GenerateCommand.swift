@@ -77,7 +77,7 @@ struct GenerateCommand: ParsableCommand {
             throw cancelled(using: prompter, reportingTo: reporter)
         }
 
-        try writePlan(plan, to: destination, force: force, reportingTo: reporter)
+        try writePlan(plan, to: destination, force: force, for: validated.configuration, reportingTo: reporter)
         if validateBuild {
             try verifyBuild(of: validated.configuration, at: destination, reportingTo: reporter)
         }

@@ -30,10 +30,11 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// "in this version".
     case coordinatorRequiresUIKit = "XS0009"
 
-    /// Both dependency codes are boundaries, not verdicts: the schema accepts
-    /// the declaration today, and the tickets that generate from it lift each
-    /// restriction (§27) — spm and cocoapods within v0.5, bundler in v0.6.
-    case dependencyModeNotSupported = "XS0010"
+    // XS0010 (dependency mode) was removed once every mode generated — the
+    // same reason XS0001 and XS0006 went.
+
+    /// A boundary, not a verdict: the schema accepts the declaration today,
+    /// and Bundler execution arrives in v0.6 (§27).
     case bundlerNotSupported = "XS0011"
 
     // XS10xx — platform and interface pairings.
@@ -87,7 +88,6 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
              .coordinatorRequiresUIKit,
-             .dependencyModeNotSupported,
              .bundlerNotSupported:
             .capabilityBoundary
 

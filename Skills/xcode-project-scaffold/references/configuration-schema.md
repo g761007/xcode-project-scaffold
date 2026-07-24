@@ -270,7 +270,6 @@ release may help.
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
-| `XS0010` | Dependency mode not supported yet (`spm`/`cocoapods`/`mixed` arrive within v0.5) |
 | `XS0011` | Bundler declared but not supported until v0.6 |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
