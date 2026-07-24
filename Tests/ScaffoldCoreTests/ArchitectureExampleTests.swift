@@ -24,6 +24,24 @@ struct ArchitectureExampleTests {
         $0.architecture = .init(pattern: .mvvmCoordinator, includeExample: true)
     }
 
+    /// One pattern/interface asked for with `includeExample: false`, and the
+    /// README note that should stand in for the example it declined.
+    struct OffCase: Sendable, CustomStringConvertible {
+        let interface: UIFramework
+        let pattern: ArchitecturePattern
+        let note: String
+
+        var description: String {
+            "\(pattern.rawValue)-\(interface.rawValue)"
+        }
+    }
+
+    static let offCases: [OffCase] = [
+        OffCase(interface: .uiKit, pattern: .mvvm, note: "**MVVM.**"),
+        OffCase(interface: .swiftUI, pattern: .mvvm, note: "**MVVM.**"),
+        OffCase(interface: .uiKit, pattern: .mvvmCoordinator, note: "**MVVM-C.**")
+    ]
+
     @Test("a UIKit MVVM project replaces the screen and adds a view model")
     func uiKitFileList() throws {
         let plan = try planner.makePlan(for: Self.mvvmUIKit)
@@ -185,18 +203,34 @@ struct ArchitectureExampleTests {
         #expect(readme.contents.contains("Coordinator"))
     }
 
-    /// Opting out drops every example source but keeps the pattern's README
-    /// note — the plain variant screen stands in. M4 covers this path in full.
-    @Test("with the example off, the plain screen and the note both remain")
-    func exampleOff() throws {
-        let plan = try planner.makePlan(for: .validBaseline.with {
-            $0.architecture = .init(pattern: .mvvm, includeExample: false)
+    /// Opting out (`includeExample: false`) drops every example source: the file
+    /// list becomes the plain variant's exactly — no example files, and no empty
+    /// pattern folders, because the overlay contributes nothing. The README keeps
+    /// the pattern's note and diagram, now a guide to the structure the example
+    /// would have built (§3.3–3.4). The on-path examples above prove the rest.
+    @Test("with the example off, a project is the plain variant plus the pattern's note",
+          arguments: Self.offCases)
+    func exampleOff(offCase: OffCase) throws {
+        let off = try planner.makePlan(for: .validBaseline.with {
+            $0.interface = .init(primary: offCase.interface)
+            $0.architecture = .init(pattern: offCase.pattern, includeExample: false)
+        })
+        let plain = try planner.makePlan(for: .validBaseline.with {
+            $0.interface = .init(primary: offCase.interface)
         })
 
-        #expect(!plan.files.contains { $0.path == "App/GreetingViewModel.swift" })
-        #expect(plan.files.contains { $0.path == "App/RootViewController.swift" })
+        // Exactly the plain variant's files — no example sources, and no folder
+        // left empty by an overlay that contributed nothing.
+        #expect(off.files.map(\.path) == plain.files.map(\.path))
 
-        let readme = try #require(plan.files.first { $0.path == "README.md" })
-        #expect(readme.contents.contains("**MVVM.**"))
+        // ...but the README still documents the intended architecture as a guide.
+        let readme = try #require(off.files.first { $0.path == "README.md" })
+        #expect(readme.contents.contains(offCase.note))
+        #expect(readme.contents.contains("```mermaid"))
+
+        // No unsubstituted placeholder survives the off path either.
+        for file in off.files {
+            #expect(!file.contents.contains("{{"), "\(file.path)")
+        }
     }
 }
