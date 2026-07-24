@@ -19,6 +19,7 @@ public struct ConfigurationValidator: Sendable {
             + architectureIssues(configuration)
             + fieldIssues(configuration)
             + environmentIssues(configuration)
+            + dependencyIssues(configuration)
     }
 }
 
@@ -90,7 +91,7 @@ extension ConfigurationValidator {
     /// wording that distinguishes the two groups cannot be forgotten at one
     /// call site, and so that the sixth of these checks reads the same as the
     /// first.
-    private func unsupported<Value: RawRepresentable & Hashable>(
+    func unsupported<Value: RawRepresentable & Hashable>(
         _ value: Value,
         of supported: Set<Value>,
         as noun: String,
@@ -332,7 +333,7 @@ extension ConfigurationValidator {
 
     /// Every repeat after the first, so five clashing environments produce four
     /// issues rather than one.
-    private func duplicates(
+    func duplicates(
         _ values: [String],
         ignoringCase: Bool
     ) -> [(index: Int, value: String)] {
@@ -384,7 +385,7 @@ extension ConfigurationValidator {
 // MARK: - Formatting
 
 extension ConfigurationValidator {
-    private func list(_ values: [String]) -> String {
+    func list(_ values: [String]) -> String {
         let quoted = values.sorted().map { "'\($0)'" }
         guard quoted.count > 1 else { return quoted.first ?? "" }
         return quoted.dropLast().joined(separator: ", ") + " or " + (quoted.last ?? "")

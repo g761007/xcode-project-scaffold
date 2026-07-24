@@ -139,6 +139,37 @@ struct JSONOutputTests {
         }
     }
 
+    /// Issue #60: dependency declarations flow through the same issues channel
+    /// as every other validation failure — a caller sees the code, the path
+    /// and the suggestion in the document.
+    @Test("a dependency error reaches the JSON issues")
+    func dependencyIssuesInJSON() throws {
+        try withTemporaryDirectory { root in
+            let path = root.appendingPathComponent("scaffold.yml")
+            try """
+            project:
+              name: Bookshelf
+              bundleIdentifier: com.example.bookshelf
+            interface:
+              primary: swiftui
+            dependencyManagement:
+              mode: spm
+              spm:
+                packages:
+                  - name: Alamofire
+                    url: " "
+                    from: "5.9.0"
+            """.write(to: path, atomically: true, encoding: .utf8)
+
+            let result = try xscaffold("validate", path.path, "--output", "json")
+            let output = try decoded(result)
+
+            #expect(result.exitStatus == ScaffoldExitCode.validationFailure.rawValue)
+            #expect(output.issues?.contains { $0.code == .dependencyModeNotSupported } == true)
+            #expect(output.issues?.contains { $0.code == .emptyPackageURL } == true)
+        }
+    }
+
     @Test("doctor reports one check per tool it looked for")
     func doctor() throws {
         // Deliberately no assertion on the exit status: whether the tools are

@@ -27,6 +27,8 @@ public enum ConfigurationDefaults {
     public static let architecture = ArchitecturePattern.minimal
     public static let generator = GeneratorKind.xcodegen
 
+    public static let dependencyMode = DependencyMode.disabled
+
     public static let swiftlint = true
     public static let swiftformat = true
 

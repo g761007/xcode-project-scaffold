@@ -16,6 +16,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
     public var interface: Interface
     public var architecture: Architecture
     public var generator: Generator
+    public var dependencyManagement: DependencyManagement
     public var environments: [Environment]
     public var quality: Quality
     public var testing: Testing
@@ -29,6 +30,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         interface: Interface,
         architecture: Architecture? = nil,
         generator: Generator? = nil,
+        dependencyManagement: DependencyManagement? = nil,
         environments: [Environment]? = nil,
         quality: Quality? = nil,
         testing: Testing? = nil,
@@ -41,6 +43,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         self.interface = interface
         self.architecture = architecture ?? Architecture()
         self.generator = generator ?? Generator()
+        self.dependencyManagement = dependencyManagement ?? DependencyManagement()
         self.environments = environments ?? []
         self.quality = quality ?? Quality()
         self.testing = testing ?? Testing()
@@ -57,6 +60,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
             interface: container.decode(Interface.self, forKey: .interface),
             architecture: container.decodeIfPresent(Architecture.self, forKey: .architecture),
             generator: container.decodeIfPresent(Generator.self, forKey: .generator),
+            dependencyManagement: container.decodeIfPresent(DependencyManagement.self, forKey: .dependencyManagement),
             environments: container.decodeIfPresent([Environment].self, forKey: .environments),
             quality: container.decodeIfPresent(Quality.self, forKey: .quality),
             testing: container.decodeIfPresent(Testing.self, forKey: .testing),

@@ -270,6 +270,8 @@ release may help.
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
+| `XS0010` | Dependency mode not supported yet (`spm`/`cocoapods`/`mixed` arrive within v0.5) |
+| `XS0011` | Bundler declared but not supported until v0.6 |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 
@@ -286,6 +288,12 @@ release may help.
 | `XS1304` | Project or environment name cannot be used as a target or scheme name |
 | `XS1401` | Two environments share a name |
 | `XS1402` | Two environments share a build configuration |
+| `XS1501` | A package name is declared more than once |
+| `XS1502` | A package has an empty url |
+| `XS1503` | A product maps to a target the project does not generate |
+| `XS1504` | A pod is declared more than once |
+| `XS1505` | The same library is declared as both a package and a pod |
+| `XS1506` | Packages or pods are declared under a mode that never reads them |
 
 A document that cannot be parsed at all — bad YAML, a missing required key, an
 unrecognised enum value — never reaches validation. That exits `3` with a
