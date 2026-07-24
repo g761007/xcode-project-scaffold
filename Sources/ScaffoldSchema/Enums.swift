@@ -86,6 +86,14 @@ public enum ArchitecturePattern: String, ScaffoldEnum {
     case mvvm
     case mvvmCoordinator = "mvvm-c"
     case clean
+
+    /// Whether this pattern ships a worked example. `minimal` is the bare
+    /// skeleton and has none; every other pattern replaces the app's main
+    /// screen with an example built in its style. This is what an unstated
+    /// `architecture.includeExample` resolves against.
+    public var hasExample: Bool {
+        self != .minimal
+    }
 }
 
 public enum GeneratorKind: String, ScaffoldEnum {

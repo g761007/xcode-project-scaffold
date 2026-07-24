@@ -21,6 +21,10 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// not an impossibility.
     case deploymentTargetNotSupported = "XS0007"
     case testFrameworkNotSupported = "XS0008"
+    /// MVVM-C on SwiftUI: valid one day (a SwiftUI router), not built yet, so a
+    /// boundary rather than an impossibility — SwiftUI does have a coordinator
+    /// analogue, unlike, say, UIKit on macOS.
+    case coordinatorRequiresUIKit = "XS0009"
 
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
@@ -30,6 +34,13 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     case swiftUILifecycleRequiresSwiftUI = "XS1101"
     case sceneDelegateRequiresUIKit = "XS1102"
     case appDelegateRequiresAppKit = "XS1103"
+
+    /// XS12xx — architecture options.
+    ///
+    /// Permanent, unlike XS0009: `minimal` is the bare skeleton and will never
+    /// carry an example, so `includeExample: true` on it is a contradiction
+    /// rather than a "not yet".
+    case exampleUnavailableForArchitecture = "XS1201"
 
     // XS13xx — field values.
     case invalidBundleIdentifier = "XS1301"
@@ -58,7 +69,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .generatorNotSupported,
              .interfaceNotSupported,
              .deploymentTargetNotSupported,
-             .testFrameworkNotSupported:
+             .testFrameworkNotSupported,
+             .coordinatorRequiresUIKit:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,
@@ -66,6 +78,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .swiftUILifecycleRequiresSwiftUI,
              .sceneDelegateRequiresUIKit,
              .appDelegateRequiresAppKit,
+             .exampleUnavailableForArchitecture,
              .invalidBundleIdentifier,
              .malformedDeploymentTarget,
              .invalidProjectName,

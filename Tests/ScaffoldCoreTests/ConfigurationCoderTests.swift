@@ -32,6 +32,7 @@ struct ConfigurationDefaultsTests {
         #expect(configuration.language.languageMode == .v6)
         #expect(configuration.interface.primary == .uiKit)
         #expect(configuration.architecture.pattern == .minimal)
+        #expect(configuration.architecture.includeExample == nil)
         #expect(configuration.generator.type == .xcodegen)
         #expect(configuration.environments.isEmpty)
         #expect(configuration.quality.swiftlint)
@@ -124,6 +125,52 @@ struct ConfigurationRoundTripTests {
         let second = try coder.encode(ProjectConfiguration.fixture)
 
         #expect(first == second)
+    }
+}
+
+@Suite("includeExample wire behaviour")
+struct IncludeExampleTests {
+    let coder = ConfigurationCoder()
+
+    /// An unstated `includeExample` is a third state, not `false`: it is left
+    /// out of the encoded document, and it resolves to an example only for a
+    /// pattern that has one.
+    @Test("an unstated includeExample is omitted on encode and resolves per pattern")
+    func unstatedIncludeExample() throws {
+        let minimal = try coder.decode(ConfigurationDefaultsTests.minimalDocument)
+        #expect(minimal.architecture.includeExample == nil)
+        #expect(minimal.architecture.generatesExample == false)
+        #expect(try coder.encode(minimal).contains("includeExample") == false)
+
+        let mvvm = try coder.decode("""
+        project:
+          name: MyApp
+          bundleIdentifier: com.example.myapp
+        interface:
+          primary: uikit
+        architecture:
+          pattern: mvvm
+        """)
+        #expect(mvvm.architecture.includeExample == nil)
+        #expect(mvvm.architecture.generatesExample)
+    }
+
+    @Test("a stated includeExample survives a round-trip", arguments: [true, false])
+    func statedIncludeExampleRoundTrips(value: Bool) throws {
+        let decoded = try coder.decode("""
+        project:
+          name: MyApp
+          bundleIdentifier: com.example.myapp
+        interface:
+          primary: uikit
+        architecture:
+          pattern: mvvm
+          includeExample: \(value)
+        """)
+        #expect(decoded.architecture.includeExample == value)
+
+        let reDecoded = try coder.decode(coder.encode(decoded))
+        #expect(reDecoded.architecture.includeExample == value)
     }
 }
 

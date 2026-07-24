@@ -57,6 +57,14 @@ struct ValidationContractTests {
             configuration: .validBaseline.with { $0.testing.unit = .xctest }
         ),
         ValidationTrigger(
+            code: .coordinatorRequiresUIKit,
+            message: "MVVM-C is not supported for SwiftUI in this version.",
+            configuration: .validBaseline.with {
+                $0.interface = .init(primary: .swiftUI)
+                $0.architecture.pattern = .mvvmCoordinator
+            }
+        ),
+        ValidationTrigger(
             code: .uiKitRequiresIOS,
             message: "UIKit is only available for iOS projects.",
             configuration: .validBaseline.with {
@@ -90,6 +98,14 @@ struct ValidationContractTests {
                 + "but it is UIKit.",
             configuration: .validBaseline.with {
                 $0.interface = .init(primary: .uiKit, lifecycle: .appDelegate)
+            }
+        ),
+        ValidationTrigger(
+            code: .exampleUnavailableForArchitecture,
+            message: "Architecture 'minimal' has no example, so architecture.includeExample "
+                + "cannot be true.",
+            configuration: .validBaseline.with {
+                $0.architecture = .init(pattern: .minimal, includeExample: true)
             }
         ),
         ValidationTrigger(
