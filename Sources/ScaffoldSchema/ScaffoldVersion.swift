@@ -5,5 +5,5 @@
 /// `--output json` carries what a caller branches on — neither has a use for a
 /// version that would then have to be kept meaningful across releases.
 public enum ScaffoldVersion {
-    public static let current = "0.1.0"
+    public static let current = "0.2.0"
 }
