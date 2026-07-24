@@ -1,45 +1,47 @@
 import ScaffoldSchema
 
-/// A named set of `ProjectConfiguration` defaults — the non-interactive route
-/// into `init` (§1.1): `xscaffold init MyApp --preset ios-uikit`.
+/// A platform × interface combination with a name (§17.1): the four concrete
+/// shapes a generated project can take, and the CLI shortcut that picks one —
+/// `xscaffold new MyApp --variant ios-uikit`. In `scaffold.yml` it stays two
+/// fields; the variant is only ever a way of answering both at once.
 ///
-/// Held as Swift values rather than as `Presets/*.yml`. A preset cannot be a
+/// Held as Swift values rather than as `Variants/*.yml`. A variant cannot be a
 /// `scaffold.yml`, because it says nothing about the project's identity, so
-/// putting presets on disk would mean a second document type with its own
+/// putting variants on disk would mean a second document type with its own
 /// schema, decoder, validation and tests — to express, in this version, one
-/// field. When a preset needs to say materially more than the schema's own
+/// field. When a variant needs to say materially more than the schema's own
 /// defaults do, that trade is worth taking again.
-public struct Preset: Equatable, Sendable {
+public struct Variant: Equatable, Sendable {
     public let name: String
     public let summary: String
 
-    /// All a preset states beyond the schema's defaults: the platform and the
+    /// All a variant states beyond the schema's defaults: the platform and the
     /// interface. Everything else is already a default, and stating it twice is
     /// how the two drift apart. The deployment target and lifecycle follow from
     /// these — Product and Interface derive them.
     let platform: ApplePlatform
     let interface: UIFramework
 
-    public static let all: [Preset] = [
-        Preset(
+    public static let all: [Variant] = [
+        Variant(
             name: "ios-uikit",
             summary: "iOS app, UIKit, AppDelegate and SceneDelegate",
             platform: .iOS,
             interface: .uiKit
         ),
-        Preset(
+        Variant(
             name: "ios-swiftui",
             summary: "iOS app, SwiftUI, App lifecycle",
             platform: .iOS,
             interface: .swiftUI
         ),
-        Preset(
+        Variant(
             name: "macos-swiftui",
             summary: "macOS app, SwiftUI, App lifecycle",
             platform: .macOS,
             interface: .swiftUI
         ),
-        Preset(
+        Variant(
             name: "macos-appkit",
             summary: "macOS app, AppKit, code-built window and menu bar",
             platform: .macOS,
@@ -47,11 +49,11 @@ public struct Preset: Equatable, Sendable {
         )
     ]
 
-    public static func named(_ name: String) -> Preset? {
+    public static func named(_ name: String) -> Variant? {
         all.first { $0.name == name }
     }
 
-    /// The project's identity is not part of a preset, so it arrives here.
+    /// The project's identity is not part of a variant, so it arrives here.
     public func configuration(projectName: String) -> ProjectConfiguration {
         ProjectConfiguration(
             project: .init(
@@ -71,3 +73,9 @@ public struct Preset: Equatable, Sendable {
         return "com.example.\(segment)"
     }
 }
+
+/// The name these four wore while they hung off `--preset` (§17.1). The
+/// deprecated `init` still spells it that way and goes with it in v0.6; the
+/// word itself returns in v0.7 meaning a project scale, which is why nothing
+/// new should take this spelling.
+public typealias Preset = Variant

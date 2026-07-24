@@ -70,6 +70,28 @@ struct InteractiveConfigurationTests {
         #expect(indices == indices.sorted { ($0 ?? -1) < ($1 ?? -1) })
     }
 
+    /// §17.1: a variant answers the platform and interface questions from the
+    /// command line, so neither is asked; everything else is asked as usual.
+    @Test("a variant answers the platform and interface questions unasked")
+    func variantFromArgument() throws {
+        let prompter = ScriptedPrompter([
+            "Bookshelf", // name
+            "", // bundle identifier: default
+            "1", // architecture: Minimal
+            "1" // environments: none
+        ])
+        let variant = try #require(Variant.named("macos-appkit"))
+
+        let answers = try InteractiveConfiguration().collect(name: nil, variant: variant, using: prompter)
+
+        #expect(answers.platform == .macOS)
+        #expect(answers.interface == .appKit)
+        #expect(prompter.firstIndex(of: "Platform") == nil)
+        #expect(prompter.firstIndex(of: "Interface") == nil)
+        #expect(prompter.firstIndex(of: "Project name") != nil)
+        #expect(prompter.firstIndex(of: "Architecture") != nil)
+    }
+
     @Test("a name given on the command line is not asked for")
     func nameFromArgument() throws {
         let prompter = ScriptedPrompter([

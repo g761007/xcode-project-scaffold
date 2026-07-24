@@ -163,12 +163,12 @@ struct NewCommandGuardTests {
         #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
     }
 
-    @Test("new without a terminal exits 2 and points at init")
+    @Test("new without a terminal exits 2 and points at generate")
     func refusesWithoutATerminal() throws {
         let result = try xscaffoldWithoutInput("new", "App", "--skip-git", "--skip-generate")
 
         #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
-        #expect(result.standardError.contains("init"))
+        #expect(result.standardError.contains("generate"))
     }
 }
 
@@ -241,5 +241,63 @@ struct PlanAndInitTests {
             #expect(full.plan?.commands.isEmpty == false)
             #expect(bare.plan?.commands.isEmpty == true)
         }
+    }
+}
+
+/// §17.1 / issue #39: `--variant` answers the platform and interface questions
+/// from the command line; with `--yes` there is no question left standing —
+/// the one-line generation that replaces `init --preset`.
+@Suite("The new command's variant shortcut")
+struct NewVariantTests {
+    @Test("--variant with --yes generates in one line, without a terminal")
+    func oneLineGeneration() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("App")
+
+            let result = try xscaffoldWithoutInput(
+                "new", "App", "--variant", "ios-uikit", "--destination", destination.path,
+                "--yes", "--skip-git", "--skip-generate"
+            )
+
+            #expect(result.exitStatus == 0)
+            #expect(FileManager.default.fileExists(
+                atPath: destination.appendingPathComponent("scaffold.yml").path
+            ))
+        }
+    }
+
+    @Test("an unknown variant is refused with the list of real ones")
+    func unknownVariant() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--variant", "ios-carplay", "--yes")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        for name in ["ios-uikit", "ios-swiftui", "macos-swiftui", "macos-appkit"] {
+            #expect(result.standardError.contains(name))
+        }
+    }
+
+    @Test("--variant --yes without a name is refused with the line to type")
+    func variantWithoutName() throws {
+        let result = try xscaffoldWithoutInput("new", "--variant", "ios-uikit", "--yes")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("--variant ios-uikit"))
+    }
+
+    @Test("--preset is met with 'did you mean --variant?'")
+    func presetPointsAtVariant() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--preset", "ios-uikit")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("did you mean --variant?"))
+    }
+
+    @Test("--variant alone still needs a terminal for the other questions")
+    func variantAloneNeedsATerminal() throws {
+        let result = try xscaffoldWithoutInput(
+            "new", "App", "--variant", "ios-uikit", "--skip-git", "--skip-generate"
+        )
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
     }
 }
