@@ -105,6 +105,21 @@ architecture:
 YML
 check MVVMSwiftUIApp --config "$root/mvvm-swiftui.yml"
 
+# MVVM-C on UIKit: a coordinator driving a list and a detail screen. It restructures
+# the app more than MVVM does — the plain root screen is gone — so a build and a run
+# of its two screens' view-model tests is the only thing that proves it holds together.
+cat > "$root/mvvmc-uikit.yml" <<'YML'
+project:
+  name: MVVMCApp
+  bundleIdentifier: com.example.mvvmcapp
+interface:
+  primary: uikit
+architecture:
+  pattern: mvvm-c
+  includeExample: true
+YML
+check MVVMCApp --config "$root/mvvmc-uikit.yml"
+
 # Environments, which no preset produces and which the two runs above therefore
 # say nothing about. They earn a case of their own because they change the
 # generated schemes: the default scheme belongs to the Release environment, and

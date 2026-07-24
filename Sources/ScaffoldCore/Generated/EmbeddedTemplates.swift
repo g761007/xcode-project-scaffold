@@ -291,6 +291,285 @@ struct RootViewControllerTests {
 }
 
 """#,
+        "Architectures/mvvm-c/architecture.md": #"""
+**MVVM-C.** Each screen is a *view* and a *view model*, as in MVVM — but
+navigation is pulled out into a *coordinator*. A view model reports intent (a
+selection); the coordinator, not the view model, decides which screen comes next
+and pushes it. The views hold no navigation and the view models hold no UIKit,
+so both can be tested on their own — see `Tests/`.
+
+```mermaid
+flowchart LR
+    Coordinator -- "creates & pushes" --> ListView["List view"]
+    Coordinator -- "creates & pushes" --> DetailView["Detail view"]
+    ListView -- "user actions" --> ListVM["List view model"]
+    ListVM -- "selection" --> Coordinator
+    DetailView -- "state" --> DetailVM["Detail view model"]
+    ListVM --> Model
+    DetailVM --> Model
+```
+
+The example lives in `App/`: a list of items, and a detail screen the coordinator
+shows when one is tapped. Add a screen by giving the coordinator a new route,
+rather than pushing from inside a view.
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/AppCoordinator.swift": #"""
+import UIKit
+
+/// Owns the navigation and decides what each screen leads to. The view
+/// controllers report intent — a selection — and the coordinator, not they,
+/// creates and pushes the next screen. That is the "C" in MVVM-C, and it is
+/// what keeps navigation testable and the screens unaware of one another.
+@MainActor
+final class AppCoordinator {
+    let navigationController = UINavigationController()
+
+    func start() {
+        let listViewModel = ItemListViewModel()
+        listViewModel.onSelect = { [weak self] item in
+            self?.showDetail(for: item)
+        }
+        navigationController.viewControllers = [ItemListViewController(viewModel: listViewModel)]
+    }
+
+    private func showDetail(for item: Item) {
+        let detail = ItemDetailViewController(viewModel: ItemDetailViewModel(item: item))
+        navigationController.pushViewController(detail, animated: true)
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/ItemDetailViewController.swift": #"""
+import UIKit
+
+final class ItemDetailViewController: UIViewController {
+    private let viewModel: ItemDetailViewModel
+    private let detailLabel = UILabel()
+
+    init(viewModel: ItemDetailViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used; this view is created in code.")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        view.backgroundColor = .systemBackground
+        title = viewModel.title
+
+        detailLabel.text = viewModel.detail
+        detailLabel.font = .preferredFont(forTextStyle: .title2)
+        detailLabel.adjustsFontForContentSizeCategory = true
+        detailLabel.numberOfLines = 0
+        detailLabel.textAlignment = .center
+        detailLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(detailLabel)
+
+        NSLayoutConstraint.activate([
+            detailLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            detailLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            detailLabel.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
+            detailLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
+        ])
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/ItemDetailViewModel.swift": #"""
+/// The detail screen's state: everything it shows, derived from the item it was
+/// handed. No UIKit and no navigation — just presentation logic, so it can be
+/// tested on its own.
+@MainActor
+final class ItemDetailViewModel {
+    let title: String
+    let detail: String
+
+    init(item: Item) {
+        title = item.title
+        detail = "Item #\(item.id): \(item.title)"
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/ItemListViewController.swift": #"""
+import UIKit
+
+final class ItemListViewController: UITableViewController {
+    private let viewModel: ItemListViewModel
+    private let cellIdentifier = "item"
+
+    init(viewModel: ItemListViewModel) {
+        self.viewModel = viewModel
+        super.init(style: .insetGrouped)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used; this view is created in code.")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "Items"
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellIdentifier)
+    }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        viewModel.items.count
+    }
+
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: cellIdentifier, for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        content.text = viewModel.items[indexPath.row].title
+        cell.contentConfiguration = content
+        cell.accessoryType = .disclosureIndicator
+        return cell
+    }
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        // The view controller reports the choice and stops there; the coordinator
+        // decides what showing it means.
+        viewModel.selectItem(at: indexPath.row)
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/ItemListViewModel.swift": #"""
+/// One item in the list — the "Model" in MVVM-C: plain data, no behaviour.
+struct Item: Identifiable, Sendable {
+    let id: Int
+    let title: String
+}
+
+extension Item {
+    /// Stand-in data so the example runs; replace it with your own source.
+    static let sample = [
+        Item(id: 1, title: "First item"),
+        Item(id: 2, title: "Second item"),
+        Item(id: 3, title: "Third item")
+    ]
+}
+
+/// The list screen's state. It owns the items and reports which one was chosen;
+/// deciding what "chosen" leads to is the coordinator's job, not the view
+/// model's. That separation is what MVVM-C adds over MVVM.
+@MainActor
+final class ItemListViewModel {
+    let items: [Item]
+
+    /// Called with the chosen item so the coordinator can route to it. Keeping
+    /// navigation out of the view model is the whole point of the pattern.
+    var onSelect: ((Item) -> Void)?
+
+    init(items: [Item] = Item.sample) {
+        self.items = items
+    }
+
+    func selectItem(at index: Int) {
+        guard items.indices.contains(index) else { return }
+        onSelect?(items[index])
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/RootViewController.swift.removed": #"""
+A removal marker, not a source file. Its presence drops the variant's
+App/RootViewController.swift from an mvvm-c project: the coordinator replaces the
+single root screen with a navigation stack, so the plain one would be dead code.
+Only the path matters; this text is never generated.
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/App/SceneDelegate.swift": #"""
+import UIKit
+
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+    private var coordinator: AppCoordinator?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+
+        // The coordinator owns the navigation stack; the scene just hands it the
+        // window and keeps it alive. See App/AppCoordinator.swift.
+        let coordinator = AppCoordinator()
+        coordinator.start()
+        self.coordinator = coordinator
+
+        let window = UIWindow(windowScene: windowScene)
+        window.rootViewController = coordinator.navigationController
+        window.makeKeyAndVisible()
+        self.window = window
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/Tests/ItemDetailViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Item detail view model")
+struct ItemDetailViewModelTests {
+    @Test("it presents the item it was given")
+    func presentsItem() {
+        let viewModel = ItemDetailViewModel(item: Item(id: 7, title: "Widget"))
+
+        #expect(viewModel.title == "Widget")
+        #expect(viewModel.detail == "Item #7: Widget")
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/Tests/ItemListViewModelTests.swift": #"""
+import Testing
+@testable import {{PROJECT_NAME}}
+
+@MainActor
+@Suite("Item list view model")
+struct ItemListViewModelTests {
+    @Test("selecting a row reports the item at that index")
+    func selectReportsItem() {
+        let items = [Item(id: 1, title: "One"), Item(id: 2, title: "Two")]
+        let viewModel = ItemListViewModel(items: items)
+        var selected: Item?
+        viewModel.onSelect = { selected = $0 }
+
+        viewModel.selectItem(at: 1)
+
+        #expect(selected?.id == 2)
+    }
+
+    @Test("an out-of-range selection reports nothing")
+    func outOfRangeReportsNothing() {
+        let viewModel = ItemListViewModel(items: [Item(id: 1, title: "One")])
+        var selected: Item?
+        viewModel.onSelect = { selected = $0 }
+
+        viewModel.selectItem(at: 5)
+
+        #expect(selected == nil)
+    }
+}
+
+"""#,
+        "Architectures/mvvm-c/ios-uikit/Tests/RootViewControllerTests.swift.removed": #"""
+A removal marker, not a test file. Its presence drops the variant's
+Tests/RootViewControllerTests.swift from an mvvm-c project, which no longer has a
+RootViewController to test. Only the path matters; this text is never generated.
+
+"""#,
         "Shared/.gitignore": #"""
 ## macOS
 .DS_Store

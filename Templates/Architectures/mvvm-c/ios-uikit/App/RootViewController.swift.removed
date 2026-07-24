@@ -1,0 +1,4 @@
+A removal marker, not a source file. Its presence drops the variant's
+App/RootViewController.swift from an mvvm-c project: the coordinator replaces the
+single root screen with a navigation stack, so the plain one would be dead code.
+Only the path matters; this text is never generated.
