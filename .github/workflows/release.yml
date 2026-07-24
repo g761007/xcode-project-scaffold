@@ -1,0 +1,118 @@
+name: Release
+
+# A pushed v* tag is the whole trigger and the single source of the version
+# (§20.1, §20.3): the workflow stamps it into the binary, names the artifacts
+# after it, and the smoke test fails the release if the binary disagrees.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # The same three gates as CI. Any failure stops the release before anything
+  # is built, let alone published.
+  test:
+    name: Tests gate the release
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Templates are in sync
+        run: |
+          make templates
+          git diff --exit-code -- Sources/ScaffoldCore/Generated
+
+      - name: Unit and contract tests
+        run: swift test
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Configure a git identity
+        run: |
+          git config --global user.name "xscaffold CI"
+          git config --global user.email "ci@xscaffold.invalid"
+
+      - name: Generated projects build and test
+        run: make e2e
+
+  release:
+    name: Build and publish
+    needs: test
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Stamp the version from the tag
+        run: Scripts/set-version.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Build a universal binary
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      # `lipo -archs` is the proof, not the build flags: a runner that quietly
+      # produced a single-architecture binary would still tar up fine.
+      - name: Package
+        run: |
+          bin="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+          lipo -archs "$bin/xscaffold" | grep -q arm64
+          lipo -archs "$bin/xscaffold" | grep -q x86_64
+          archive="xscaffold-${GITHUB_REF_NAME}-macos-universal.tar.gz"
+          tar -czf "$archive" -C "$bin" xscaffold
+          shasum -a 256 "$archive" > "$archive.sha256"
+
+      # The CHANGELOG section written for this version is the release notes;
+      # a tag that has none falls back to GitHub's generated notes rather
+      # than shipping an empty body.
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="xscaffold-${GITHUB_REF_NAME}-macos-universal.tar.gz"
+          Scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+          if [ -s release-notes.md ]; then
+            gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" \
+              --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" \
+              --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+  # Everything below runs against the published artifact, not the checkout:
+  # what this job trusts is exactly what a user downloads.
+  smoke:
+    name: Release smoke test
+    needs: release
+    runs-on: macos-26
+    steps:
+      - name: Download the released archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "*.tar.gz*"
+
+      - name: The checksum matches
+        run: shasum -a 256 -c ./*.sha256
+
+      - name: The binary reports the tag's version
+        run: |
+          tar -xzf "xscaffold-${GITHUB_REF_NAME}-macos-universal.tar.gz"
+          reported="$(./xscaffold --version)"
+          echo "tag ${GITHUB_REF_NAME#v}, binary $reported"
+          test "$reported" = "${GITHUB_REF_NAME#v}"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Configure a git identity
+        run: |
+          git config --global user.name "xscaffold CI"
+          git config --global user.email "ci@xscaffold.invalid"
+
+      - name: A one-line project generates and builds
+        run: ./xscaffold new SmokeApp --variant ios-swiftui --yes --validate-build
