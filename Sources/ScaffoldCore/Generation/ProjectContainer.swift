@@ -46,12 +46,17 @@ public enum ProjectContainer: Equatable, Sendable {
     /// with it the pods — promised nothing, and a project container is the
     /// generator's own output, verified by it failing loudly instead.
     public func verifyProduced(by plan: GenerationPlan, at destination: URL) throws {
-        guard case let .workspace(fileName) = self,
-              plan.commands.contains(where: { $0.executable == "pod" })
+        guard case let .workspace(fileName) = self, plan.commands.contains(where: isPodInstall)
         else { return }
 
         guard FileManager.default.fileExists(atPath: destination.appendingPathComponent(fileName).path) else {
             throw GenerationError.workspaceNotProduced(fileName)
         }
+    }
+
+    /// Bare or through Bundler — both are the install that owes a workspace.
+    private func isPodInstall(_ command: PlannedCommand) -> Bool {
+        command.executable == "pod"
+            || (command.executable == "bundle" && command.arguments.starts(with: ["exec", "pod"]))
     }
 }

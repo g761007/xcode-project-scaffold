@@ -64,6 +64,12 @@ extension GenerationPlanBuilder {
                 path: "Podfile",
                 contents: PodfileRenderer().render(configuration)
             ))
+            if usesBundler(configuration) {
+                files.append(PlannedFile(
+                    path: "Gemfile",
+                    contents: GemfileRenderer().render(configuration)
+                ))
+            }
         }
         files.append(contentsOf: environmentFiles(for: configuration))
         files.append(contentsOf: localizationFiles(for: configuration))
@@ -191,6 +197,10 @@ extension GenerationPlanBuilder {
         configuration.dependencyManagement.mode == .cocoapods
             || configuration.dependencyManagement.mode == .mixed
     }
+
+    private func usesBundler(_ configuration: ProjectConfiguration) -> Bool {
+        configuration.dependencyManagement.cocoapods?.bundler?.enabled == true
+    }
 }
 
 // MARK: - Commands
@@ -231,13 +241,29 @@ extension GenerationPlanBuilder {
 
             // Pods need the project file the generator just produced, which is
             // why skipping the generator skips them too — a pod install with
-            // no project to integrate into can only fail.
+            // no project to integrate into can only fail. With Bundler, the
+            // install runs through the pinned CocoaPods (§11.4): bundle
+            // install first, then bundle exec pod install, so CI and every
+            // machine agree on the version doing the installing.
             if usesPods(configuration) {
-                commands.append(PlannedCommand(
-                    executable: "pod",
-                    arguments: ["install"],
-                    purpose: "Install pods and produce \(configuration.project.name).xcworkspace"
-                ))
+                if usesBundler(configuration) {
+                    commands.append(PlannedCommand(
+                        executable: "bundle",
+                        arguments: ["install"],
+                        purpose: "Install the pinned CocoaPods from the Gemfile"
+                    ))
+                    commands.append(PlannedCommand(
+                        executable: "bundle",
+                        arguments: ["exec", "pod", "install"],
+                        purpose: "Install pods and produce \(configuration.project.name).xcworkspace"
+                    ))
+                } else {
+                    commands.append(PlannedCommand(
+                        executable: "pod",
+                        arguments: ["install"],
+                        purpose: "Install pods and produce \(configuration.project.name).xcworkspace"
+                    ))
+                }
             }
         }
 

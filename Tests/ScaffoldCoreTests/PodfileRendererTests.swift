@@ -173,3 +173,75 @@ private func withTemporaryDirectory(_ body: (URL) throws -> Void) throws {
     defer { try? FileManager.default.removeItem(at: root) }
     try body(root)
 }
+
+/// Issue #78: Bundler pins the whole team to one CocoaPods.
+@Suite("Bundler in the plan")
+struct BundlerTests {
+    private func makeBundlerConfiguration(version: String?) -> ProjectConfiguration {
+        ProjectConfiguration(
+            project: .init(name: "Bookshelf", bundleIdentifier: "com.example.bookshelf"),
+            interface: .init(primary: .swiftUI),
+            dependencyManagement: .init(mode: .cocoapods, cocoapods: .init(
+                pods: [Pod(name: "SnapKit", source: .version("5.7.1"))],
+                bundler: .init(enabled: true, cocoapodsVersion: version)
+            ))
+        )
+    }
+
+    private func makePlan(_ configuration: ProjectConfiguration) throws -> GenerationPlan {
+        guard case let .valid(validated, _) = ConfigurationValidator().check(configuration) else {
+            struct DidNotValidate: Error {}
+            throw DidNotValidate()
+        }
+        return try GenerationPlanBuilder().makePlan(
+            for: validated,
+            options: GenerationOptions(initializeGit: false, runGenerator: true)
+        )
+    }
+
+    @Test("the Gemfile pins the version when one is stated")
+    func gemfilePinned() {
+        let gemfile = GemfileRenderer().render(makeBundlerConfiguration(version: "1.16.2"))
+
+        #expect(gemfile.contains("source 'https://rubygems.org'"))
+        #expect(gemfile.contains("gem 'cocoapods', '1.16.2'"))
+    }
+
+    @Test("an unstated version leaves the gem unpinned")
+    func gemfileUnpinned() {
+        let gemfile = GemfileRenderer().render(makeBundlerConfiguration(version: nil))
+
+        #expect(gemfile.contains("gem 'cocoapods'\n"))
+        #expect(!gemfile.contains("gem 'cocoapods', '"))
+    }
+
+    @Test("bundler routes the install: Gemfile planned, bundle install then bundle exec pod install")
+    func bundledCommands() throws {
+        let plan = try makePlan(makeBundlerConfiguration(version: "1.16.2"))
+
+        #expect(plan.files.contains { $0.path == "Gemfile" })
+        let commands = plan.commands.map { "\($0.executable) \($0.arguments.joined(separator: " "))" }
+        let generator = try #require(commands.firstIndex(of: "xcodegen generate"))
+        let install = try #require(commands.firstIndex(of: "bundle install"))
+        let podInstall = try #require(commands.firstIndex(of: "bundle exec pod install"))
+        #expect(generator < install && install < podInstall)
+        #expect(!commands.contains("pod install"), "the bare install is replaced, not joined")
+    }
+
+    @Test("the workspace verification recognises the bundled install")
+    func verificationSeesBundledInstall() throws {
+        let plan = GenerationPlan(files: [], commands: [
+            PlannedCommand(executable: "bundle", arguments: ["exec", "pod", "install"], purpose: "Install pods")
+        ])
+        let container = ProjectContainer(for: makeBundlerConfiguration(version: nil))
+
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("xscaffold-bundler-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        #expect(throws: GenerationError.workspaceNotProduced("Bookshelf.xcworkspace")) {
+            try container.verifyProduced(by: plan, at: root)
+        }
+    }
+}

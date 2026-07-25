@@ -8,25 +8,10 @@ extension ConfigurationValidator {
     func dependencyIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
         let dependencies = configuration.dependencyManagement
 
-        return capabilityDependencyIssues(dependencies)
-            + modeMismatchIssues(dependencies)
+        return modeMismatchIssues(dependencies)
             + packageIssues(dependencies, targets: expectedTargets(of: configuration))
             + podIssues(dependencies)
             + crossManagerIssues(dependencies)
-    }
-
-    /// Every mode generates as of #63, so the one boundary left is Bundler,
-    /// which waits for v0.6. XS0010 (mode not supported) died with the last
-    /// unsupported mode — the same way XS0001 and XS0006 went.
-    private func capabilityDependencyIssues(_ dependencies: DependencyManagement) -> [ValidationIssue] {
-        guard dependencies.cocoapods?.bundler?.enabled == true else { return [] }
-
-        return [ValidationIssue(
-            code: .bundlerNotSupported,
-            message: "Bundler is not supported in this version.",
-            path: "dependencyManagement.cocoapods.bundler",
-            suggestion: "Remove the bundler section; it takes effect in v0.6."
-        )]
     }
 
     /// A declaration the mode never reads is a bug waiting to be found later,

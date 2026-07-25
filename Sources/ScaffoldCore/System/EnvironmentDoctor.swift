@@ -14,15 +14,19 @@ public struct EnvironmentDoctor: Sendable {
         self.processRunner = processRunner
     }
 
-    /// The configuration decides how hard to insist on CocoaPods: `pod` is
-    /// required exactly when the mode reads pods, and merely reported
-    /// otherwise. Everything else is the same on every machine.
+    /// The configuration decides how hard to insist on the CocoaPods tools:
+    /// with Bundler, `bundle` is required and provides pod itself; without,
+    /// `pod` is. Everything else is the same on every machine.
     public func check(for configuration: ProjectConfiguration? = nil) -> [EnvironmentCheck] {
         let usesPods = configuration.map {
             $0.dependencyManagement.mode == .cocoapods || $0.dependencyManagement.mode == .mixed
         } ?? false
+        let usesBundler = configuration?.dependencyManagement.cocoapods?.bundler?.enabled == true
 
-        return (Tool.all + [Tool.pod(required: usesPods)]).map(check)
+        return (Tool.all + [
+            Tool.pod(required: usesPods && !usesBundler),
+            Tool.bundle(required: usesPods && usesBundler)
+        ]).map(check)
     }
 
     private func check(_ tool: Tool) -> EnvironmentCheck {
@@ -107,8 +111,8 @@ extension EnvironmentDoctor {
             )
         ]
 
-        /// Required exactly when the configuration in hand reads pods (§9.3);
-        /// without one to consult, reported and shrugged at like the linters.
+        /// Required exactly when the configuration in hand reads pods without
+        /// Bundler (§9.3); with Bundler, `bundle exec` provides pod itself.
         static func pod(required: Bool) -> Tool {
             Tool(
                 name: "pod",
@@ -116,6 +120,18 @@ extension EnvironmentDoctor {
                 required: required,
                 purpose: "Needed when dependencyManagement.mode is cocoapods or mixed. "
                     + "Install with `brew install cocoapods`."
+            )
+        }
+
+        /// Required exactly when the configuration runs pods through Bundler
+        /// (§11.4).
+        static func bundle(required: Bool) -> Tool {
+            Tool(
+                name: "bundle",
+                versionArguments: ["--version"],
+                required: required,
+                purpose: "Needed when cocoapods.bundler is enabled. "
+                    + "Comes with Ruby; `gem install bundler` if missing."
             )
         }
     }
