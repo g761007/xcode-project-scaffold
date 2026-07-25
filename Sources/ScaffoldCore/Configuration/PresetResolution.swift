@@ -8,7 +8,7 @@ import Yams
 /// stated field and an unstated one are the same value once the decoder has
 /// applied its defaults, and only the document still knows which is which
 /// (ADR-0008).
-enum PresetResolution {
+public enum PresetResolution {
     /// The document to decode: unchanged when no preset is named, and the
     /// preset's own with the user's overlaid when one is.
     ///
@@ -45,12 +45,17 @@ enum PresetResolution {
     }
 
     /// A preset resolved on its own, for callers that have no document — the
-    /// interactive flow, which collects answers rather than parsing YAML. The
-    /// identity it decodes against is a placeholder the answers replace; a
-    /// preset states none of it.
-    static func baseConfiguration(for preset: Preset) throws -> ProjectConfiguration {
-        try ConfigurationCoder().decode("""
-        preset: \(preset.rawValue)
+    /// interactive flow, which collects answers rather than parsing YAML, and
+    /// `config example`, which has nobody to ask. The identity it decodes
+    /// against is a placeholder for the caller to replace; a preset states none
+    /// of it.
+    ///
+    /// No preset is an answer rather than a missing one: it asks for the
+    /// schema's own defaults, which is where someone writing a `scaffold.yml`
+    /// by hand starts from anyway.
+    public static func baseConfiguration(for preset: Preset?) throws -> ProjectConfiguration {
+        let scale = preset.map { "preset: \($0.rawValue)\n" } ?? ""
+        return try ConfigurationCoder().decode(scale + """
         project:
           name: \(Preset.placeholderName)
           bundleIdentifier: \(Preset.placeholderBundleIdentifier)
