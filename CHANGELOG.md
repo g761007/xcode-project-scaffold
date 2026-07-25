@@ -44,6 +44,21 @@ migration path until `1.0` (see the README).
 
 ## [Unreleased]
 
+### Changed
+- **The documentation is eleven documents instead of one README.** A 600-line
+  README was simultaneously an introduction, a tutorial, a CLI reference and a
+  schema reference, and the four readers were in each other's way.
+  `docs/` now holds getting-started, cli-reference, configuration, presets,
+  templates, architecture, dependencies, cocoapods, agent-workflow, development
+  and release; the README keeps what it is good at — what this is, whether to
+  use it, how to install it, one example — and an index.
+
+  `docs/configuration.md` and the Skill's field reference are deliberately two
+  documents, one written for a person and one for an agent that may not have
+  the repository. The contract test that kept the Skill's reference honest now
+  runs against both, so neither can fall behind the schema.
+
+
 ### Fixed
 - **A generated project's `make lint` now looks at everything it generated.**
   Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
