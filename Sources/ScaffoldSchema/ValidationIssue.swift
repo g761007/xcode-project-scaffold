@@ -33,6 +33,11 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     // XS0010 (dependency mode) and XS0011 (bundler) were removed once their
     // capabilities arrived — the same reason XS0001 and XS0006 went.
 
+    /// WidgetKit runs on macOS too; the target shape and the templates for it
+    /// are not written yet, which makes this a boundary rather than an
+    /// impossibility.
+    case widgetRequiresIOS = "XS0012"
+
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
     case appKitRequiresMacOS = "XS1002"
@@ -90,7 +95,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .generatorNotSupported,
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
-             .coordinatorRequiresUIKit:
+             .coordinatorRequiresUIKit,
+             .widgetRequiresIOS:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,

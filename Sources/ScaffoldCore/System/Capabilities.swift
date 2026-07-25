@@ -20,7 +20,8 @@ extension CapabilitiesDocument {
                 "github-actions",
                 "localization",
                 "secrets",
-                "ui-tests"
+                "ui-tests",
+                "widget"
             ]
         )
     }

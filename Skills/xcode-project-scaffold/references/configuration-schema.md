@@ -220,6 +220,28 @@ ci:
     lint: true
 ```
 
+### `extensions`
+
+| Key | Type | Default |
+|---|---|---|
+| `widget.enabled` | boolean | `true` when `widget` is stated |
+
+Omitted entirely, and stated while naming no extension, generate nothing.
+Naming `widget` is what asks for it; `enabled: false` parks the section without
+generating the target.
+
+The widget grows a `Widget/` directory with a `WidgetBundle` entry point and a
+static-configuration widget, plus an `app-extension` target the app embeds. It
+ships under the app's bundle identifier plus `.widget` — per environment as
+well as at the base, because an extension whose identifier is not prefixed by
+its container's cannot be installed. iOS only in this version (`XS0012`).
+
+```yaml
+extensions:
+  widget:
+    enabled: true
+```
+
 ### `environments`
 
 A list, empty by default, which gives the project only Xcode's own `Debug` and
@@ -341,6 +363,7 @@ Every value listed above decodes. Only these generate; the rest are rejected by
 | `generator.type` | `xcodegen` |
 | `testing.unit` | `swift-testing`, `none` |
 | `product.deploymentTarget` | iOS `15.0` or later, macOS `11.0` or later |
+| `extensions.widget` | `ios` only |
 
 Platform and interface pair up: `uikit` needs `ios`, `appkit` needs `macos`, and
 `swiftui` runs on both. The four buildable variants are:
@@ -392,6 +415,7 @@ release may help.
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
+| `XS0012` | Widget extensions are only generated for iOS |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 

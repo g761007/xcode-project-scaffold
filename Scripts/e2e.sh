@@ -189,6 +189,22 @@ environments:
 YML
 check EnvApp --config "$root/environments.yml"
 
+# The widget extension (§11.6). It earns a run because it is the first second
+# target the tool generates: only a real build says whether the app-extension
+# target links, whether its sources compile against WidgetKit, and whether the
+# app still builds with an extension embedded in it. project.yml assertions
+# say none of that.
+cat > "$root/widget.yml" <<'YML'
+project:
+  name: WidgetApp
+  bundleIdentifier: com.example.widgetapp
+interface:
+  primary: swiftui
+extensions:
+  widget: {}
+YML
+check WidgetApp --config "$root/widget.yml"
+
 # macOS, the platform axis v0.3 adds. The two presets cover the plain variants;
 # the MVVM overlay ships its own sources, so each interface earns a run of its
 # own — SwiftUI observing an @Observable model, AppKit driving one through a
