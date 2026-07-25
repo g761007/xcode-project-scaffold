@@ -44,6 +44,10 @@ struct XcodeGenSpecEncoderTests {
             UILaunchScreen: {}
             UIApplicationSceneManifest:
               UIApplicationSupportsMultipleScenes: false
+              UISceneConfigurations:
+                UIWindowSceneSessionRoleApplication:
+                - UISceneConfigurationName: Default Configuration
+                  UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
       MyAppTests:
         type: bundle.unit-test
         platform: iOS
@@ -104,6 +108,10 @@ struct XcodeGenSpecEncoderTests {
             UILaunchScreen: {}
             UIApplicationSceneManifest:
               UIApplicationSupportsMultipleScenes: false
+              UISceneConfigurations:
+                UIWindowSceneSessionRoleApplication:
+                - UISceneConfigurationName: Default Configuration
+                  UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
       MyAppTests:
         type: bundle.unit-test
         platform: iOS
@@ -164,6 +172,35 @@ struct XcodeGenSpecEncoderTests {
         }
 
         #expect(try encode(configuration) == Self.goldenWithEnvironments)
+    }
+
+    /// Issue #105. The golden files above carry this too, but a snapshot can be
+    /// re-recorded around a deletion; this says what the line is for, so
+    /// removing it fails a test that names the consequence.
+    ///
+    /// Without the delegate class, UIKit hands `AppDelegate` a configuration
+    /// with no delegate, `scene(_:willConnectTo:)` never runs, and the app
+    /// launches to a blank screen while still reporting itself as running.
+    @Test("a UIKit project names the scene delegate class")
+    func sceneDelegateIsNamed() throws {
+        let yaml = try encode(.validBaseline)
+
+        #expect(yaml.contains("UISceneConfigurations:"))
+        #expect(yaml.contains("UIWindowSceneSessionRoleApplication:"))
+        #expect(yaml.contains("UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate"))
+    }
+
+    /// The name is a handshake between two generated files: the Info.plist
+    /// declares a configuration under it, and the `AppDelegate` template asks
+    /// UIKit for that exact string. Neither file can see the other, so nothing
+    /// but this test would notice one of them being renamed.
+    @Test("the plist and the AppDelegate agree on the configuration name")
+    func configurationNameMatchesTheTemplate() throws {
+        let name = XcodeGenSpecEncoder.sceneConfigurationName
+        let appDelegate = try #require(EmbeddedTemplates.all["Variants/ios-uikit/App/AppDelegate.swift"])
+
+        #expect(appDelegate.contains("UISceneConfiguration(name: \"\(name)\""))
+        #expect(try encode(.validBaseline).contains("UISceneConfigurationName: \(name)"))
     }
 
     @Test("a SwiftUI project has no scene manifest")
