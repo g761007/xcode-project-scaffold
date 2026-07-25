@@ -17,13 +17,15 @@ answer a few questions  →  Configuration Preview  →  Generate / Save / Edit 
 
 ## ⚠️ Status: early — preview-first as of v0.4
 
-Six commands work: `new` (interactive, preview-first), `generate`
-(non-interactive, from a `scaffold.yml`), `validate`, `plan`, `doctor` and
-`capabilities`. Four variants — iOS UIKit and SwiftUI, macOS SwiftUI and
-AppKit — are generated, built and tested on every push, plain and with an MVVM
-(or, on iOS UIKit, MVVM-C) example; a separate job checks that generated
-sources pass the linters they ship with. The Skill an agent drives all of this
-with is in [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/).
+Seven commands work: `new` (interactive, preview-first), `generate`
+(non-interactive, from a `scaffold.yml`), `validate`, `plan`, `doctor`,
+`capabilities` and `config example`. Four variants — iOS UIKit and SwiftUI,
+macOS SwiftUI and AppKit — are generated, built and tested on every push, plain
+and with an MVVM (or, on iOS UIKit, MVVM-C) example, as are the `standard` and
+`production` presets, each at the deployment target its own contents require; a
+separate job checks that generated sources pass the linters they ship with. The
+Skill an agent drives all of this with is in
+[`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/).
 
 ## ⚠️ Stability: none during 0.x
 
@@ -197,6 +199,71 @@ SwiftLint and SwiftFormat switches, and the git default branch. Every interface
 is offered on every platform; `validate` decides, and a refused combination —
 UIKit on macOS, AppKit on iOS — re-asks the question rather than being filtered
 out, so the prompt holds no rules of its own.
+
+### Presets: how much project
+
+A **preset** is a project's scale. A **variant** is its platform and interface.
+They are independent axes, and answer different questions:
+
+```bash
+xscaffold new MyApp --variant ios-swiftui --preset standard --yes
+```
+
+`--variant` says what the project is built with; `--preset` says how much comes
+with it. Either can be given alone, or both together, and neither implies the
+other.
+
+| | `minimal` | `standard` | `production` |
+|---|---|---|---|
+| architecture | minimal | MVVM, with its example | MVVM, with its example |
+| dependencies | none | SPM | SPM |
+| SwiftLint / SwiftFormat | off | on | on |
+| UI tests | — | — | on |
+| environments | none | development, production | development, staging, production |
+| `.xcconfig` values | — | — | one per environment |
+| secrets example | — | — | `API_KEY` |
+| localization | — | — | `en` |
+| GitHub Actions | — | — | build, test, lint |
+
+Every preset gets a unit test target — that is the schema's own default, not
+something a scale switches on — so the row above is about UI tests only.
+
+Naming a preset changes only fields your `scaffold.yml` leaves unstated —
+anything you write wins — so a preset is a starting point rather than a mode
+the rest of the file has to work around. The resolution order is fixed: preset
+defaults, then your overrides, then normalization, then validation.
+
+`preset` is an ordinary field, so the flag and the file are the same mechanism:
+
+```yaml
+preset: production
+project:
+  name: MyApp
+  bundleIdentifier: com.example.myapp
+interface:
+  primary: swiftui
+dependencyManagement:
+  mode: cocoapods       # production + CocoaPods also pins Bundler and the
+  cocoapods:            # CocoaPods version, because that is what the teams
+    pods:               # who reach for CocoaPods came for
+      - name: SnapKit
+        version: "5.7.1"
+```
+
+The generated `scaffold.yml` records every value the preset supplied, and keeps
+the `preset:` line saying where they came from — so the file is readable on its
+own, and reading it back resolves to itself.
+
+To see what a preset resolves to before generating anything:
+
+```bash
+xscaffold config example --preset production > scaffold.yml
+xscaffold plan --config scaffold.yml --resolved-config
+```
+
+`config example` prints the preset resolved in full — every field, not one
+`preset:` line — with a placeholder project identity to replace. It writes
+nothing; the shell decides where the file goes.
 
 ### The save-now, generate-later flow
 
