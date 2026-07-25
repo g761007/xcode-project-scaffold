@@ -9,6 +9,12 @@ import Yams
 /// Decides nothing. Every value it writes comes from the spec, so a question
 /// about the generated file is answered by reading `XcodeGenSpecBuilder`.
 struct XcodeGenSpecEncoder: Sendable {
+    /// The name `AppDelegate` asks UIKit for by hand. It appears in two places
+    /// that have to agree — the generated Info.plist and the generated
+    /// `AppDelegate` — and the template owns the other one, so this is the
+    /// spelling to keep in step if either ever changes.
+    static let sceneConfigurationName = "Default Configuration"
+
     func encode(_ spec: XcodeGenSpec) throws -> String {
         try Yams.serialize(node: node(for: spec), sortKeys: false)
     }
@@ -156,9 +162,24 @@ extension XcodeGenSpecEncoder {
             properties.append(("UILaunchScreen", map([])))
         }
 
+        // The delegate class is named, not merely implied. `AppDelegate` answers
+        // `configurationForConnecting` with a configuration called "Default
+        // Configuration", and UIKit looks that name up here — so a manifest
+        // without it hands back a configuration with no delegate,
+        // `scene(_:willConnectTo:)` never runs, and the window it builds never
+        // exists. The app still launches and still reports itself running,
+        // which is why this was invisible until a UI test looked for a window.
         if infoPlist.includesSceneManifest {
             properties.append(("UIApplicationSceneManifest", map([
-                ("UIApplicationSupportsMultipleScenes", boolean(false))
+                ("UIApplicationSupportsMultipleScenes", boolean(false)),
+                ("UISceneConfigurations", map([
+                    ("UIWindowSceneSessionRoleApplication", sequence([map([
+                        ("UISceneConfigurationName", string(Self.sceneConfigurationName)),
+                        // Resolved at build time to `<TargetName>.SceneDelegate`,
+                        // which is where every UIKit variant puts the class.
+                        ("UISceneDelegateClassName", string("$(PRODUCT_MODULE_NAME).SceneDelegate"))
+                    ])]))
+                ]))
             ])))
         }
 
