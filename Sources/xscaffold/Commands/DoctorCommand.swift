@@ -30,8 +30,10 @@ struct DoctorCommand: ParsableCommand {
         guard checks.meetsRequirements else {
             let missing = checks.filter { $0.required && !$0.found }.map(\.name)
             throw reporter.failure(
-                .environmentRequirementMissing,
-                "Not installed: \(missing.joined(separator: ", ")).",
+                ScaffoldError(
+                    code: .environmentRequirementMissing,
+                    message: "Not installed: \(missing.joined(separator: ", "))."
+                ),
                 checks: checks
             )
         }

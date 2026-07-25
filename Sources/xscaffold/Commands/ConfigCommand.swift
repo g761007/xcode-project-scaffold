@@ -79,7 +79,7 @@ struct ConfigExampleCommand: ParsableCommand {
             )
             document = try ScaffoldDocument().text(for: configuration)
         } catch {
-            throw reporter.failure(.configurationParsingFailure, "\(error)")
+            throw reporter.failure(ScaffoldError(code: .configurationMalformed, message: "\(error)"))
         }
 
         // In text the document is the result, so stdout carries it and nothing

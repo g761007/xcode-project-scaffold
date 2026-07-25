@@ -152,11 +152,11 @@ struct NewCommand: ParsableCommand {
         }
 
         guard prompter.isInteractive else {
-            throw reporter.failure(
-                .invalidArguments,
-                "new needs a terminal to ask its questions. For a non-interactive run, use "
+            throw reporter.failure(ScaffoldError(
+                code: .invalidArguments,
+                message: "new needs a terminal to ask its questions. For a non-interactive run, use "
                     + "generate --config <file>, or new <name> --variant <name> --yes."
-            )
+            ))
         }
         let answers = try collect(variant: variant, using: prompter, reportingTo: reporter)
 
@@ -173,7 +173,10 @@ struct NewCommand: ParsableCommand {
                     using: prompter
                 )
             } catch let InteractivePromptError.unresolvable(issue) {
-                throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
+                throw reporter.failure(
+                    ScaffoldError(code: .configurationInvalid, message: "The answers cannot be generated."),
+                    issues: [issue]
+                )
             }
         }
 
@@ -202,20 +205,21 @@ extension NewCommand {
     ) throws -> ProjectConfiguration {
         if let variant {
             guard let name else {
-                throw reporter.failure(
-                    .invalidArguments,
-                    "A variant does not name the project. Try: xscaffold new MyApp --variant \(variant.name) --yes"
-                )
+                throw reporter.failure(ScaffoldError(
+                    code: .invalidArguments,
+                    message: "A variant does not name the project. "
+                        + "Try: xscaffold new MyApp --variant \(variant.name) --yes"
+                ))
             }
             return try variant.configuration(projectName: name, preset: preset)
         }
 
         guard prompter.isInteractive else {
-            throw reporter.failure(
-                .invalidArguments,
-                "new needs a terminal to ask its questions. For a non-interactive run, use "
+            throw reporter.failure(ScaffoldError(
+                code: .invalidArguments,
+                message: "new needs a terminal to ask its questions. For a non-interactive run, use "
                     + "generate --config <file>, or new <name> --variant <name> --yes."
-            )
+            ))
         }
         return try collect(variant: nil, using: prompter, reportingTo: reporter)
             .resolved(over: preset.map(Variant.baseConfiguration(for:)))
@@ -257,7 +261,10 @@ extension NewCommand {
         } catch InteractivePromptError.cancelled {
             throw cancelled(using: prompter, reportingTo: reporter)
         } catch let InteractivePromptError.unresolvable(issue) {
-            throw reporter.failure(.validationFailure, "The answers cannot be generated.", issues: [issue])
+            throw reporter.failure(
+                ScaffoldError(code: .configurationInvalid, message: "The answers cannot be generated."),
+                issues: [issue]
+            )
         }
     }
 

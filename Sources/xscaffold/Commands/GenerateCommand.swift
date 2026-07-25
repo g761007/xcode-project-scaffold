@@ -64,10 +64,10 @@ struct GenerateCommand: ParsableCommand {
         // terminal to answer it at. Refused up front, before anything is read,
         // rather than hanging a pipeline on a prompt it can never see (§4.3).
         guard assumeYes || prompter.isInteractive else {
-            throw reporter.failure(
-                .invalidArguments,
-                "generate needs a terminal to confirm. Pass --yes to skip the confirmation."
-            )
+            throw reporter.failure(ScaffoldError(
+                code: .invalidArguments,
+                message: "generate needs a terminal to confirm. Pass --yes to skip the confirmation."
+            ))
         }
 
         let configuration = try readConfiguration(at: configurationPath, reportingTo: reporter)

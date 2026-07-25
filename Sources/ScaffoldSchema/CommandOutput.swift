@@ -19,7 +19,20 @@ public struct CommandOutput: Codable, Equatable, Sendable {
     public var exitCode: ScaffoldExitCode
 
     /// One sentence, on failure. Absent on success.
+    ///
+    /// The same sentence as `error.message`. Kept beside it because it is what
+    /// a person reads and what a log line quotes, and because it predates the
+    /// error object.
     public var message: String?
+
+    /// Where the run was when it failed (§23). Absent on success, and absent
+    /// on the one failure that cannot know — see `ScaffoldErrorCode.phase`.
+    public var phase: ScaffoldPhase?
+
+    /// What went wrong, in the terms §23 requires: a code to branch on, an
+    /// exit code, something to do about it, and the command or path it is
+    /// about. Absent on success.
+    public var error: ScaffoldError?
 
     /// From `validate`, and from any command that refused a configuration.
     /// Present and empty means "checked, nothing found"; absent means "not
@@ -65,6 +78,30 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         self.resolvedConfiguration = resolvedConfiguration
         self.checks = checks
         self.capabilities = capabilities
+    }
+
+    /// The failure form (§23). Everything that says *what went wrong* comes
+    /// from the one error, so a document cannot claim a code that disagrees
+    /// with its exit status, or carry a message that is not the error's.
+    ///
+    /// `phase` defaults to the code's own, and is passed only where the same
+    /// code can arrive from more than one stage.
+    public init(
+        command: String,
+        error: ScaffoldError,
+        phase: ScaffoldPhase? = nil,
+        issues: [ValidationIssue]? = nil,
+        checks: [EnvironmentCheck]? = nil
+    ) {
+        self.init(
+            command: command,
+            exitCode: error.exitCode,
+            message: error.message,
+            issues: issues,
+            checks: checks
+        )
+        self.phase = phase ?? error.code.phase
+        self.error = error
     }
 }
 

@@ -68,7 +68,17 @@ public struct BuildValidationError: Error, Equatable, Sendable {
     public let output: String
 
     public var exitCode: ScaffoldExitCode {
-        .buildValidationFailure
+        errorCode.exitCode
+    }
+}
+
+extension BuildValidationError: ReportableError {
+    public var errorCode: ScaffoldErrorCode {
+        .buildValidationFailed
+    }
+
+    public var failedCommand: String? {
+        command.displayString
     }
 }
 

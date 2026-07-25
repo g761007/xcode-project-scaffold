@@ -12,13 +12,24 @@ import ScaffoldSchema
 /// which would otherwise report the same two failures in two wordings.
 func readConfiguration(at path: String, reportingTo reporter: Reporter) throws -> ProjectConfiguration {
     guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
-        throw reporter.failure(.configurationParsingFailure, "Cannot read '\(path)'.")
+        throw reporter.failure(ScaffoldError(
+            code: .configurationUnreadable,
+            message: "Cannot read '\(path)'.",
+            path: path
+        ))
     }
 
     do {
         return try ConfigurationCoder().decode(text)
     } catch {
-        throw reporter.failure(.configurationParsingFailure, "\(path): \(error)")
+        // The file, not the field: the field is named in the message, and the
+        // file is the thing to open. A `ConfigurationParsingError` says which
+        // field; anything else the decoder threw says what it can.
+        throw reporter.failure(ScaffoldError(
+            code: .configurationMalformed,
+            message: "\(path): \(error)",
+            path: path
+        ))
     }
 }
 
@@ -35,7 +46,10 @@ func checkConfiguration(
 ) throws -> (validated: ValidatedConfiguration, warnings: [ValidationIssue]) {
     switch ConfigurationValidator().check(configuration) {
     case let .invalid(issues):
-        throw reporter.failure(.validationFailure, "\(subject) cannot be generated.", issues: issues)
+        throw reporter.failure(
+            ScaffoldError(code: .configurationInvalid, message: "\(subject) cannot be generated."),
+            issues: issues
+        )
     case let .valid(validated, warnings):
         return (validated, warnings)
     }
@@ -51,9 +65,9 @@ func makePlan(
     } catch let error as TemplateConflictError {
         // A conflict names its own code, and is asked for it here, so the
         // mapping cannot drift if the fallback below is given another default.
-        throw reporter.failure(error.exitCode, "\(error)")
+        throw reporter.failure(error)
     } catch {
-        throw reporter.failure(.templateResolutionFailure, "\(error)")
+        throw reporter.failure(ScaffoldError(code: .templateResolutionFailed, message: "\(error)"))
     }
 }
 
@@ -167,7 +181,10 @@ func cancelled(using prompter: some Prompter, reportingTo reporter: Reporter) ->
         prompter.show("Cancelled; nothing was created.")
         return ExitCode(ScaffoldExitCode.userCancelled.rawValue)
     case .json:
-        return reporter.failure(.userCancelled, "Cancelled; nothing was created.")
+        return reporter.failure(ScaffoldError(
+            code: .generationCancelled,
+            message: "Cancelled; nothing was created."
+        ))
     }
 }
 
@@ -178,13 +195,13 @@ func mappingGenerationFailure<T>(reportingTo reporter: Reporter, _ body: () thro
     do {
         return try body()
     } catch let error as GenerationError {
-        throw reporter.failure(error.exitCode, "\(error)")
+        throw reporter.failure(error)
     } catch let exit as ExitCode {
         // Thrown by a step that already reported through the reporter; wrapping
         // it again would report one failure twice under two codes.
         throw exit
     } catch {
-        throw reporter.failure(.generationFailure, "\(error)")
+        throw reporter.failure(ScaffoldError(code: .generationFailed, message: "\(error)"))
     }
 }
 
@@ -216,13 +233,13 @@ func verifyBuild(
     do {
         try BuildValidator().validate(configuration, at: destination)
     } catch let error as BuildValidationError {
-        throw reporter.failure(error.exitCode, "\(error)")
+        throw reporter.failure(error)
     } catch let error as GenerationError {
         // Xcode missing entirely is a missing requirement, not a failed build:
         // a different code, and a different thing to do about it.
-        throw reporter.failure(error.exitCode, "\(error)")
+        throw reporter.failure(error)
     } catch {
-        throw reporter.failure(.buildValidationFailure, "\(error)")
+        throw reporter.failure(ScaffoldError(code: .buildValidationFailed, message: "\(error)"))
     }
 }
 
