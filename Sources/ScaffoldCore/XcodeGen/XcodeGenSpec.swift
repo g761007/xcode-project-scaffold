@@ -31,7 +31,9 @@ struct XcodeGenSpec: Equatable, Sendable {
     var appTarget: AppTarget
     var testTarget: TestTarget?
     var uiTestTarget: UITestTarget?
-    var widgetTarget: WidgetTarget?
+    /// The App Extensions the app embeds, in a fixed order. Empty for a
+    /// project that asks for none.
+    var extensionTargets: [ExtensionTarget]
     var schemes: [Scheme]
 
     /// The scheme Xcode selects when the project is opened. Decided where the
@@ -112,16 +114,16 @@ struct XcodeGenSpec: Equatable, Sendable {
         var sources: [String]
     }
 
-    /// The widget extension (§11.6). It carries an identity of its own because
-    /// an extension's bundle identifier has to be prefixed by its container's,
-    /// per configuration as well as at the base — the app's overrides alone
-    /// would leave an environment's widget under the wrong identifier.
+    /// One App Extension target (§11.6). It carries an identity of its own
+    /// because an extension's bundle identifier has to be prefixed by its
+    /// container's, per configuration as well as at the base — the app's
+    /// overrides alone would leave an environment's extension under the wrong
+    /// identifier.
     ///
-    /// Its target type and the extension point it declares are not fields, for
-    /// the same reason `UITestTarget` does not carry `bundle.ui-testing`: they
-    /// are what "widget target" means rather than something decided per
-    /// project.
-    struct WidgetTarget: Equatable, Sendable {
+    /// Unlike `UITestTarget`, the extension point *is* a field: it is what
+    /// distinguishes a widget from a notification service, and with two kinds
+    /// generated it is a decision rather than a constant.
+    struct ExtensionTarget: Equatable, Sendable {
         var name: String
         var sources: [String]
         var infoPlistPath: String
@@ -129,6 +131,9 @@ struct XcodeGenSpec: Equatable, Sendable {
         var displayName: String
         var overrides: [TargetOverride]
         var packageProducts: [PackageProductDependency]
+        var extensionPointIdentifier: String
+        /// Written only when the kind has one; a widget does not.
+        var principalClass: String?
     }
 
     struct Scheme: Equatable, Sendable {

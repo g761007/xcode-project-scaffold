@@ -47,23 +47,28 @@ extension ConfigurationValidator {
                 configuration.testing.unit, of: Supported.testFrameworks,
                 as: "Test framework", code: .testFrameworkNotSupported, at: "testing.unit"
             ),
-            coordinatorInterfaceIssue(configuration),
-            widgetPlatformIssue(configuration)
+            coordinatorInterfaceIssue(configuration)
         ].compactMap(\.self)
+            + extensionPlatformIssues(configuration)
     }
 
-    /// WidgetKit exists on macOS, so a widget there is a reasonable thing to
-    /// ask for; what this version has is the iOS target shape and iOS
-    /// templates. A boundary, then, like the codes around it.
-    func widgetPlatformIssue(_ configuration: ProjectConfiguration) -> ValidationIssue? {
-        guard configuration.generatesWidget, configuration.product.platform != .iOS else { return nil }
+    /// Both extension kinds exist on macOS in Apple's frameworks, so asking
+    /// for one there is reasonable; what this version has is the iOS target
+    /// shape and iOS templates. A boundary, then, like the codes around it.
+    ///
+    /// Every asked-for extension reports its own, so a macOS project wanting
+    /// both learns about both rather than fixing one and meeting the next.
+    func extensionPlatformIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
+        guard configuration.product.platform != .iOS else { return [] }
 
-        return ValidationIssue(
-            code: .widgetRequiresIOS,
-            message: "Widget extensions are only generated for iOS in this version.",
-            path: "extensions.widget",
-            suggestion: "Remove extensions.widget, or set product.platform to ios."
-        )
+        return AppExtensionKind.enabled(in: configuration).map { kind in
+            ValidationIssue(
+                code: kind.platformCode,
+                message: "\(kind.noun) are only generated for iOS in this version.",
+                path: kind.configurationPath,
+                suggestion: "Remove \(kind.configurationPath), or set product.platform to ios."
+            )
+        }
     }
 
     /// MVVM-C is supported, but only on UIKit — it is a UIKit navigation

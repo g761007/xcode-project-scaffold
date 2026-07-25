@@ -19,6 +19,7 @@ extension CapabilitiesDocument {
                 "environment-values",
                 "github-actions",
                 "localization",
+                "notification-service",
                 "secrets",
                 "ui-tests",
                 "widget"

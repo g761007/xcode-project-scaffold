@@ -38,6 +38,10 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// impossibility.
     case widgetRequiresIOS = "XS0012"
 
+    /// `UNNotificationServiceExtension` exists on macOS as well; the target
+    /// shape and the template for it are iOS-only so far.
+    case notificationServiceRequiresIOS = "XS0013"
+
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
     case appKitRequiresMacOS = "XS1002"
@@ -96,7 +100,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
              .coordinatorRequiresUIKit,
-             .widgetRequiresIOS:
+             .widgetRequiresIOS,
+             .notificationServiceRequiresIOS:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,

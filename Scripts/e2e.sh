@@ -200,18 +200,23 @@ check EnvApp --config "$root/environments.yml"
 # checks availability against the deployment target it is given. At 18.0 this
 # case passed while a 15.0 project generated, validated and then failed to
 # compile — which is exactly the gap e2e exists to close.
+#
+# Both extensions at once rather than one each: they are separate targets in
+# separate directories, so the case that could go wrong is the app embedding
+# two of them, not either alone.
 cat > "$root/widget.yml" <<'YML'
 project:
-  name: WidgetApp
-  bundleIdentifier: com.example.widgetapp
+  name: ExtensionsApp
+  bundleIdentifier: com.example.extensionsapp
 product:
   deploymentTarget: "15.0"
 interface:
   primary: swiftui
 extensions:
   widget: {}
+  notificationService: {}
 YML
-check WidgetApp --config "$root/widget.yml"
+check ExtensionsApp --config "$root/widget.yml"
 
 # macOS, the platform axis v0.3 adds. The two presets cover the plain variants;
 # the MVVM overlay ships its own sources, so each interface earns a run of its

@@ -8,9 +8,11 @@
 /// for the ones already there.
 public struct AppExtensions: Codable, Equatable, Sendable {
     public var widget: Widget?
+    public var notificationService: NotificationService?
 
-    public init(widget: Widget? = nil) {
+    public init(widget: Widget? = nil, notificationService: NotificationService? = nil) {
         self.widget = widget
+        self.notificationService = notificationService
     }
 
     /// A WidgetKit extension. Naming the section is what asks for it, so an
@@ -18,6 +20,22 @@ public struct AppExtensions: Codable, Equatable, Sendable {
     /// section — with whatever it comes to hold — without generating the
     /// target.
     public struct Widget: Codable, Equatable, Sendable {
+        public var enabled: Bool
+
+        public init(enabled: Bool? = nil) {
+            self.enabled = enabled ?? true
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            try self.init(enabled: container.decodeIfPresent(Bool.self, forKey: .enabled))
+        }
+    }
+
+    /// A Notification Service extension: the code that runs between a push
+    /// arriving and the system showing it, for payloads that set
+    /// `mutable-content`. Read `enabled` the same way as the widget's.
+    public struct NotificationService: Codable, Equatable, Sendable {
         public var enabled: Bool
 
         public init(enabled: Bool? = nil) {
@@ -37,5 +55,9 @@ extension ProjectConfiguration {
     /// is the section there, and is it switched on — is answered in one place.
     public var generatesWidget: Bool {
         extensions?.widget?.enabled == true
+    }
+
+    public var generatesNotificationService: Bool {
+        extensions?.notificationService?.enabled == true
     }
 }

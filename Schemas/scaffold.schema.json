@@ -489,6 +489,15 @@
               "type": "boolean"
             }
           }
+        },
+        "notificationService": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
         }
       }
     }

@@ -72,7 +72,8 @@ struct TemplateLibrary: Sendable {
     /// other layers do not write into, so a feature can be added or dropped
     /// without anything else in the project moving.
     private func features(for configuration: ProjectConfiguration) -> [TemplateFile] {
-        configuration.generatesWidget ? files(under: "Features/Widget") : []
+        AppExtensionKind.enabled(in: configuration)
+            .flatMap { files(under: "Features/\($0.directoryName)") }
     }
 
     /// Overlay files win over base files sharing their path; everything else in

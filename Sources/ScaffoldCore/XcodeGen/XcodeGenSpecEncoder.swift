@@ -62,8 +62,8 @@ extension XcodeGenSpecEncoder {
         if let uiTestTarget = spec.uiTestTarget {
             targets.append((uiTestTarget.name, node(for: uiTestTarget, in: spec)))
         }
-        if let widgetTarget = spec.widgetTarget {
-            targets.append((widgetTarget.name, node(for: widgetTarget, in: spec)))
+        for extensionTarget in spec.extensionTargets {
+            targets.append((extensionTarget.name, node(for: extensionTarget, in: spec)))
         }
         pairs.append(("targets", map(targets)))
 
@@ -96,11 +96,10 @@ extension XcodeGenSpecEncoder {
             ]))
         ]
 
-        // The extension is embedded rather than merely built: without this the
-        // app ships without its widget, and nothing says so until run time.
-        var dependencies: [Node] = []
-        if let widget = spec.widgetTarget {
-            dependencies.append(map([("target", string(widget.name)), ("embed", boolean(true))]))
+        // Extensions are embedded rather than merely built: without this the
+        // app ships without them, and nothing says so until run time.
+        var dependencies = spec.extensionTargets.map { extensionTarget in
+            map([("target", string(extensionTarget.name)), ("embed", boolean(true))])
         }
         dependencies += target.packageProducts.map(node(for:))
 
@@ -194,9 +193,16 @@ extension XcodeGenSpecEncoder {
 
     /// XcodeGen writes the extension's Info.plist from these properties, so the
     /// generated project ships none of its own — the same arrangement the app
-    /// target uses. `NSExtensionPointIdentifier` is what makes the bundle a
-    /// widget rather than any other kind of extension.
-    private func node(for target: XcodeGenSpec.WidgetTarget, in spec: XcodeGenSpec) -> Node {
+    /// target uses. `NSExtensionPointIdentifier` is what makes the bundle one
+    /// kind of extension rather than another.
+    private func node(for target: XcodeGenSpec.ExtensionTarget, in spec: XcodeGenSpec) -> Node {
+        var extensionProperties: [(String, Node)] = [
+            ("NSExtensionPointIdentifier", string(target.extensionPointIdentifier))
+        ]
+        if let principalClass = target.principalClass {
+            extensionProperties.append(("NSExtensionPrincipalClass", string(principalClass)))
+        }
+
         var pairs: [(String, Node)] = [
             ("type", string("app-extension")),
             ("platform", string(spec.platform)),
@@ -212,9 +218,7 @@ extension XcodeGenSpecEncoder {
                 // a literal, so one Info.plist serves every environment.
                 ("properties", map([
                     ("CFBundleDisplayName", string("$(PRODUCT_DISPLAY_NAME)")),
-                    ("NSExtension", map([
-                        ("NSExtensionPointIdentifier", string("com.apple.widgetkit-extension"))
-                    ]))
+                    ("NSExtension", map(extensionProperties))
                 ]))
             ]))
         ]
