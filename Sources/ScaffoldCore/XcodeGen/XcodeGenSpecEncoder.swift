@@ -197,7 +197,7 @@ extension XcodeGenSpecEncoder {
     /// target uses. `NSExtensionPointIdentifier` is what makes the bundle a
     /// widget rather than any other kind of extension.
     private func node(for target: XcodeGenSpec.WidgetTarget, in spec: XcodeGenSpec) -> Node {
-        map([
+        var pairs: [(String, Node)] = [
             ("type", string("app-extension")),
             ("platform", string(spec.platform)),
             ("sources", sequence(target.sources.map(string))),
@@ -208,6 +208,8 @@ extension XcodeGenSpecEncoder {
             )),
             ("info", map([
                 ("path", string(target.infoPlistPath)),
+                // As on the app target, a build-setting reference rather than
+                // a literal, so one Info.plist serves every environment.
                 ("properties", map([
                     ("CFBundleDisplayName", string("$(PRODUCT_DISPLAY_NAME)")),
                     ("NSExtension", map([
@@ -215,7 +217,12 @@ extension XcodeGenSpecEncoder {
                     ]))
                 ]))
             ]))
-        ])
+        ]
+
+        if !target.packageProducts.isEmpty {
+            pairs.append(("dependencies", sequence(target.packageProducts.map(node(for:)))))
+        }
+        return map(pairs)
     }
 }
 

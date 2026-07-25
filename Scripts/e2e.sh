@@ -194,10 +194,18 @@ check EnvApp --config "$root/environments.yml"
 # target links, whether its sources compile against WidgetKit, and whether the
 # app still builds with an extension embedded in it. project.yml assertions
 # say none of that.
+#
+# Deliberately at the supported floor rather than the default: the widget's
+# sources reach for WidgetKit API that arrived after it, and the compiler only
+# checks availability against the deployment target it is given. At 18.0 this
+# case passed while a 15.0 project generated, validated and then failed to
+# compile — which is exactly the gap e2e exists to close.
 cat > "$root/widget.yml" <<'YML'
 project:
   name: WidgetApp
   bundleIdentifier: com.example.widgetapp
+product:
+  deploymentTarget: "15.0"
 interface:
   primary: swiftui
 extensions:

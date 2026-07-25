@@ -128,6 +128,7 @@ struct XcodeGenSpec: Equatable, Sendable {
         var bundleIdentifier: String
         var displayName: String
         var overrides: [TargetOverride]
+        var packageProducts: [PackageProductDependency]
     }
 
     struct Scheme: Equatable, Sendable {

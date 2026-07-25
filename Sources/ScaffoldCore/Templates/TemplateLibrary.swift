@@ -35,9 +35,10 @@ struct TemplateFile: Equatable, Sendable {
 ///   example, source files under `<pattern>/<variant>` that replace the
 ///   variant's default screen (ADR-0004). It never generates empty folders or
 ///   unused base protocols — the first things anyone deletes from a project.
-/// - `Features/<feature>` — an optional capability's own sources, added when
-///   the configuration asks for it. A feature adds files and patches none
-///   (§13.4), so it lands beside the layers above rather than overlaying them.
+/// - `Features/<feature>` — the sources of one optional part of the generated
+///   project, added when the configuration asks for it. A feature contributes
+///   its own files and patches no other template (§13.4), so it lands beside
+///   the layers above rather than overlaying them.
 struct TemplateLibrary: Sendable {
     private let templates: [String: String]
 

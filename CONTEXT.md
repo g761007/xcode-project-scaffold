@@ -122,6 +122,13 @@ _Avoid_: base、common、共用層
 疊加在 Variant 之上、描述架構慣例的一層。它一定貢獻一段架構說明與 Mermaid 圖給生成專案的 README；當該 pattern 有範例且專案沒關掉時，還貢獻**範例**原始碼，以同路徑取代 Variant 的預設主畫面。
 _Avoid_: pattern layer、architecture template
 
+**Features Layer**:
+生成專案裡「可選的那一半」的模板層，一個目錄一項：CI workflows、Widget extension 等。每項只
+新增自己的檔案，不以文字 patch 其他模板（§13.4），因此它疊在 Variant 與 Architecture Overlay
+之**旁**而非之上。與下面「專案內容」的 **Feature** 是兩件事：這裡指 xscaffold 的模板層，那裡
+指使用者 App 裡的功能模組。
+_Avoid_: plugin、add-on、外掛層
+
 **範例（Example）**:
 Architecture Overlay 為 `mvvm`／`mvvm-c` 生成的一段可運作程式碼——取代 App 主畫面的 View 與具體 ViewModel（MVVM-C 再加 Coordinator 與兩畫面流程）。它是可以直接刪或擴充的實作，不是抽象基底層。由 `architecture.includeExample` 控制生不生。
 _Avoid_: sample、boilerplate、樣板
