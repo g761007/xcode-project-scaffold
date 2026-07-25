@@ -17,6 +17,7 @@ extension CapabilitiesDocument {
             testingFrameworks: ConfigurationValidator.Supported.testFrameworks.map(\.rawValue).sorted(),
             features: [
                 "environment-values",
+                "github-actions",
                 "localization",
                 "secrets",
                 "ui-tests"

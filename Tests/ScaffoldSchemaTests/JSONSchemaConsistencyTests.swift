@@ -42,7 +42,7 @@ struct JSONSchemaConsistencyTests {
         let expected: Set = [
             "schemaVersion", "project", "product", "language", "interface", "architecture",
             "generator", "dependencyManagement", "environments", "secrets", "localization",
-            "quality", "testing", "git"
+            "quality", "testing", "git", "ci"
         ]
 
         let keys = try Set(properties(schema()).keys)
@@ -59,6 +59,7 @@ struct JSONSchemaConsistencyTests {
         (["architecture", "pattern"], ArchitecturePattern.allowedValues),
         (["generator", "type"], GeneratorKind.allowedValues),
         (["dependencyManagement", "mode"], DependencyMode.allowedValues),
+        (["ci", "provider"], CIProvider.allowedValues),
         (["testing", "unit"], UnitTestFramework.allowedValues),
         (["testing", "ui", "framework"], UITestFramework.allowedValues)
     ])

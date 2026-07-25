@@ -23,6 +23,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
     public var quality: Quality
     public var testing: Testing
     public var git: Git
+    public var ci: ContinuousIntegration?
 
     public init(
         schemaVersion: Int? = nil,
@@ -38,7 +39,8 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         localization: Localization? = nil,
         quality: Quality? = nil,
         testing: Testing? = nil,
-        git: Git? = nil
+        git: Git? = nil,
+        ci: ContinuousIntegration? = nil
     ) {
         self.schemaVersion = schemaVersion ?? ConfigurationDefaults.schemaVersion
         self.project = project
@@ -54,6 +56,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         self.quality = quality ?? Quality()
         self.testing = testing ?? Testing()
         self.git = git ?? Git()
+        self.ci = ci
     }
 
     public init(from decoder: any Decoder) throws {
@@ -72,7 +75,8 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
             localization: container.decodeIfPresent(Localization.self, forKey: .localization),
             quality: container.decodeIfPresent(Quality.self, forKey: .quality),
             testing: container.decodeIfPresent(Testing.self, forKey: .testing),
-            git: container.decodeIfPresent(Git.self, forKey: .git)
+            git: container.decodeIfPresent(Git.self, forKey: .git),
+            ci: container.decodeIfPresent(ContinuousIntegration.self, forKey: .ci)
         )
     }
 }
