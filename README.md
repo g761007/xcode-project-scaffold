@@ -615,8 +615,13 @@ make test             # swift test
 make e2e              # generate, build and test every variant
 make lint             # swiftformat --lint and swiftlint --strict
 make format           # apply formatting in place
+make benchmark        # p50/p95 for startup, capabilities and plan
 make install          # release build, installed to $PREFIX/bin
 ```
+
+`make benchmark` measures a release build, not a debug one, and reports the
+three things an interactive session waits on. It is not a CI gate: it exists so
+that a change suspected of costing time can be answered with a number.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow, test
 layout and pull-request conventions, and [`SECURITY.md`](SECURITY.md) for how
