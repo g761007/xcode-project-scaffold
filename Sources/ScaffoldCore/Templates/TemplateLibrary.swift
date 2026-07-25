@@ -20,6 +20,11 @@ struct TemplateFile: Equatable, Sendable {
     /// removed. Still holds any `{{PLACEHOLDER}}` in its name.
     var path: String
     var contents: String
+    /// The layer it came from, spelled as its directory under `Templates/` —
+    /// `Shared`, `Variants/ios-uikit`, `Features/Widget`. Carried alongside the
+    /// file so that a path claimed twice can name both claimants (§13.4), and
+    /// so that each name is somewhere a reader can go and look.
+    var origin: String
 }
 
 /// Selects the template files that apply to a configuration.
@@ -125,7 +130,11 @@ struct TemplateLibrary: Sendable {
     private func files(under prefix: String) -> [TemplateFile] {
         templates.compactMap { key, contents in
             guard key.hasPrefix(prefix + "/") else { return nil }
-            return TemplateFile(path: String(key.dropFirst(prefix.count + 1)), contents: contents)
+            return TemplateFile(
+                path: String(key.dropFirst(prefix.count + 1)),
+                contents: contents,
+                origin: prefix
+            )
         }
     }
 

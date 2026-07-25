@@ -56,6 +56,19 @@ struct ExitCodeTests {
         #expect(wrapped.exitCode == underlying.exitCode)
     }
 
+    /// A template set that cannot be resolved into a file list never reaches
+    /// the destination, so nothing about the machine or the directory is at
+    /// fault — the same code a variant with no templates gets.
+    @Test("a path claimed twice is a template resolution failure")
+    func templateConflict() {
+        let error = TemplateConflictError(
+            path: "App/AppDelegate.swift",
+            origins: ["Shared", "Variants/ios-uikit"]
+        )
+
+        #expect(error.exitCode == .templateResolutionFailure)
+    }
+
     @Test("a project that does not compile is its own kind of failure")
     func buildFailure() {
         let error = BuildValidationError(

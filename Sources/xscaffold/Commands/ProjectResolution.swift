@@ -48,6 +48,10 @@ func makePlan(
 ) throws -> GenerationPlan {
     do {
         return try GenerationPlanBuilder().makePlan(for: validated, options: options)
+    } catch let error as TemplateConflictError {
+        // A conflict names its own code, and is asked for it here, so the
+        // mapping cannot drift if the fallback below is given another default.
+        throw reporter.failure(error.exitCode, "\(error)")
     } catch {
         throw reporter.failure(.templateResolutionFailure, "\(error)")
     }

@@ -8,11 +8,11 @@
 
 **scaffold.yml**:
 描述一個 Xcode 專案應該長成什麼樣子的宣告式設定檔。
-_Avoid_: config、manifest、專案設定檔
+_Avoid_: config、manifest（該詞指 File Manifest）、專案設定檔
 
 **出生證明**:
 `scaffold.yml` 在專案生成之後的角色——記錄這個專案由哪份設定產生，不再是後續變更的真實來源。
-_Avoid_: source of truth、manifest
+_Avoid_: source of truth、manifest（該詞指 File Manifest）
 
 **ProjectConfiguration**:
 `scaffold.yml` 解析並填入預設值後的完整 Swift 值。生成流程的唯一輸入。
@@ -45,6 +45,16 @@ _Avoid_: output file、artifact
 **PlannedCommand**:
 `GenerationPlan` 裡的一個外部指令，附帶一句說明它為何存在。
 _Avoid_: step、task
+
+**File Manifest**:
+`GenerationPlan` 的檔案清單算完之前的樣子：每個渲染後的路徑，加上宣稱它的**來源
+（origin）**——模板層的目錄（`Shared`、`Variants/ios-uikit`、`Features/Widget`），
+或產出它的 renderer。整份清單先湊齊再檢查，因此同一路徑被兩個來源宣稱時以
+`TEMPLATE_CONFLICT` 失敗並報出雙方，而不是由最後加入的那個安靜勝出（§13.4）。
+
+Architecture Overlay 的同路徑取代不算衝突：那是宣告過的取代，在進入 manifest 之前
+就由 `TemplateLibrary` 解決掉了（ADR-0004）。會同時抵達的是兩個平輩。
+_Avoid_: file list、生成清單、Provider（那個詞在「專案內容」裡已有意思）
 
 **GenerationOptions**:
 一次執行的選項（要不要初始化 git、要不要呼叫 generator）。它描述的是**這次執行**而非專案，所以只來自 CLI flag，永遠不會出現在 `scaffold.yml` 裡。

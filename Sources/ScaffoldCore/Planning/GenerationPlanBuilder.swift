@@ -6,7 +6,7 @@ import ScaffoldSchema
 /// machine. Writing the plan out is a separate step, so a failure while
 /// planning leaves the destination untouched.
 public struct GenerationPlanBuilder: Sendable {
-    private let library = TemplateLibrary()
+    private let library: TemplateLibrary
     private let renderer = TemplateRenderer()
     private let specBuilder = XcodeGenSpecBuilder()
     private let specEncoder = XcodeGenSpecEncoder()
@@ -15,7 +15,17 @@ public struct GenerationPlanBuilder: Sendable {
     static let schemaURL =
         "https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json"
 
-    public init() {}
+    public init() {
+        self.init(library: TemplateLibrary())
+    }
+
+    /// Takes the library so that a test can plan against a template set of its
+    /// own. The shipped set has no conflicting paths — that is what the plan
+    /// contract tests pin — so a conflict cannot otherwise be provoked through
+    /// the layer that detects it.
+    init(library: TemplateLibrary) {
+        self.library = library
+    }
 
     /// Takes the proof, not the configuration: `ValidatedConfiguration` can
     /// only come from the validator, so an unvalidated configuration cannot
@@ -35,47 +45,66 @@ public struct GenerationPlanBuilder: Sendable {
 // MARK: - Files
 
 extension GenerationPlanBuilder {
+    /// Templates are only part of what a run writes, so the manifest that
+    /// catches a path claimed twice covers everything — a renderer landing on a
+    /// template's path is the same silent overwrite by a different route. Each
+    /// non-template file names the type that produced it, so that a conflict
+    /// report points at somewhere a reader can go and look.
+    ///
+    /// The manifest collects rendered paths rather than template paths, because
+    /// rendering is what decides where a file lands: two distinct templates can
+    /// name the same file once `{{PROJECT_NAME}}` has a value.
     private func files(for configuration: ProjectConfiguration) throws -> [PlannedFile] {
         let values = try placeholderValues(for: configuration)
+        var manifest = FileManifest()
 
-        var files = try library.files(for: configuration).map { template in
-            try PlannedFile(
-                path: renderer.render(template.path, path: template.path, with: values),
-                contents: renderer.render(template.contents, path: template.path, with: values)
+        for template in try library.files(for: configuration) {
+            try manifest.add(
+                PlannedFile(
+                    path: renderer.render(template.path, path: template.path, with: values),
+                    contents: renderer.render(template.contents, path: template.path, with: values)
+                ),
+                from: template.origin
             )
         }
 
         // Not templates: both are produced from the configuration itself, so
         // there is nothing for a template to add.
-        try files.append(PlannedFile(
-            path: "project.yml",
-            contents: specEncoder.encode(specBuilder.makeSpec(for: configuration))
-        ))
+        try manifest.add(
+            PlannedFile(
+                path: "project.yml",
+                contents: specEncoder.encode(specBuilder.makeSpec(for: configuration))
+            ),
+            from: "XcodeGenSpecEncoder"
+        )
         // The annotation is the plan's addition, not the coder's: the coder
         // stays a pure value<->text mapping, and decode tolerates the comment
         // the way it tolerates any other.
-        try files.append(PlannedFile(
-            path: "scaffold.yml",
-            contents: "# yaml-language-server: $schema=" + Self.schemaURL + "\n"
-                + configurationCoder.encode(configuration)
-        ))
+        try manifest.add(
+            PlannedFile(
+                path: "scaffold.yml",
+                contents: "# yaml-language-server: $schema=" + Self.schemaURL + "\n"
+                    + configurationCoder.encode(configuration)
+            ),
+            from: "ConfigurationCoder"
+        )
         if usesPods(configuration) {
-            files.append(PlannedFile(
-                path: "Podfile",
-                contents: PodfileRenderer().render(configuration)
-            ))
+            manifest.add(
+                PlannedFile(path: "Podfile", contents: PodfileRenderer().render(configuration)),
+                from: "PodfileRenderer"
+            )
             if usesBundler(configuration) {
-                files.append(PlannedFile(
-                    path: "Gemfile",
-                    contents: GemfileRenderer().render(configuration)
-                ))
+                manifest.add(
+                    PlannedFile(path: "Gemfile", contents: GemfileRenderer().render(configuration)),
+                    from: "GemfileRenderer"
+                )
             }
         }
-        files.append(contentsOf: environmentFiles(for: configuration))
-        files.append(contentsOf: localizationFiles(for: configuration))
-        files.append(contentsOf: GitHubActionsRenderer().files(for: configuration))
+        manifest.add(environmentFiles(for: configuration), from: "EnvironmentFilesRenderer")
+        manifest.add(LocalizationRenderer().files(for: configuration), from: "LocalizationRenderer")
+        manifest.add(GitHubActionsRenderer().files(for: configuration), from: "GitHubActionsRenderer")
 
-        return files.sorted { $0.path < $1.path }
+        return try manifest.resolved()
     }
 
     private func placeholderValues(for configuration: ProjectConfiguration) throws -> [String: String] {
@@ -169,23 +198,6 @@ extension GenerationPlanBuilder {
         let environmentKeys = configuration.environments.flatMap(\.values.keys)
         let secretKeys = (configuration.secrets?.keys ?? []).map(\.name)
         return Array(Set(environmentKeys + secretKeys))
-    }
-}
-
-// MARK: - Localization
-
-extension GenerationPlanBuilder {
-    /// One lproj per shipped language (§16), each holding a Localizable.strings
-    /// with a header rather than nothing — this tool never generates an empty
-    /// folder, and an empty strings file explains itself worse than one line.
-    private func localizationFiles(for configuration: ProjectConfiguration) -> [PlannedFile] {
-        configuration.localization.languages.map { language in
-            PlannedFile(
-                path: "Resources/\(language).lproj/Localizable.strings",
-                contents: "/* \(language) strings for \(configuration.project.name). "
-                    + "Add an entry per user-facing string. */\n"
-            )
-        }
     }
 }
 
