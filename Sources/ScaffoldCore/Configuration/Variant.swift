@@ -23,32 +23,37 @@ public struct Variant: Equatable, Sendable {
     let platform: ApplePlatform
     let interface: UIFramework
 
-    public static let all: [Variant] = [
-        Variant(
-            name: "ios-uikit",
-            summary: "iOS app, UIKit, AppDelegate and SceneDelegate",
-            platform: .iOS,
-            interface: .uiKit
-        ),
-        Variant(
-            name: "ios-swiftui",
-            summary: "iOS app, SwiftUI, App lifecycle",
-            platform: .iOS,
-            interface: .swiftUI
-        ),
-        Variant(
-            name: "macos-swiftui",
-            summary: "macOS app, SwiftUI, App lifecycle",
-            platform: .macOS,
-            interface: .swiftUI
-        ),
-        Variant(
-            name: "macos-appkit",
-            summary: "macOS app, AppKit, code-built window and menu bar",
-            platform: .macOS,
-            interface: .appKit
-        )
-    ]
+    public static let iOSUIKit = Variant(
+        name: "ios-uikit",
+        summary: "iOS app, UIKit, AppDelegate and SceneDelegate",
+        platform: .iOS,
+        interface: .uiKit
+    )
+
+    public static let iOSSwiftUI = Variant(
+        name: "ios-swiftui",
+        summary: "iOS app, SwiftUI, App lifecycle",
+        platform: .iOS,
+        interface: .swiftUI
+    )
+
+    public static let macOSSwiftUI = Variant(
+        name: "macos-swiftui",
+        summary: "macOS app, SwiftUI, App lifecycle",
+        platform: .macOS,
+        interface: .swiftUI
+    )
+
+    public static let macOSAppKit = Variant(
+        name: "macos-appkit",
+        summary: "macOS app, AppKit, code-built window and menu bar",
+        platform: .macOS,
+        interface: .appKit
+    )
+
+    /// The order the interactive prompt offers them in, and the order the CLI
+    /// lists them in when it refuses an unknown name.
+    public static let all: [Variant] = [.iOSUIKit, .iOSSwiftUI, .macOSSwiftUI, .macOSAppKit]
 
     public static func named(_ name: String) -> Variant? {
         all.first { $0.name == name }
@@ -78,19 +83,12 @@ public struct Variant: Equatable, Sendable {
     public func configuration(projectName: String, preset: Preset?) throws -> ProjectConfiguration {
         guard let preset else { return configuration(projectName: projectName) }
 
-        let document: [String: Any] = [
-            "preset": preset.rawValue,
-            "project": [
-                "name": projectName,
-                "bundleIdentifier": Self.bundleIdentifier(for: projectName)
-            ],
-            "product": ["platform": platform.rawValue],
-            "interface": ["primary": interface.rawValue]
-        ]
-        // Dumped rather than interpolated: a project name is arbitrary text at
-        // this point — validation has not run yet — and Yams knows how to quote
-        // it.
-        return try ConfigurationCoder().decode(Yams.dump(object: document))
+        return try PresetResolution.configuration(
+            projectName: projectName,
+            bundleIdentifier: Self.bundleIdentifier(for: projectName),
+            preset: preset,
+            variant: self
+        )
     }
 
     /// The configuration a preset resolves to on its own, for the interactive

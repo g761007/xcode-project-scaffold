@@ -148,9 +148,13 @@ xscaffold config example > scaffold.yml       # print a configuration to start f
 
 ```text
 --variant <name>       ios-uikit, ios-swiftui, macos-swiftui or macos-appkit —
-                       answers the platform and interface questions (new)
+                       answers the platform and interface questions
+                       (new, config example)
 --preset <name>        minimal, standard or production — how much project comes
                        with it (new, config example)
+--dependency-manager <mode>
+                       none, spm, cocoapods or mixed — what reads the packages
+                       (config example)
 --config <path>        a scaffold.yml to generate from (default: ./scaffold.yml)
 --destination <path>   where to create the project (default: ./<name>)
 --output <text|json>   how to report the result
@@ -281,6 +285,19 @@ xscaffold plan --config scaffold.yml --resolved-config
 `config example` prints the preset resolved in full — every field, not one
 `preset:` line — with a placeholder project identity to replace. It writes
 nothing; the shell decides where the file goes.
+
+Its three flags are the independent axes they are on `new`, and can be combined
+freely:
+
+```bash
+xscaffold config example --variant macos-appkit --preset production
+xscaffold config example --preset production --dependency-manager cocoapods
+```
+
+The last one is why the dependency manager is a flag rather than a word to
+edit: under `production`, choosing pods also pins Bundler and a CocoaPods
+version, and the example shows that rather than leaving it to be discovered at
+generation time.
 
 ### The save-now, generate-later flow
 

@@ -39,6 +39,27 @@ migration path until `1.0` (see the README).
   Every code carries its own exit code and its own recovery suggestion, so a
   new failure mode cannot ship without deciding both.
 
+
+
+- **`config example` takes `--variant` and `--dependency-manager`**, the two
+  flags §4.9 documents beside `--preset`. All three are independent axes, as
+  they are on `new`: the variant states the platform and the interface (and
+  what follows from them — an AppKit example says `lifecycle: app-delegate`),
+  the preset states how much project, and the dependency manager states what
+  reads the packages. An unknown name for any of them is refused with the real
+  ones, and a variant given to `--preset` is now pointed at `--variant` rather
+  than at the document.
+
+  The dependency manager earns a flag rather than being a word to edit because
+  it is not one word in the resolved document: under `production`, choosing
+  pods also pins Bundler and a CocoaPods version during normalization. An
+  example that hid that would be hiding what its reader is about to generate,
+  which is the one thing this command exists not to do.
+
+  All three route through the same document builder `new --variant --preset`
+  uses, so the same two flags cannot come to mean different things depending on
+  which command they follow.
+
 ### Fixed
 - **A generated project's `make lint` now looks at everything it generated.**
   Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
