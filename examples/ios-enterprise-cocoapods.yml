@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json
+#
+# The configuration teams with internal infrastructure end up with.
+#
+# `mixed` runs SPM and CocoaPods together, refusing the same library arriving
+# through both. The private specs repo is listed before the public CDN, and
+# that order is kept in the Podfile, so internal pods resolve first. Bundler
+# pins the CocoaPods version, so CI and every machine install with the same
+# one.
+#
+# A credential in a source URL is masked everywhere xscaffold prints it, and
+# left intact in the Podfile, which needs the real URL to work. Do not put one
+# in a committed file: this example uses a plain URL for that reason.
+#
+# Because pods are read, the project is a workspace from here on — build, test
+# and open all go through `Ledger.xcworkspace`.
+
+project:
+  name: Ledger
+  organizationName: Example Ltd
+  bundleIdentifier: com.example.ledger
+
+product:
+  platform: ios
+  deploymentTarget: "17.0"
+
+interface:
+  primary: swiftui
+
+architecture:
+  pattern: mvvm
+
+dependencyManagement:
+  mode: mixed
+  spm:
+    packages:
+      - name: swift-log
+        url: https://github.com/apple/swift-log.git
+        from: "1.5.0"
+        products:
+          - name: Logging
+            targets: [Ledger]
+  cocoapods:
+    bundler:
+      enabled: true
+      cocoapodsVersion: "1.16.2"
+    sources:
+      - https://internal.example.com/specs.git
+      - https://cdn.cocoapods.org/
+    pods:
+      - name: InternalKit
+        git: https://internal.example.com/internalkit.git
+        tag: "2.1.0"
+
+environments:
+  - name: development
+    configuration: Debug
+    bundleIdentifierSuffix: .dev
+    values:
+      API_BASE_URL: https://dev.example.com
+  - name: staging
+    configuration: Staging
+    bundleIdentifierSuffix: .stg
+    values:
+      API_BASE_URL: https://staging.example.com
+  - name: production
+    configuration: Release
+    values:
+      API_BASE_URL: https://api.example.com
+
+secrets:
+  keys:
+    - name: API_KEY
+      example: sk-example-not-real
+
+testing:
+  unit: swift-testing
+  ui:
+    enabled: true
+
+extensions:
+  widget: {}
+  notificationService: {}
+
+ci:
+  provider: github-actions

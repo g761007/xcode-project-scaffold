@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json
+#
+# The smallest file that generates a project.
+#
+# Three fields are required — the two halves of the project's identity, and the
+# interface. Everything else has a default, and every default here is the one a
+# new iOS app wants: SwiftUI lifecycle, the minimal architecture, Swift
+# Testing, both linters, and a git repository with one commit.
+#
+# `xscaffold plan --config <this file> --resolved-config` prints the rest.
+
+project:
+  name: Bookshelf
+  bundleIdentifier: com.example.bookshelf
+
+interface:
+  primary: swiftui

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json
+#
+# A macOS AppKit app, most of it carried by a preset.
+#
+# `standard` supplies MVVM with its example, SPM, Swift Testing, both linters
+# and two environments. Two fields are then stated against it, and both win:
+# the deployment target, and SwiftLint switched off because this project lints
+# in CI instead. An explicitly stated `false` beats a preset's `true` — that is
+# the difference between stating a field and leaving it out.
+#
+# The AppKit window and menu bar are built in code. There is no storyboard and
+# no MainMenu.xib anywhere in the generated project.
+
+preset: standard
+
+project:
+  name: Ledger
+  organizationName: Example Ltd
+  bundleIdentifier: com.example.ledger
+
+product:
+  platform: macos
+  deploymentTarget: "14.0"
+
+interface:
+  primary: appkit
+
+quality:
+  swiftlint: false

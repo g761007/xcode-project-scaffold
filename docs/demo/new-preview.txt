@@ -19,7 +19,7 @@ Configuration Preview
   Architecture:  Minimal
   Testing:       swift-testing
   Environments:  none — Debug and Release
-  Destination:   /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf
+  Destination:   ~/work/Bookshelf
 
   13 files will be created.
   The following commands will run:
@@ -59,9 +59,9 @@ What next?
   5) Show resolved configuration
   6) Cancel
 2
-Saved /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf/scaffold.yml; nothing else was created.
+Saved ~/work/Bookshelf/scaffold.yml; nothing else was created.
 
 Next steps:
-  cd /private/var/folders/ng/ljpy5dyx3dl_m2cz0dzlrjsm0000gn/T/tmp.XtagpxaeQt/Bookshelf
+  cd ~/work/Bookshelf
   xscaffold plan --config scaffold.yml --destination .
   xscaffold generate --destination .

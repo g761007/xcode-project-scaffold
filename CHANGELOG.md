@@ -11,7 +11,6 @@ migration path until `1.0` (see the README).
 ## [Unreleased]
 
 ### Added
-
 - **`make benchmark`.** Reports p50 and p95 for the three things an interactive
   session waits on: process start, which every tab completion pays for;
   `capabilities`, which an agent asks first every session; and `plan` against
@@ -67,6 +66,24 @@ migration path until `1.0` (see the README).
   All three route through the same document builder `new --variant --preset`
   uses, so the same two flags cannot come to mean different things depending on
   which command they follow.
+
+
+
+- **`examples/`.** Four `scaffold.yml` files, each a project someone might
+  actually be starting: the smallest file that generates anything, a UIKit app
+  with a coordinator and two packages, a preset with two fields overridden
+  against it, and the enterprise CocoaPods configuration with private sources,
+  Bundler pinning, extensions and CI. They are deliberately not what
+  `config example` prints — that command shows every field resolved, and these
+  show a file edited down to what was chosen, which is what a `scaffold.yml` in
+  a repository looks like. A test discovers the directory and validates and
+  plans every file in it, so an example cannot go stale unnoticed.
+- **A second terminal demo.** `docs/demo/new-preset.txt` records the one-line
+  flow — `new Bookshelf --variant ios-swiftui --preset standard --yes` — beside
+  the interactive one that was already there. `Scripts/record-demo.sh` produces
+  both, and now replaces the temporary working directory with a stable
+  stand-in, so re-recording an unchanged flow leaves no diff and a real change
+  is visible.
 
 ### Fixed
 - **A generated project's `make lint` now looks at everything it generated.**

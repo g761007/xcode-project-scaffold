@@ -1,0 +1,20 @@
+$ xscaffold new Bookshelf --variant ios-swiftui --preset standard --yes
+
+
+This will create:
+~/work/Bookshelf
+  15 files
+  git init --initial-branch main
+  git add .
+  git commit --message 'Initial commit'
+  xcodegen generate
+Created Bookshelf at:
+~/work/Bookshelf
+  15 files
+  git init --initial-branch main
+  git add .
+  git commit --message 'Initial commit'
+  xcodegen generate
+
+Open it with:
+  open ~/work/Bookshelf/Bookshelf.xcodeproj
