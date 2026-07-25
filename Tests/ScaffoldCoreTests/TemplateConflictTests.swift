@@ -42,8 +42,10 @@ struct TemplateConflictTests {
             try plan(adding: secondAppDelegate)
         }
 
+        #expect(try #require(error).errorCode == .templateConflict)
+        #expect(try #require(error).relevantPath == "App/AppDelegate.swift")
         #expect(try #require(error).description == """
-        TEMPLATE_CONFLICT: the same file is claimed twice.
+        The same file is claimed twice.
         File:
           App/AppDelegate.swift
         Claimed by:

@@ -68,16 +68,21 @@ struct Reporter {
     /// Reports the failure and returns the error that ends the run, so that a
     /// command says `throw reporter.failure(...)` and cannot do one without the
     /// other.
+    ///
+    /// Taking a `ScaffoldError` rather than an exit code and a sentence is what
+    /// makes §23 hold everywhere: there is no way to fail without naming a
+    /// code, and the code carries the exit status and the recovery suggestion
+    /// with it.
     func failure(
-        _ code: ScaffoldExitCode,
-        _ message: String,
+        _ error: ScaffoldError,
+        phase: ScaffoldPhase? = nil,
         issues: [ValidationIssue]? = nil,
         checks: [EnvironmentCheck]? = nil
     ) -> ExitCode {
         let output = CommandOutput(
             command: command,
-            exitCode: code,
-            message: message,
+            error: error,
+            phase: phase,
             issues: issues,
             checks: checks
         )
@@ -87,12 +92,22 @@ struct Reporter {
             for issue in issues ?? [] {
                 printToStandardError(issue.report)
             }
-            printToStandardError("Error: \(message)")
+            // The code first, the way a ValidationIssue leads with its own: the
+            // part a script greps for and a reader looks up. Then the sentence,
+            // then the one thing to do about it.
+            printToStandardError("Error: \(error.code.rawValue): \(error.message)")
+            printToStandardError("Try: \(error.recoverySuggestion)")
         case .json:
             print(json(output))
         }
 
-        return ExitCode(code.rawValue)
+        return ExitCode(error.exitCode.rawValue)
+    }
+
+    /// The form for an error that already knows its own code and phase, which
+    /// is every error `ScaffoldCore` throws.
+    func failure(_ error: some ReportableError, issues: [ValidationIssue]? = nil) -> ExitCode {
+        failure(error.scaffoldError, phase: error.reportedPhase, issues: issues)
     }
 
     /// Notes for the reader that are not the result — in JSON mode they would

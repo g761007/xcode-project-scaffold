@@ -18,26 +18,69 @@ private let encoder = CommandOutputEncoder()
 struct CommandOutputContractTests {
     /// Absent, not null: a caller checking `"plan" in output` must not be told
     /// yes by a command that has no plan to give.
-    @Test("a bare failure carries only what every output has")
+    ///
+    /// §23 is the rest of it: a failure names a code, the stage it reached, the
+    /// number it exits with and what to do — every time, whether or not the
+    /// command had anything else to report.
+    @Test("a bare failure carries the error contract and nothing else")
     func failure() throws {
         let output = CommandOutput(
-            command: "init",
-            exitCode: .fileConflict,
-            message: "'/tmp/MyApp' already exists and is not empty."
+            command: "generate",
+            error: ScaffoldError(
+                code: .outputDirectoryNotEmpty,
+                message: "'/tmp/MyApp' already exists and is not empty.",
+                path: "/tmp/MyApp"
+            )
         )
 
         #expect(try encoder.encode(output) == """
-        {"command":"init","exitCode":6,\
-        "message":"'/tmp/MyApp' already exists and is not empty.","ok":false}
+        {"command":"generate",\
+        "error":{"code":"OUTPUT_DIRECTORY_NOT_EMPTY","exitCode":6,\
+        "message":"'/tmp/MyApp' already exists and is not empty.","path":"/tmp/MyApp",\
+        "recoverySuggestion":"Choose an empty destination, or pass --force to write into this one anyway."},\
+        "exitCode":6,"message":"'/tmp/MyApp' already exists and is not empty.","ok":false,\
+        "phase":"generation"}
         """)
+    }
+
+    /// The command is in the error rather than only in the message, so that a
+    /// caller can re-run what failed without parsing English for it.
+    @Test("a failed command is carried as a value")
+    func failedCommand() throws {
+        let output = CommandOutput(
+            command: "generate",
+            error: ScaffoldError(
+                code: .podInstallFailed,
+                message: "`bundle exec pod install` failed with exit status 1.",
+                command: "bundle exec pod install"
+            )
+        )
+
+        let encoded = try encoder.encode(output)
+
+        #expect(encoded.contains(#""command":"bundle exec pod install""#))
+        #expect(encoded.contains(#""phase":"dependencyInstallation""#))
+        #expect(encoded.contains(#""exitCode":8"#))
+    }
+
+    /// Success says nothing about failing. A caller that branches on the
+    /// presence of `error` must not find one on a run that worked.
+    @Test("a success carries no error and no phase")
+    func successHasNoError() throws {
+        let encoded = try encoder.encode(CommandOutput(command: "plan", exitCode: .success))
+
+        #expect(!encoded.contains("error"))
+        #expect(!encoded.contains("phase"))
     }
 
     @Test("a validation failure carries the issues")
     func validationIssues() throws {
         let output = CommandOutput(
             command: "validate",
-            exitCode: .validationFailure,
-            message: "The configuration cannot be generated.",
+            error: ScaffoldError(
+                code: .configurationInvalid,
+                message: "The configuration cannot be generated."
+            ),
             issues: [ValidationIssue(
                 code: .invalidBundleIdentifier,
                 message: "Bundle identifier 'nope' is not a valid reverse-DNS string.",
@@ -47,12 +90,16 @@ struct CommandOutputContractTests {
         )
 
         #expect(try encoder.encode(output) == """
-        {"command":"validate","exitCode":4,\
+        {"command":"validate",\
+        "error":{"code":"CONFIGURATION_INVALID","exitCode":4,\
+        "message":"The configuration cannot be generated.",\
+        "recoverySuggestion":"Fix the issues listed above; each names the field and what it expects."},\
+        "exitCode":4,\
         "issues":[{"code":"XS1301",\
         "message":"Bundle identifier 'nope' is not a valid reverse-DNS string.",\
         "path":"project.bundleIdentifier","severity":"error",\
         "suggestion":"Use two or more dot-separated segments."}],\
-        "message":"The configuration cannot be generated.","ok":false}
+        "message":"The configuration cannot be generated.","ok":false,"phase":"validation"}
         """)
     }
 
@@ -170,8 +217,7 @@ struct CommandOutputContractTests {
     func checks() throws {
         let output = CommandOutput(
             command: "doctor",
-            exitCode: .environmentRequirementMissing,
-            message: "xcodegen is not installed.",
+            error: ScaffoldError(code: .environmentRequirementMissing, message: "Not installed: xcodegen."),
             checks: [
                 EnvironmentCheck(name: "git", required: true, found: true, detail: "git version 2.54.0"),
                 EnvironmentCheck(name: "xcodegen", required: true, found: false)
@@ -181,7 +227,11 @@ struct CommandOutputContractTests {
         #expect(try encoder.encode(output) == """
         {"checks":[{"detail":"git version 2.54.0","found":true,"name":"git","required":true},\
         {"found":false,"name":"xcodegen","required":true}],\
-        "command":"doctor","exitCode":10,"message":"xcodegen is not installed.","ok":false}
+        "command":"doctor",\
+        "error":{"code":"ENVIRONMENT_REQUIREMENT_MISSING","exitCode":10,\
+        "message":"Not installed: xcodegen.",\
+        "recoverySuggestion":"Install what is reported missing above, then run this again."},\
+        "exitCode":10,"message":"Not installed: xcodegen.","ok":false,"phase":"environmentCheck"}
         """)
     }
 

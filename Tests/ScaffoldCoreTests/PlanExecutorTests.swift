@@ -162,7 +162,7 @@ struct PlanExecutorRefusalTests {
             }
 
             #expect(try #require(error) == .destinationHasProject(destination, marker: marker))
-            #expect(try #require(error).description.contains("OUTPUT_DIRECTORY_HAS_PROJECT"))
+            #expect(try #require(error).errorCode == .outputDirectoryHasProject)
             #expect(try entries(of: destination) == [marker])
         }
     }
@@ -203,7 +203,7 @@ struct PlanExecutorRefusalTests {
                 try PlanExecutor(processRunner: FakeProcessRunner()).execute(samplePlan, at: destination)
             }
             #expect(try #require(error) == .destinationNotEmpty(destination))
-            #expect(try #require(error).description.contains("OUTPUT_DIRECTORY_NOT_EMPTY"))
+            #expect(try #require(error).errorCode == .outputDirectoryNotEmpty)
 
             try PlanExecutor(processRunner: FakeProcessRunner())
                 .execute(samplePlan, at: destination, force: true)

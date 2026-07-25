@@ -16,20 +16,27 @@ public struct TemplateConflictError: Error, Equatable, Sendable {
     public let origins: [String]
 }
 
-extension TemplateConflictError {
+extension TemplateConflictError: ReportableError {
+    public var errorCode: ScaffoldErrorCode {
+        .templateConflict
+    }
+
+    /// The path claimed twice — the one thing the reader has to go and look at.
+    public var relevantPath: String? {
+        path
+    }
+
     /// A template set that cannot be resolved into a file list, like a missing
     /// variant — the run never reaches the destination, so nothing about the
     /// machine or the directory is at fault (§11.4).
     public var exitCode: ScaffoldExitCode {
-        .templateResolutionFailure
+        errorCode.exitCode
     }
 }
 
 extension TemplateConflictError: CustomStringConvertible {
-    /// Opens with the contract name, the way a `GenerationError` does: the part
-    /// a script greps for and a reader looks up.
     public var description: String {
-        "TEMPLATE_CONFLICT: the same file is claimed twice.\n"
+        "The same file is claimed twice.\n"
             + "File:\n  \(path)\n"
             + "Claimed by:\n"
             + origins.map { "  \($0)" }.joined(separator: "\n")

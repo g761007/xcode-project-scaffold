@@ -22,6 +22,24 @@ migration path until `1.0` (see the README).
   completes the day it exists — and a test asserts that, against
   `Variant.all` and `Preset.allowedValues`, in all three scripts.
 
+- **Every failure names itself.** `--output json` failures now carry an `error`
+  object — `code`, `message`, `exitCode`, `recoverySuggestion`, plus `command`
+  when an external command failed and `path` when the failure is about a file —
+  and a `phase` saying which stage the run reached. A caller can tell
+  `POD_INSTALL_FAILED` from `XCODEGEN_FAILED` without parsing English, and tell
+  a failure that wrote nothing from one that left a directory behind. In text
+  mode the same facts arrive as `Error: CODE: message` followed by `Try: …`.
+
+  The codes are the error contract's (§23), minus the six it names that no
+  failure path could emit — an unreachable code is dead the same way an
+  unreachable validation code is — plus the ones that existed with no name:
+  wrong arguments, an unreadable configuration, a malformed one, and the two
+  catch-alls. `phase` follows ADR-0009: the stage that was under way, not the
+  state the run ended in.
+
+  Every code carries its own exit code and its own recovery suggestion, so a
+  new failure mode cannot ship without deciding both.
+
 ## [0.7.0] — 2026-07-25
 
 ### Added

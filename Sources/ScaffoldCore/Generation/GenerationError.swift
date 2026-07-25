@@ -36,52 +36,147 @@ public enum GenerationError: Error, Equatable, Sendable {
     indirect case failedLeavingFiles(GenerationError, in: URL)
 }
 
-extension GenerationError {
-    /// What the CLI exits with (§11.4).
+extension GenerationError: ReportableError {
+    /// The contract name for each failure (§23).
     ///
     /// Here rather than in the CLI so that it can be tested without running a
     /// binary, and so that adding a case makes the compiler ask what it means
     /// to a caller — the one question a new failure mode must not skip.
-    public var exitCode: ScaffoldExitCode {
+    public var errorCode: ScaffoldErrorCode {
         switch self {
-        case .destinationNotEmpty, .destinationHasProject, .destinationIsNotADirectory, .cannotReplaceDirectory:
-            .fileConflict
-        case .executableNotFound:
-            .environmentRequirementMissing
-        case .commandFailed:
-            .externalCommandFailure
-        case .workspaceNotProduced:
-            .generationFailure
-        case .unsafePlannedPath:
-            .generationFailure
-        // What could not be undone does not change why it failed.
-        case let .failedLeavingFiles(underlying, _):
-            underlying.exitCode
+        case .destinationNotEmpty: .outputDirectoryNotEmpty
+        case .destinationHasProject: .outputDirectoryHasProject
+        case .destinationIsNotADirectory: .outputPathNotADirectory
+        case .cannotReplaceDirectory: .outputPathBlockedByDirectory
+        case .unsafePlannedPath: .unsafePlannedPath
+        case .workspaceNotProduced: .workspaceNotGenerated
+        case let .executableNotFound(executable): Tool(executable: executable).missingCode
+        case let .commandFailed(command, _, _): Tool(command).failureCode
+        // What could not be undone does not change why it failed: a caller
+        // branching on the code is asking why, and the leftover directory is
+        // in `relevantPath`.
+        case let .failedLeavingFiles(underlying, _): underlying.errorCode
+        }
+    }
+
+    /// Which tool was missing, or failed, decides the stage — the same code
+    /// arrives from generation, from the generator run and from a build.
+    /// Anything else takes the code's own phase.
+    public var reportedPhase: ScaffoldPhase? {
+        switch self {
+        case let .executableNotFound(executable): Tool(executable: executable).phase
+        case let .commandFailed(command, _, _): Tool(command).phase
+        case let .failedLeavingFiles(underlying, _): underlying.reportedPhase
+        default: errorCode.phase
+        }
+    }
+
+    public var failedCommand: String? {
+        switch self {
+        case let .commandFailed(command, _, _): command.displayString
+        case let .failedLeavingFiles(underlying, _): underlying.failedCommand
+        default: nil
+        }
+    }
+
+    public var relevantPath: String? {
+        switch self {
+        case let .destinationNotEmpty(url),
+             let .destinationHasProject(url, _),
+             let .destinationIsNotADirectory(url),
+             let .cannotReplaceDirectory(url):
+            url.path
+        case let .unsafePlannedPath(path):
+            path
+        case let .workspaceNotProduced(fileName):
+            fileName
+        // The destination, not the underlying failure's path: what the reader
+        // now has to deal with is the directory that still has files in it.
+        case let .failedLeavingFiles(_, destination):
+            destination.path
+        default:
+            nil
+        }
+    }
+
+    /// What the CLI exits with (§11.4). One mapping, through the code, so that
+    /// the number and the name cannot come to disagree.
+    public var exitCode: ScaffoldExitCode {
+        errorCode.exitCode
+    }
+}
+
+/// The tool a planned command belongs to, taken from the executable's name —
+/// which is the thing that identifies it. `bundle` is Bundler on its own and
+/// CocoaPods when it is running `pod`, because that is what failed.
+private enum Tool {
+    case xcodegen
+    case cocoapods
+    case bundler
+    case xcodebuild
+    case other
+
+    init(executable: String, arguments: [String] = []) {
+        switch executable {
+        case "xcodegen": self = .xcodegen
+        case "pod": self = .cocoapods
+        case "bundle": self = arguments.contains("pod") ? .cocoapods : .bundler
+        case "xcodebuild": self = .xcodebuild
+        default: self = .other
+        }
+    }
+
+    init(_ command: PlannedCommand) {
+        self.init(executable: command.executable, arguments: command.arguments)
+    }
+
+    var missingCode: ScaffoldErrorCode {
+        switch self {
+        case .xcodegen: .xcodegenNotInstalled
+        case .cocoapods: .cocoapodsNotInstalled
+        case .bundler: .bundlerNotInstalled
+        case .xcodebuild, .other: .executableNotFound
+        }
+    }
+
+    /// Bundler has no failure code of its own in §23: `bundle install` failing
+    /// is a command that failed, and its output says which gem.
+    var failureCode: ScaffoldErrorCode {
+        switch self {
+        case .xcodegen: .xcodegenFailed
+        case .cocoapods: .podInstallFailed
+        case .bundler, .xcodebuild, .other: .commandFailed
+        }
+    }
+
+    var phase: ScaffoldPhase {
+        switch self {
+        case .xcodegen: .projectGeneration
+        case .cocoapods, .bundler: .dependencyInstallation
+        case .xcodebuild: .buildValidation
+        case .other: .generation
         }
     }
 }
 
 extension GenerationError: CustomStringConvertible {
+    /// What happened, and nothing else. The contract name and what to do about
+    /// it are the code's (§23), and are printed alongside this by whoever
+    /// reports it — repeating them here would have every failure say the same
+    /// thing twice.
     public var description: String {
         switch self {
-        // The two §13.3 tiers open with their contract names, the way a
-        // ValidationIssue opens with its code: the part a script greps for and
-        // a reader looks up.
         case let .destinationNotEmpty(destination):
-            "OUTPUT_DIRECTORY_NOT_EMPTY: '\(destination.path)' already exists and is not empty. "
-                + "Choose an empty destination, or pass --force to write into it anyway."
+            "'\(destination.path)' already exists and is not empty."
 
         case let .destinationHasProject(destination, marker):
-            "OUTPUT_DIRECTORY_HAS_PROJECT: '\(destination.path)' contains an existing project "
-                + "(\(marker)). xscaffold creates new projects and does not update existing "
-                + "projects, so no flag makes this destination writable."
+            "'\(destination.path)' contains an existing project (\(marker))."
 
         case let .destinationIsNotADirectory(destination):
             "'\(destination.path)' already exists and is not a directory."
 
         case let .cannotReplaceDirectory(path):
-            "'\(path.path)' is a directory, and the project needs a file there. "
-                + "Move it out of the way and run this again."
+            "'\(path.path)' is a directory, and the project needs a file there."
 
         case let .unsafePlannedPath(path):
             "The plan contains '\(path)', which would write outside the destination."
@@ -95,8 +190,7 @@ extension GenerationError: CustomStringConvertible {
                 + (output.isEmpty ? "" : "\n\(output.trimmingCharacters(in: .whitespacesAndNewlines))")
 
         case let .workspaceNotProduced(fileName):
-            "pod install finished, but '\(fileName)' was not produced. "
-                + "Run `pod install` in the project to see what CocoaPods decided."
+            "pod install finished, but '\(fileName)' was not produced."
 
         case let .failedLeavingFiles(underlying, destination):
             "\(underlying)\n"

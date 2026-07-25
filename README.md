@@ -483,6 +483,39 @@ only when that command has them to report — an absent key, never `null`.
 `plan` carries file paths and sizes, not file contents, plus an `overwrites`
 list when a forced run would replace existing files.
 
+### What a failure says
+
+Every failure carries an `error` object and the `phase` it happened in, so a
+caller can branch without parsing English:
+
+```console
+$ xscaffold generate --config scaffold.yml --yes --output json | jq '{phase, error}'
+{
+  "phase": "dependencyInstallation",
+  "error": {
+    "code": "POD_INSTALL_FAILED",
+    "message": "`bundle exec pod install` failed with exit status 1, while trying to: Install pods…",
+    "exitCode": 8,
+    "command": "bundle exec pod install",
+    "recoverySuggestion": "Run the install again with --verbose in the destination to see what CocoaPods decided."
+  }
+}
+```
+
+`code`, `message`, `exitCode` and `recoverySuggestion` are always there;
+`command` appears when an external command failed and `path` when the failure is
+about a file or directory. `phase` is one of `invocation`, `configuration`,
+`validation`, `planning`, `confirmation`, `generation`, `projectGeneration`,
+`dependencyInstallation`, `buildValidation` or `environmentCheck` — see
+[ADR-0009](docs/adr/0009-a-failure-reports-the-stage-it-was-in.md).
+
+In text mode the same three facts arrive on stderr:
+
+```text
+Error: OUTPUT_DIRECTORY_NOT_EMPTY: '/tmp/Bookshelf' already exists and is not empty.
+Try: Choose an empty destination, or pass --force to write into this one anyway.
+```
+
 ### Exit codes
 
 ```text

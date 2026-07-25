@@ -74,12 +74,21 @@ extension XScaffold {
     /// off the command line: the promise has to hold here too, or a caller has
     /// to be ready for output it cannot parse.
     private static func report(_ message: String, as code: ScaffoldExitCode) {
+        // Everything a command reported went through `Reporter`, which throws a
+        // bare `ExitCode`; anything still carrying a message got here without a
+        // command's help. That leaves two possibilities, and §23 wants both
+        // named: the arguments were wrong, or nothing else fits.
+        let error = ScaffoldError(
+            code: code == .invalidArguments ? .invalidArguments : .unexpectedFailure,
+            message: message
+        )
+
         guard jsonWasRequested else {
             printToStandardError(message)
             return
         }
 
-        let output = CommandOutput(command: attemptedCommand, exitCode: code, message: message)
+        let output = CommandOutput(command: attemptedCommand, error: error)
         print((try? CommandOutputEncoder().encode(output)) ?? "")
     }
 
