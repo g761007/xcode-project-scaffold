@@ -38,10 +38,18 @@ struct NewCommand: ParsableCommand {
     @Argument(help: "The project name. Asked for if omitted.")
     var name: String?
 
-    @Option(name: .customLong("destination"), help: "Where to create the project. Defaults to ./<name>.")
+    @Option(
+        name: .customLong("destination"),
+        help: "Where to create the project. Defaults to ./<name>.",
+        completion: .directory
+    )
     var destination: String?
 
-    @Option(name: .customLong("variant"), help: "A platform and interface combination; answers those two questions.")
+    @Option(
+        name: .customLong("variant"),
+        help: "A platform and interface combination; answers those two questions.",
+        completion: .list(Variant.all.map(\.name))
+    )
     var variantName: String?
 
     /// Back as a scale rather than as a platform combination (§17). Between
@@ -50,7 +58,8 @@ struct NewCommand: ParsableCommand {
     /// though it does not.
     @Option(
         name: .customLong("preset"),
-        help: "How much project to create: \(Preset.allowedValues.joined(separator: ", "))."
+        help: "How much project to create: \(Preset.allowedValues.joined(separator: ", ")).",
+        completion: .list(Preset.allowedValues)
     )
     var presetName: String?
 

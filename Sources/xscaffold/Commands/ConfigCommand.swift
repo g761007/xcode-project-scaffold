@@ -45,7 +45,8 @@ struct ConfigExampleCommand: ParsableCommand {
 
     @Option(
         name: .customLong("preset"),
-        help: "How much project to start with: \(Preset.allowedValues.joined(separator: ", "))."
+        help: "How much project to start with: \(Preset.allowedValues.joined(separator: ", ")).",
+        completion: .list(Preset.allowedValues)
     )
     var presetName: String?
 
