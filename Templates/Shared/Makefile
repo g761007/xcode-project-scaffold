@@ -43,4 +43,4 @@ format: ## Apply formatting in place
 
 .PHONY: clean
 clean: ## Remove build artefacts
-	rm -rf DerivedData build $(PROJECT).xcodeproj
+	rm -rf {{CLEAN_ARTEFACTS}}

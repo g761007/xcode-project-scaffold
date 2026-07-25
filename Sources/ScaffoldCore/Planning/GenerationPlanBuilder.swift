@@ -112,6 +112,9 @@ extension GenerationPlanBuilder {
             "INTERFACE_DISPLAY_NAME": configuration.interface.primary.displayName,
             "SCHEME_NAME": spec.defaultSchemeName,
             "CONTAINER_FILE": ProjectContainer(for: configuration).fileName,
+            "SETUP_COMMANDS": makeRecipe(from: setupCommands(for: configuration), indentation: ""),
+            "BUILD_TARGET_DESCRIPTION": buildTargetDescription(for: configuration.product.platform),
+            "CLEAN_ARTEFACTS": cleanArtefacts(for: configuration).joined(separator: " "),
             "CONTAINER_FLAG": ProjectContainer(for: configuration).xcodebuildFlag,
             "DESTINATION_BLOCK": destinationBlock(for: configuration.product.platform),
             "GENERATE_RECIPE": makeRecipe(from: regenerationCommands(for: configuration)),
@@ -191,13 +194,58 @@ extension GenerationPlanBuilder {
         }
     }
 
+    /// What someone cloning this project has to install before `make generate`
+    /// will work. Derived from what the project actually reads, so a project
+    /// with no pods is not told to install CocoaPods.
+    private func setupCommands(for configuration: ProjectConfiguration) -> [String] {
+        var tools = ["xcodegen"]
+        if usesPods(configuration) {
+            tools.append("cocoapods")
+        }
+        var commands = ["brew install \(tools.joined(separator: " "))"]
+        if usesBundler(configuration) {
+            commands.append("gem install bundler")
+        }
+
+        // Aligned, because the block sits beside a `make generate` line that
+        // carries its own comment and a ragged column reads as a mistake.
+        let width = (commands.map(\.count).max() ?? 0) + 8
+        return commands.map { $0.padding(toLength: width, withPad: " ", startingAt: 0) + "# once" }
+    }
+
+    /// Everything in the project that a run produces and can produce again.
+    ///
+    /// The workspace and `Pods/` belong here for the same reason the
+    /// `.xcodeproj` does — `pod install` writes them, and `make generate` runs
+    /// it. Leaving them while removing the project file was worse than not
+    /// cleaning at all: the workspace that survived pointed at a project that
+    /// no longer existed.
+    private func cleanArtefacts(for configuration: ProjectConfiguration) -> [String] {
+        var artefacts = ["DerivedData", "build", configuration.projectFileName]
+        if usesPods(configuration) {
+            artefacts.append(contentsOf: [ProjectContainer(for: configuration).fileName, "Pods"])
+        }
+        return artefacts
+    }
+
+    /// What `make build` builds for, in the words the README needs. "the
+    /// simulator" is wrong on macOS, where the build runs on the machine
+    /// reading the sentence.
+    private func buildTargetDescription(for platform: ApplePlatform) -> String {
+        switch platform {
+        case .iOS: "the simulator"
+        case .macOS: "macOS"
+        }
+    }
+
     /// Make recipes are tab-indented, and an empty recipe is a target that
-    /// silently does nothing.
-    private func makeRecipe(from commands: [String]) -> String {
+    /// silently does nothing. Prose that lists commands wants no indentation at
+    /// all, which is what `indentation` is for.
+    private func makeRecipe(from commands: [String], indentation: String = "\t") -> String {
         guard !commands.isEmpty else {
             return "\t@echo \"No linters are enabled for this project.\""
         }
-        return commands.map { "\t\($0)" }.joined(separator: "\n")
+        return commands.map { "\(indentation)\($0)" }.joined(separator: "\n")
     }
 }
 
