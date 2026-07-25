@@ -600,12 +600,21 @@ Note that `language.languageMode` is Xcode's `SWIFT_VERSION` build setting — a
 *language mode*, whose only valid values are `5` and `6`. It is not a compiler
 or toolchain version.
 
-## Demo
+## Examples and demo
 
-A recording of the interactive preview flow lives in
-[`docs/demo/new-preview.txt`](docs/demo/new-preview.txt) — regenerate it with
-`Scripts/record-demo.sh` after changing the flow, so the demo and the binary
-cannot drift apart.
+[`examples/`](examples/) holds four `scaffold.yml` files, each a project
+someone might actually be starting — the smallest file that generates anything,
+a UIKit app with a coordinator and packages, a preset with two fields overridden
+against it, and the enterprise CocoaPods configuration. They are files edited
+down to what was chosen, not `config example`'s resolved output, and a test
+validates and plans every one of them.
+
+Two recordings of the real binary live in [`docs/demo/`](docs/demo/):
+[`new-preview.txt`](docs/demo/new-preview.txt) is the interactive flow through
+the Configuration Preview to Save-and-exit, and
+[`new-preset.txt`](docs/demo/new-preset.txt) is the same project in one line
+with `--preset standard --yes`. Regenerate both with `Scripts/record-demo.sh`
+after changing a flow, so the demos and the binary cannot drift apart.
 
 ## Development
 
@@ -650,6 +659,7 @@ A device name alone matches several simulators across installed runtimes, and
 | [`CONTEXT.md`](CONTEXT.md) | Project glossary. Read before introducing new terminology. |
 | [`docs/plans/`](docs/plans/) | Scope, schema, roadmap, and what is explicitly excluded. |
 | [`docs/adr/`](docs/adr/) | Architecture decision records. |
+| [`examples/`](examples/) | Four `scaffold.yml` files to start from, each validated by a test. |
 | [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/) | The bundled Skill, and the `scaffold.yml` field reference it points at. |
 
 ## License

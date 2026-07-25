@@ -1,11 +1,16 @@
 #!/bin/bash
 #
-# Records the interactive preview flow into docs/demo/new-preview.txt, driving
-# the real binary through a pseudo-terminal. Run it after changing the flow so
-# the demo in the README cannot drift from what the binary actually says.
+# Records two sessions into docs/demo/, driving the real binary through a
+# pseudo-terminal. Run it after changing either flow so the demos in the README
+# cannot drift from what the binary actually says.
 #
-# The session it records: `new Bookshelf --variant ios-swiftui`, look at the
-# file plan, then choose Save scaffold.yml and exit.
+#   new-preview.txt  the interactive flow: `new Bookshelf --variant ios-swiftui`,
+#                    look at the file plan, then Save scaffold.yml and exit
+#   new-preset.txt   the one-line flow: the same project at `--preset standard`,
+#                    with `--yes`, which asks nothing
+#
+# Both recordings replace the temporary working directory with a stable stand-in,
+# so re-recording an unchanged flow produces no diff and a real change stands out.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,12 +42,33 @@ cd "$workspace"
     sleep 1
 ) | script -q /dev/null "$binary" new Bookshelf --variant ios-swiftui --skip-git > raw.txt 2>&1 || true
 
+# `script` records the pty's echoes and control characters; strip carriage
+# returns and the echoed answer lines' artifacts for a readable transcript, and
+# put a stable path where the temporary directory was.
+clean() {
+    # Both spellings of the workspace: mktemp hands back /var/folders/…, and the
+    # binary prints the standardised /private/var/folders/… of the same place.
+    tr -d '\r' \
+        | sed -e 's/\^D//g' -e "s#/private$workspace#~/work#g" -e "s#$workspace#~/work#g"
+}
+
 {
     echo "\$ xscaffold new Bookshelf --variant ios-swiftui"
     echo
-    # `script` records the pty's echoes and control characters; strip carriage
-    # returns and the echoed answer lines' artifacts for a readable transcript.
-    tr -d '\r' < raw.txt | sed -e 's/\^D//g'
+    clean < raw.txt
 } > "$demo_dir/new-preview.txt"
 
-echo "Wrote $demo_dir/new-preview.txt" >&2
+# The declarative half of the same request: a preset instead of the questions.
+# No pty here — `--yes` asks nothing, and `script` refuses a stdin that is not
+# a terminal.
+rm -rf Bookshelf
+"$binary" new Bookshelf --variant ios-swiftui --preset standard --yes \
+    > raw-preset.txt 2>&1 || true
+
+{
+    echo "\$ xscaffold new Bookshelf --variant ios-swiftui --preset standard --yes"
+    echo
+    clean < raw-preset.txt
+} > "$demo_dir/new-preset.txt"
+
+echo "Wrote $demo_dir/new-preview.txt and $demo_dir/new-preset.txt" >&2

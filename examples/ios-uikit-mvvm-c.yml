@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json
+#
+# A UIKit app with a coordinator, two packages and two build environments.
+#
+# MVVM-C is UIKit-only in this version: the generated example is an
+# AppCoordinator driving a list screen into a detail screen, which is the
+# pattern's whole point and hard to read from a description.
+#
+# The two environments become build configurations, bundle identifier suffixes
+# and per-configuration values reachable from the Info.plist.
+
+project:
+  name: Bookshelf
+  organizationName: Example Ltd
+  bundleIdentifier: com.example.bookshelf
+
+product:
+  platform: ios
+  deploymentTarget: "17.0"
+
+interface:
+  primary: uikit
+
+architecture:
+  pattern: mvvm-c
+
+dependencyManagement:
+  mode: spm
+  spm:
+    packages:
+      - name: Alamofire
+        url: https://github.com/Alamofire/Alamofire.git
+        from: "5.9.0"
+        products:
+          - name: Alamofire
+            targets: [Bookshelf]
+      - name: swift-collections
+        url: https://github.com/apple/swift-collections.git
+        from: "1.1.0"
+        products:
+          - name: Collections
+            targets: [Bookshelf]
+
+environments:
+  - name: development
+    configuration: Debug
+    bundleIdentifierSuffix: .dev
+    displayNameSuffix: " Dev"
+    values:
+      API_BASE_URL: https://dev.example.com
+  - name: production
+    configuration: Release
+    values:
+      API_BASE_URL: https://api.example.com
