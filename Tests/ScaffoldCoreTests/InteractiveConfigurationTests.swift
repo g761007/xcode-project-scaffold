@@ -55,6 +55,49 @@ struct InteractiveConfigurationTests {
         #expect(ConfigurationValidator().validate(answers.resolved()).isEmpty)
     }
 
+    /// #121: `standard` and `production` both state `mvvm` with its example,
+    /// and the example question is only asked for a pattern that has one. So
+    /// answering `minimal` left the preset's `includeExample: true` in place,
+    /// which is `XS1201` — and the loop, which re-asks whatever it cannot
+    /// resolve, re-asked a question with no acceptable answer. Ctrl-D was the
+    /// only way out of `new --preset standard`.
+    @Test("answering an architecture with no example escapes a preset that has one",
+          arguments: [Preset.standard, .production])
+    func minimalUnderAPresetWithAnExample(preset: Preset) throws {
+        let prompter = ScriptedPrompter([
+            "1", // platform: iOS
+            "Bookshelf", // name
+            "", // bundle identifier: default
+            "2", // interface: SwiftUI
+            "1", // architecture: Minimal — the answer that used to dead-end
+            "1" // environments: none
+        ])
+        let base = try Variant.baseConfiguration(for: preset)
+
+        let answers = try InteractiveConfiguration(presetBase: base)
+            .collect(name: nil, using: prompter)
+        let configuration = answers.resolved(over: base)
+
+        #expect(configuration.architecture.pattern == .minimal)
+        #expect(configuration.architecture.generatesExample == false)
+        #expect(ConfigurationValidator().validate(configuration).isEmpty)
+    }
+
+    /// The other half of the same rule: an answer that keeps the preset's
+    /// pattern keeps what the preset said about its example.
+    @Test("keeping the preset's architecture keeps its example")
+    func presetPatternKeepsItsExample() throws {
+        let prompter = ScriptedPrompter(["1", "Bookshelf", "", "2", "2", "y", "1"])
+        let base = try Variant.baseConfiguration(for: .standard)
+
+        let answers = try InteractiveConfiguration(presetBase: base)
+            .collect(name: nil, using: prompter)
+        let configuration = answers.resolved(over: base)
+
+        #expect(configuration.architecture.pattern == .mvvm)
+        #expect(configuration.architecture.generatesExample)
+    }
+
     @Test("questions are asked in their documented order")
     func order() throws {
         let prompter = ScriptedPrompter(["1", "App", "", "1", "2", "y", "2"])
