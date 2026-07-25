@@ -291,6 +291,14 @@ the whole team and CI agree on the version doing the installing. Generation
 runs the install after XcodeGen and verifies the workspace it produces;
 Build, Test and Open then drive the workspace.
 
+`cocoapods.sources` lists spec repositories; the Podfile opens with one
+`source` line per entry, in declaration order — private specs and the public
+CDN can coexist. Omitted means no `source` line at all (CocoaPods' CDN
+default). A source URL may carry credentials (`https://user:token@host`);
+logs, error messages and JSON output always show it masked as
+`https://***@host`, while `scaffold.yml` and the Podfile keep the original
+text — they are the user's own files.
+
 ## What this version generates
 
 Every value listed above decodes. Only these generate; the rest are rejected by
@@ -382,6 +390,8 @@ release may help.
 | `XS1504` | A pod is declared more than once |
 | `XS1505` | The same library is declared as both a package and a pod |
 | `XS1506` | Packages or pods are declared under a mode that never reads them |
+| `XS1507` | A pod source is declared more than once |
+| `XS1508` | A pod source is empty |
 
 A document that cannot be parsed at all — bad YAML, a missing required key, an
 unrecognised enum value — never reaches validation. That exits `3` with a

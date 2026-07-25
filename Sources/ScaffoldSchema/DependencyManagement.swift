@@ -155,23 +155,42 @@ public struct PackageProduct: Codable, Equatable, Sendable {
 // MARK: - CocoaPods
 
 public struct CocoaPodsDependencies: Codable, Equatable, Sendable {
+    /// Spec repositories, in declaration order — the order the Podfile's
+    /// `source` lines keep (§11.4). Empty means no `source` line at all, which
+    /// is CocoaPods' own CDN default.
+    public var sources: [String]
     public var pods: [Pod]
     /// Bundler pins the whole team to one CocoaPods (§11.4): the Gemfile is
     /// generated, `bundle install` resolves it, and pod install runs through
     /// `bundle exec` so CI and every machine agree.
     public var bundler: Bundler?
 
-    public init(pods: [Pod]? = nil, bundler: Bundler? = nil) {
+    public init(sources: [String]? = nil, pods: [Pod]? = nil, bundler: Bundler? = nil) {
+        self.sources = sources ?? []
         self.pods = pods ?? []
         self.bundler = bundler
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case sources, pods, bundler
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
+            sources: container.decodeIfPresent([String].self, forKey: .sources),
             pods: container.decodeIfPresent([Pod].self, forKey: .pods),
             bundler: container.decodeIfPresent(Bundler.self, forKey: .bundler)
         )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if !sources.isEmpty {
+            try container.encode(sources, forKey: .sources)
+        }
+        try container.encode(pods, forKey: .pods)
+        try container.encodeIfPresent(bundler, forKey: .bundler)
     }
 
     public struct Bundler: Codable, Equatable, Sendable {

@@ -70,6 +70,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     case duplicatePodName = "XS1504"
     case duplicateDependency = "XS1505"
     case dependenciesOutsideMode = "XS1506"
+    case duplicatePodSource = "XS1507"
+    case emptyPodSource = "XS1508"
 
     public enum Category: Sendable, Hashable {
         /// Valid in the domain; this version cannot generate it yet.
@@ -109,6 +111,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .duplicatePodName,
              .duplicateDependency,
              .dependenciesOutsideMode,
+             .duplicatePodSource,
+             .emptyPodSource,
              .developmentLanguageNotListed,
              .duplicateLanguage:
             .permanentlyInvalid

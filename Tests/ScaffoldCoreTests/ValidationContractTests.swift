@@ -229,6 +229,33 @@ private let validationTriggers: [ValidationTrigger] = [
         }
     ),
     ValidationTrigger(
+        code: .duplicatePodSource,
+        // The message spells the URL masked: the credential in the declared
+        // source must not surface through the issue it triggers.
+        message: "Pod source 'https://***@example.com/specs.git' is declared more than once.",
+        configuration: .validBaseline.with {
+            $0.dependencyManagement.mode = .cocoapods
+            $0.dependencyManagement.cocoapods = .init(
+                sources: [
+                    "https://ci:token@example.com/specs.git",
+                    "https://ci:token@example.com/specs.git"
+                ],
+                pods: [Pod(name: "SnapKit", source: .version("5.7.0"))]
+            )
+        }
+    ),
+    ValidationTrigger(
+        code: .emptyPodSource,
+        message: "A pod source is empty.",
+        configuration: .validBaseline.with {
+            $0.dependencyManagement.mode = .cocoapods
+            $0.dependencyManagement.cocoapods = .init(
+                sources: [" "],
+                pods: [Pod(name: "SnapKit", source: .version("5.7.0"))]
+            )
+        }
+    ),
+    ValidationTrigger(
         code: .dependenciesOutsideMode,
         message: "Packages are declared, but dependencyManagement.mode 'none' never reads them.",
         configuration: .validBaseline.with {

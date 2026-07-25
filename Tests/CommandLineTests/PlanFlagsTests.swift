@@ -65,6 +65,81 @@ struct PlanFlagsTests {
     }
 }
 
+/// Issue #79: the credential in a private spec-repo URL must not surface in
+/// what the binary prints — text or JSON — while the files generation writes
+/// keep the original, because `pod install` needs it.
+@Suite("Credential masking at the output boundary")
+struct CredentialMaskingCLITests {
+    private let credentialedConfiguration = """
+    project:
+      name: Bookshelf
+      bundleIdentifier: com.example.bookshelf
+    interface:
+      primary: swiftui
+    dependencyManagement:
+      mode: cocoapods
+      cocoapods:
+        sources:
+          - https://ci:s3cret@enterprise.example.com/specs.git
+          - https://cdn.cocoapods.org/
+        pods:
+          - name: SnapKit
+            version: "5.7.0"
+    """
+
+    @Test("plan --resolved-config masks the source URL in text and JSON")
+    func planMasks() throws {
+        try withTemporaryDirectory { root in
+            let config = root.appendingPathComponent("scaffold.yml")
+            try credentialedConfiguration.write(to: config, atomically: true, encoding: .utf8)
+            let destination = root.appendingPathComponent("App").path
+
+            let text = try xscaffold(
+                "plan", "--config", config.path, "--destination", destination, "--resolved-config"
+            )
+            #expect(text.exitStatus == 0)
+            #expect(!text.standardOutput.contains("s3cret"))
+            #expect(text.standardOutput.contains("https://***@enterprise.example.com/specs.git"))
+
+            let json = try xscaffold(
+                "plan", "--config", config.path, "--destination", destination,
+                "--resolved-config", "--output", "json"
+            )
+            #expect(!json.standardOutput.contains("s3cret"), "the whole document, not one field")
+            let resolved = try #require(decoded(json).resolvedConfiguration)
+            #expect(resolved.dependencyManagement.cocoapods?.sources == [
+                "https://***@enterprise.example.com/specs.git",
+                "https://cdn.cocoapods.org/"
+            ])
+        }
+    }
+
+    @Test("the written scaffold.yml and Podfile keep the original URL")
+    func filesKeepTheOriginal() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("Bookshelf")
+            let config = root.appendingPathComponent("scaffold.yml")
+            try credentialedConfiguration.write(to: config, atomically: true, encoding: .utf8)
+
+            let result = try xscaffold(
+                "generate", "--config", config.path, "--destination", destination.path,
+                "--yes", "--skip-git", "--skip-generate"
+            )
+            #expect(result.exitStatus == 0)
+            #expect(!result.standardOutput.contains("s3cret"))
+
+            let manifest = try String(
+                contentsOf: destination.appendingPathComponent("scaffold.yml"), encoding: .utf8
+            )
+            let podfile = try String(
+                contentsOf: destination.appendingPathComponent("Podfile"), encoding: .utf8
+            )
+            #expect(manifest.contains("https://ci:s3cret@enterprise.example.com/specs.git"))
+            #expect(podfile.contains("source 'https://ci:s3cret@enterprise.example.com/specs.git'"))
+        }
+    }
+}
+
 /// Issue #67: the agent's first stop, and the annotation that gives editors
 /// the schema.
 @Suite("Capabilities and the schema annotation")
