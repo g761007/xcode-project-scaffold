@@ -124,11 +124,14 @@ xscaffold validate scaffold.yml               # check a configuration
 xscaffold plan --config scaffold.yml          # show what generate would create
 xscaffold doctor                              # check the tools generation needs
 xscaffold capabilities                        # show what this version can generate
+xscaffold config example > scaffold.yml       # print a configuration to start from
 ```
 
 ```text
 --variant <name>       ios-uikit, ios-swiftui, macos-swiftui or macos-appkit —
                        answers the platform and interface questions (new)
+--preset <name>        minimal, standard or production — how much project comes
+                       with it (new, config example)
 --config <path>        a scaffold.yml to generate from (default: ./scaffold.yml)
 --destination <path>   where to create the project (default: ./<name>)
 --output <text|json>   how to report the result

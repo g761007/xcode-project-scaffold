@@ -10,10 +10,7 @@ public struct GenerationPlanBuilder: Sendable {
     private let renderer = TemplateRenderer()
     private let specBuilder = XcodeGenSpecBuilder()
     private let specEncoder = XcodeGenSpecEncoder()
-    private let configurationCoder = ConfigurationCoder()
-
-    static let schemaURL =
-        "https://raw.githubusercontent.com/g761007/xcode-project-scaffold/main/Schemas/scaffold.schema.json"
+    private let document = ScaffoldDocument()
 
     public init() {
         self.init(library: TemplateLibrary())
@@ -77,16 +74,11 @@ extension GenerationPlanBuilder {
             ),
             from: "XcodeGenSpecEncoder"
         )
-        // The annotation is the plan's addition, not the coder's: the coder
-        // stays a pure value<->text mapping, and decode tolerates the comment
-        // the way it tolerates any other.
+        // The same document `config example` prints, so that the file someone
+        // starts from and the file generation records cannot drift.
         try manifest.add(
-            PlannedFile(
-                path: "scaffold.yml",
-                contents: "# yaml-language-server: $schema=" + Self.schemaURL + "\n"
-                    + configurationCoder.encode(configuration)
-            ),
-            from: "ConfigurationCoder"
+            PlannedFile(path: "scaffold.yml", contents: document.text(for: configuration)),
+            from: "ScaffoldDocument"
         )
         if usesPods(configuration) {
             manifest.add(

@@ -35,7 +35,26 @@ struct Reporter {
     /// the name in the JSON and the name in an error message cannot drift apart
     /// — there is only one of them.
     init(for command: (some ParsableCommand).Type, format: OutputFormat) {
-        self.command = command.configuration.commandName ?? "xscaffold"
+        self.init(command: command.configuration.commandName ?? "xscaffold", format: format)
+    }
+
+    /// A subcommand of a group reports as the pair — `config example`, not
+    /// `example`, which names nothing on its own in a log of several runs.
+    init(
+        for command: (some ParsableCommand).Type,
+        under group: (some ParsableCommand).Type,
+        format: OutputFormat
+    ) {
+        self.init(
+            command: [group.configuration.commandName, command.configuration.commandName]
+                .compactMap(\.self)
+                .joined(separator: " "),
+            format: format
+        )
+    }
+
+    private init(command: String, format: OutputFormat) {
+        self.command = command
         self.format = format
     }
 

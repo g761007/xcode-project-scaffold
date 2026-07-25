@@ -32,8 +32,9 @@ public struct CommandOutput: Codable, Equatable, Sendable {
     /// From `plan`, `init --dry-run` and `init`.
     public var plan: PlanSummary?
 
-    /// From `plan --resolved-config`: the configuration with every default
-    /// resolved — what an unanswered field will actually be.
+    /// The configuration with every default resolved — what an unanswered field
+    /// will actually be. From `plan --resolved-config`, which answers it about a
+    /// file, and from `config example`, which answers it about a preset.
     public var resolvedConfiguration: ProjectConfiguration?
 
     /// From `doctor`.
