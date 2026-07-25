@@ -17,15 +17,7 @@ struct XcodeGenSpecBuilder: Sendable {
     static let appSourceDirectories = ["App", "Resources"]
     static let testSourceDirectories = ["Tests"]
     static let uiTestSourceDirectories = ["UITests"]
-    static let widgetSourceDirectories = ["Widget"]
     static let infoPlistPath = "App/Info.plist"
-    static let widgetInfoPlistPath = "Widget/Info.plist"
-
-    /// What an extension's bundle identifier and display name add to the app's.
-    /// The identifier suffix is not cosmetic: an extension whose identifier is
-    /// not prefixed by its container's cannot be installed.
-    static let widgetIdentifierSuffix = ".widget"
-    static let widgetNameSuffix = " Widget"
 
     func makeSpec(for project: ProjectConfiguration) -> XcodeGenSpec {
         let schemes = makeSchemes(for: project)
@@ -43,7 +35,7 @@ struct XcodeGenSpecBuilder: Sendable {
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
             uiTestTarget: makeUITestTarget(for: project),
-            widgetTarget: makeWidgetTarget(for: project),
+            extensionTargets: makeExtensionTargets(for: project),
             schemes: schemes,
             // The bare-named scheme when there is one, which is the same rule
             // `schemeName(for:in:)` applies; otherwise simply the first.
@@ -203,23 +195,29 @@ extension XcodeGenSpecBuilder {
         )
     }
 
-    private func makeWidgetTarget(for project: ProjectConfiguration) -> XcodeGenSpec.WidgetTarget? {
-        guard project.generatesWidget else { return nil }
-
-        let name = "\(project.project.name)Widget"
-        return XcodeGenSpec.WidgetTarget(
-            name: name,
-            sources: Self.widgetSourceDirectories,
-            infoPlistPath: Self.widgetInfoPlistPath,
-            bundleIdentifier: project.project.bundleIdentifier + Self.widgetIdentifierSuffix,
-            displayName: project.project.name + Self.widgetNameSuffix,
-            overrides: makeOverrides(
-                for: project,
-                identifierSuffix: Self.widgetIdentifierSuffix,
-                nameSuffix: Self.widgetNameSuffix
-            ),
-            packageProducts: packageProducts(for: name, in: project)
-        )
+    /// One target per extension the configuration asks for. Every kind is
+    /// built the same way — only `AppExtensionKind`'s strings differ — so a
+    /// widget and a notification service cannot drift apart in anything but
+    /// the things that genuinely distinguish them.
+    private func makeExtensionTargets(for project: ProjectConfiguration) -> [XcodeGenSpec.ExtensionTarget] {
+        AppExtensionKind.enabled(in: project).map { kind in
+            let name = kind.targetName(in: project.project.name)
+            return XcodeGenSpec.ExtensionTarget(
+                name: name,
+                sources: [kind.directoryName],
+                infoPlistPath: "\(kind.directoryName)/Info.plist",
+                bundleIdentifier: project.project.bundleIdentifier + kind.identifierSuffix,
+                displayName: project.project.name + kind.displayNameSuffix,
+                overrides: makeOverrides(
+                    for: project,
+                    identifierSuffix: kind.identifierSuffix,
+                    nameSuffix: kind.displayNameSuffix
+                ),
+                packageProducts: packageProducts(for: name, in: project),
+                extensionPointIdentifier: kind.extensionPointIdentifier,
+                principalClass: kind.principalClass
+            )
+        }
     }
 }
 

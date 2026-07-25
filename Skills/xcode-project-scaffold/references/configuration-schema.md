@@ -225,20 +225,35 @@ ci:
 | Key | Type | Default |
 |---|---|---|
 | `widget.enabled` | boolean | `true` when `widget` is stated |
+| `notificationService.enabled` | boolean | `true` when `notificationService` is stated |
 
 Omitted entirely, and stated while naming no extension, generate nothing.
-Naming `widget` is what asks for it; `enabled: false` parks the section without
-generating the target.
+Naming an extension is what asks for it; `enabled: false` parks the section
+without generating the target. The two are independent — either alone, or both.
 
-The widget grows a `Widget/` directory with a `WidgetBundle` entry point and a
-static-configuration widget, plus an `app-extension` target the app embeds. It
-ships under the app's bundle identifier plus `.widget` — per environment as
-well as at the base, because an extension whose identifier is not prefixed by
-its container's cannot be installed. iOS only in this version (`XS0012`).
+Every extension becomes an `app-extension` target the app embeds, bringing its
+own sources directory. Each ships under the app's bundle identifier plus a
+suffix — per environment as well as at the base, because an extension whose
+identifier is not prefixed by its container's cannot be installed. A package
+product may name an extension target, exactly as it may name the app's. Both
+are iOS only in this version.
+
+| | Directory | Identifier suffix | Boundary |
+|---|---|---|---|
+| `widget` | `Widget/` | `.widget` | `XS0012` |
+| `notificationService` | `NotificationService/` | `.notificationservice` | `XS0013` |
+
+`widget` generates a `WidgetBundle` entry point and a static-configuration
+widget. `notificationService` generates a `UNNotificationServiceExtension`
+subclass named `NotificationService` — the name is load-bearing, because the
+target's `NSExtensionPrincipalClass` points at it and the system instantiates
+it by name.
 
 ```yaml
 extensions:
   widget:
+    enabled: true
+  notificationService:
     enabled: true
 ```
 
@@ -363,7 +378,7 @@ Every value listed above decodes. Only these generate; the rest are rejected by
 | `generator.type` | `xcodegen` |
 | `testing.unit` | `swift-testing`, `none` |
 | `product.deploymentTarget` | iOS `15.0` or later, macOS `11.0` or later |
-| `extensions.widget` | `ios` only |
+| `extensions.widget`, `extensions.notificationService` | `ios` only |
 
 Platform and interface pair up: `uikit` needs `ios`, `appkit` needs `macos`, and
 `swiftui` runs on both. The four buildable variants are:
@@ -416,6 +431,7 @@ release may help.
 | `XS0008` | Test framework not supported |
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
 | `XS0012` | Widget extensions are only generated for iOS |
+| `XS0013` | Notification Service extensions are only generated for iOS |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 
