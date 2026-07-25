@@ -8,6 +8,36 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [0.6.1] — 2026-07-25
+
+### Fixed
+
+- **The SwiftUI architecture example no longer generates a project that cannot
+  compile.** It observes its view model with `@Observable`, which arrived in
+  iOS 17 and macOS 14, while the project floor is iOS 15 and macOS 11. Between
+  the two, `architecture.includeExample` on SwiftUI validated, generated, and
+  then failed to build on six errors from a macro the template chose. It is now
+  `XS0014`, reported before anything is written, and it faults
+  `includeExample` — switching the example off keeps the pattern's structure
+  and README notes, which is the fix that leaves the project as asked. Raising
+  `product.deploymentTarget` is the other suggestion; both were built to
+  confirm they work.
+
+  The rule is deliberately narrow, and its scope was established by building
+  every variant and architecture at the floor rather than by reasoning about
+  them: `minimal` has no example, and the UIKit and AppKit examples observe
+  through a closure and build at the floor, so none of them is refused.
+
+  Present since v0.5. Projects on the default deployment target were never
+  affected.
+
+### Changed
+
+- Two e2e cases carry the boundary: the SwiftUI example at exactly `17.0`,
+  which is where the validator claims the boundary sits and where the
+  default-target case says nothing, and the pattern without its example at
+  `15.0`, so the suggestion is not a dead end.
+
 ## [0.6.0] — 2026-07-25
 
 ### Added
