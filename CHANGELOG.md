@@ -69,6 +69,20 @@ migration path until `1.0` (see the README).
 
 ### Fixed
 
+- **`make clean` left a workspace pointing at a project it had deleted.** It
+  removed `DerivedData`, `build` and the `.xcodeproj`, and left the
+  `.xcworkspace` and `Pods/` that `pod install` produced — so the next
+  `make open` in a CocoaPods project opened a workspace whose project was
+  gone. Clean now removes everything a run produces, and only what a run
+  produces.
+- **The generated project's README described a project other than itself.** It
+  told a macOS project that `make build` builds "for the simulator", told a
+  CocoaPods project to open the `.xcodeproj` its Makefile no longer touches,
+  and told every project to `brew install xcodegen` and nothing else, however
+  many other tools its own `make generate` runs. Same cause as the Makefile
+  above, in the file that sits beside it: constants where the configuration
+  already knew the answer.
+
 - **`new --preset standard`, answered `Minimal`, looped forever.** Both
   `standard` and `production` state `mvvm` with its example, and the example
   question is only asked for a pattern that has one — so answering `Minimal`

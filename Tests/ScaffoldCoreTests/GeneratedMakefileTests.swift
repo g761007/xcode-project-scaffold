@@ -83,8 +83,69 @@ struct GeneratedMakefileTests {
         #expect(bundled.contains("\tbundle install\n\tbundle exec pod install"))
     }
 
+    /// The README sits beside the Makefile and describes it. Left as constants,
+    /// it told a macOS project it builds "for the simulator" and told a
+    /// CocoaPods project to open the `.xcodeproj` the Makefile no longer
+    /// touches.
+    @Test("the README names the container the Makefile drives", arguments: [
+        (DependencyMode.spm, "MyApp.xcodeproj"),
+        (.cocoapods, "MyApp.xcworkspace")
+    ])
+    func readmeContainer(mode: DependencyMode, fileName: String) throws {
+        let readme = try file("README.md", for: .validBaseline.with { $0.dependencyManagement.mode = mode })
+
+        #expect(readme.contains("produce \(fileName)"))
+        #expect(readme.contains("Open `\(fileName)`"))
+    }
+
+    @Test("the README says what make build builds for", arguments: [
+        (ApplePlatform.iOS, "build for the simulator"),
+        (.macOS, "build for macOS")
+    ])
+    func readmeBuildTarget(platform: ApplePlatform, expected: String) throws {
+        let readme = try file("README.md", for: .validBaseline.with {
+            $0.product.platform = platform
+            $0.interface = .init(primary: platform == .iOS ? .uiKit : .appKit)
+        })
+
+        #expect(readme.contains(expected))
+    }
+
+    /// A project with no pods is not told to install CocoaPods, and one that
+    /// runs the install through Bundler is told to install that too.
+    @Test("the README's setup commands are the tools this project needs")
+    func readmeSetupCommands() throws {
+        let plain = try file("README.md", for: .validBaseline)
+        #expect(plain.contains("brew install xcodegen"))
+        #expect(!plain.contains("cocoapods"))
+        #expect(!plain.contains("gem install bundler"))
+
+        let pods = try file("README.md", for: .validBaseline.with {
+            $0.dependencyManagement.mode = .cocoapods
+            $0.dependencyManagement.cocoapods = .init(bundler: .init(enabled: true))
+        })
+        #expect(pods.contains("brew install xcodegen cocoapods"))
+        #expect(pods.contains("gem install bundler"))
+    }
+
+    /// Removing the project file and leaving the workspace that points at it
+    /// is worse than not cleaning: the next `open` finds a workspace whose
+    /// project is gone.
+    @Test("clean removes everything a run produces, and nothing else")
+    func cleanArtefacts() throws {
+        let plain = try makefile(for: .validBaseline)
+        #expect(plain.contains("rm -rf DerivedData build MyApp.xcodeproj\n"))
+
+        let pods = try makefile(for: .validBaseline.with { $0.dependencyManagement.mode = .cocoapods })
+        #expect(pods.contains("rm -rf DerivedData build MyApp.xcodeproj MyApp.xcworkspace Pods"))
+    }
+
     private func makefile(for configuration: ProjectConfiguration) throws -> String {
+        try file("Makefile", for: configuration)
+    }
+
+    private func file(_ path: String, for configuration: ProjectConfiguration) throws -> String {
         let plan = try planner.makePlan(for: configuration)
-        return try #require(plan.files.first { $0.path == "Makefile" }).contents
+        return try #require(plan.files.first { $0.path == path }).contents
     }
 }

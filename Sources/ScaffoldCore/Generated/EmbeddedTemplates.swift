@@ -1020,7 +1020,7 @@ format: ## Apply formatting in place
 
 .PHONY: clean
 clean: ## Remove build artefacts
-	rm -rf DerivedData build $(PROJECT).xcodeproj
+	rm -rf {{CLEAN_ARTEFACTS}}
 
 """#,
         "Shared/README.md": #"""
@@ -1035,16 +1035,18 @@ clean: ## Remove build artefacts
 this project avoids merge conflicts in a file no one can read.
 
 ```bash
-brew install xcodegen        # once
-make generate                # produce {{PROJECT_NAME}}.xcodeproj
+{{SETUP_COMMANDS}}
+make generate                # produce {{CONTAINER_FILE}}
 make open                    # ...or generate it and open Xcode in one step
 ```
+
+Open `{{CONTAINER_FILE}}`, not anything else in this directory.
 
 ## Commands
 
 ```bash
-make generate    # regenerate the Xcode project from project.yml
-make build       # build for the simulator
+make generate    # regenerate {{CONTAINER_FILE}} from project.yml
+make build       # build for {{BUILD_TARGET_DESCRIPTION}}
 make test        # run the tests
 make lint        # swiftformat --lint and swiftlint --strict
 make format      # apply formatting in place
