@@ -8,6 +8,79 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [0.7.0] — 2026-07-25
+
+### Added
+
+- **Presets.** `minimal`, `standard` and `production` — a project's scale, and
+  the set of defaults that follows from it. `minimal` is the bare skeleton;
+  `standard` is MVVM with its example, SPM, Swift Testing, both linters and two
+  environments; `production` adds UI tests, a third environment with xcconfig
+  values, a secrets example, localization and GitHub Actions workflows. Naming
+  one changes only fields the document leaves unstated — anything written wins,
+  including an explicit `false` against a preset's `true` — so a preset is a
+  starting point rather than a mode the rest of the file works around. The
+  resolution order is fixed: preset defaults → your overrides → normalization →
+  validation. `production` with `dependencyManagement.mode: cocoapods` also
+  pins Bundler and the CocoaPods version in normalization, because that is what
+  the teams who reach for CocoaPods came for.
+
+  Presets merge as YAML nodes rather than as values (ADR-0008): only the
+  document still knows which fields were stated, and that distinction is the
+  whole mechanism. `capabilities` grows a `presets` field.
+- **`--preset` returns, as a scale rather than a platform combination.** It is
+  orthogonal to `--variant`: one picks the platform and interface, the other
+  picks how much project comes with them, and
+  `new App --variant ios-swiftui --preset standard --yes` is a one-line
+  generation. The flag routes through the document, so it and a `scaffold.yml`
+  saying `preset: standard` resolve through one mechanism instead of two that
+  can disagree. A variant name given to `--preset` still gets a pointer to
+  `--variant`, since the four platform combinations hung off this flag until
+  v0.4.
+- **`config example`.** `xscaffold config example --preset standard > scaffold.yml`
+  prints an editable configuration to start from — the preset resolved in full,
+  not a single `preset:` line, because an example exists to be read and
+  changed. It prints rather than writes, so the shell decides where the file
+  goes and nothing it does can overwrite anything. The identity is a
+  placeholder that validates as it stands, and the document carries the same
+  schema annotation `generate` records, from the same source.
+- **The File Manifest.** A run assembles its whole file list before anything
+  reaches disk, with each path carrying the origin that claimed it — a template
+  layer's directory, or the renderer that produced it. A path claimed twice
+  fails with `TEMPLATE_CONFLICT`, exit code 5, naming the path and both
+  claimants, rather than being won by whichever was added last. The
+  architecture overlay's same-path replacement is declared and resolved before
+  the manifest, so it is not a conflict.
+
+### Fixed
+
+- **Generated iOS UIKit apps launched with no window.** The scene manifest
+  declared `UIApplicationSupportsMultipleScenes` and nothing else, so the
+  configuration the generated `AppDelegate` asks UIKit for by name did not
+  exist, `SceneDelegate` was never instantiated, and the window it builds never
+  appeared. The app still built, still passed its tests, and still reported
+  itself running in the foreground — which is why nothing caught it.
+
+  Present since v0.1, in every iOS UIKit project regardless of architecture.
+  SwiftUI and macOS AppKit never had a scene manifest and were unaffected.
+
+  Nothing caught it because nothing looked: unit tests instantiate the view
+  controller directly, and while the UI test templates added in v0.5 do assert
+  that a window exists, no e2e case had ever switched UI tests on. The
+  `production` preset does, and its e2e case was the first run to launch a
+  generated UIKit app and look at it.
+
+### Changed
+
+- The e2e matrix gains four preset cases: `standard` and `production` each at
+  the **floor its own contents impose** rather than the default target,
+  `production` again with CocoaPods, and one through `--preset` itself. That
+  floor is not one number — both presets bring the MVVM example, and the
+  SwiftUI example cannot go below iOS 17 while the UIKit one builds at 15.0 —
+  so the two cases take one floor each.
+- README documents presets: what each scale brings, that a preset and a variant
+  are independent axes, and how a preset interacts with what a document states.
+
 ## [0.6.1] — 2026-07-25
 
 ### Fixed
