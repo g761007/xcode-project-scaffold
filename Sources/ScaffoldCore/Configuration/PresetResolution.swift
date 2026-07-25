@@ -53,15 +53,56 @@ public enum PresetResolution {
     /// No preset is an answer rather than a missing one: it asks for the
     /// schema's own defaults, which is where someone writing a `scaffold.yml`
     /// by hand starts from anyway.
-    public static func baseConfiguration(for preset: Preset?) throws -> ProjectConfiguration {
-        let scale = preset.map { "preset: \($0.rawValue)\n" } ?? ""
-        return try ConfigurationCoder().decode(scale + """
-        project:
-          name: \(Preset.placeholderName)
-          bundleIdentifier: \(Preset.placeholderBundleIdentifier)
-        interface:
-          primary: swiftui
-        """)
+    ///
+    /// The variant and the dependency mode are the example's other two
+    /// questions. Both default to what this has always printed — an iOS
+    /// SwiftUI app, with whatever the preset says about dependencies.
+    public static func baseConfiguration(
+        for preset: Preset?,
+        variant: Variant = .iOSSwiftUI,
+        dependencyMode: DependencyMode? = nil
+    ) throws -> ProjectConfiguration {
+        try configuration(
+            projectName: Preset.placeholderName,
+            bundleIdentifier: Preset.placeholderBundleIdentifier,
+            preset: preset,
+            variant: variant,
+            dependencyMode: dependencyMode
+        )
+    }
+
+    /// The one place a set of answers becomes a document.
+    ///
+    /// A document rather than values, because that is the only form in which a
+    /// preset can tell a stated field from an unstated one (ADR-0008) — and
+    /// because it is the form the user would have written by hand, so
+    /// `--variant ios-uikit` and a `scaffold.yml` saying the same thing resolve
+    /// through one mechanism instead of two that can disagree.
+    static func configuration(
+        projectName: String,
+        bundleIdentifier: String,
+        preset: Preset? = nil,
+        variant: Variant,
+        dependencyMode: DependencyMode? = nil
+    ) throws -> ProjectConfiguration {
+        var document: [String: Any] = [
+            "project": ["name": projectName, "bundleIdentifier": bundleIdentifier],
+            "product": ["platform": variant.platform.rawValue],
+            "interface": ["primary": variant.interface.rawValue]
+        ]
+        if let preset {
+            document["preset"] = preset.rawValue
+        }
+        // Stated only when asked for. An unstated mode is the preset's to
+        // supply, and stating the same value would take that away.
+        if let dependencyMode {
+            document["dependencyManagement"] = ["mode": dependencyMode.rawValue]
+        }
+
+        // Dumped rather than interpolated: a project name is arbitrary text at
+        // this point — validation has not run yet — and Yams knows how to quote
+        // it.
+        return try ConfigurationCoder().decode(Yams.dump(object: document))
     }
 
     /// The `preset` field, if the document states one. An unrecognised value is
