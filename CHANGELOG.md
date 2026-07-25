@@ -60,6 +60,17 @@ migration path until `1.0` (see the README).
 
 
 ### Fixed
+
+- **`new --preset standard`, answered `Minimal`, looped forever.** Both
+  `standard` and `production` state `mvvm` with its example, and the example
+  question is only asked for a pattern that has one — so answering `Minimal`
+  left the preset's `includeExample: true` in place, which is `XS1201`. The
+  interactive loop re-asks whatever it cannot resolve, so it re-asked a
+  question with no acceptable answer, and Ctrl-C was the only way out.
+
+  `includeExample` qualifies a pattern and nothing else, so answering the
+  pattern now answers it too. Present since `--preset` returned to `new` in
+  v0.7.0; the non-interactive paths were never affected.
 - **A generated project's `make lint` now looks at everything it generated.**
   Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
   (since v0.5), `Widget/` and `NotificationService/` (both since v0.6) were

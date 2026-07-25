@@ -82,9 +82,18 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
             deploymentTarget: deploymentTarget
         )
         configuration.interface = .init(primary: interface)
+        // `includeExample` qualifies a pattern and nothing else, so answering
+        // the pattern answers it too: a preset's `true` cannot survive an
+        // answer of `minimal`, which has no example to include. Carrying it
+        // over made that combination `XS1201` — and the interactive loop, which
+        // re-asks whatever it cannot resolve, then re-asked a question with no
+        // acceptable answer.
+        let inheritedExample = pattern == configuration.architecture.pattern
+            ? configuration.architecture.includeExample
+            : nil
         configuration.architecture = .init(
             pattern: pattern,
-            includeExample: includeExample ?? configuration.architecture.includeExample
+            includeExample: includeExample ?? inheritedExample
         )
         configuration.environments = environments
 
