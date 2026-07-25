@@ -29,6 +29,11 @@ public enum ConfigurationDefaults {
 
     public static let dependencyMode = DependencyMode.disabled
 
+    /// The CocoaPods the `production` preset pins when a project reads pods
+    /// (§17). A number rather than "latest" is the whole point of pinning; it
+    /// lives here so raising it is one edit rather than a search.
+    public static let pinnedCocoaPodsVersion = "1.16.2"
+
     public static let swiftlint = true
     public static let swiftformat = true
 

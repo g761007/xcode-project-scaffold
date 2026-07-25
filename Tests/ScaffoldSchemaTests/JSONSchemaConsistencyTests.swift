@@ -40,7 +40,7 @@ struct JSONSchemaConsistencyTests {
     @Test("the top-level keys are exactly the configuration's")
     func topLevelKeys() throws {
         let expected: Set = [
-            "schemaVersion", "project", "product", "language", "interface", "architecture",
+            "schemaVersion", "preset", "project", "product", "language", "interface", "architecture",
             "generator", "dependencyManagement", "environments", "secrets", "localization",
             "quality", "testing", "git", "ci", "extensions"
         ]
@@ -60,6 +60,7 @@ struct JSONSchemaConsistencyTests {
         (["generator", "type"], GeneratorKind.allowedValues),
         (["dependencyManagement", "mode"], DependencyMode.allowedValues),
         (["ci", "provider"], CIProvider.allowedValues),
+        (["preset"], Preset.allowedValues),
         (["testing", "unit"], UnitTestFramework.allowedValues),
         (["testing", "ui", "framework"], UITestFramework.allowedValues)
     ])

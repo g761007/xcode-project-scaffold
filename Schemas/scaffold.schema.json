@@ -12,6 +12,14 @@
         1
       ]
     },
+    "preset": {
+      "type": "string",
+      "enum": [
+        "minimal",
+        "standard",
+        "production"
+      ]
+    },
     "project": {
       "type": "object",
       "additionalProperties": false,

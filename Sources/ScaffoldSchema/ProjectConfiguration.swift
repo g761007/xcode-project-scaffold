@@ -10,6 +10,10 @@
 /// decoder cannot drift apart.
 public struct ProjectConfiguration: Codable, Equatable, Sendable {
     public var schemaVersion: Int
+    /// The scale this project was asked for, recorded rather than resolved
+    /// away: the generated `scaffold.yml` carries every value the preset
+    /// supplied, and this says where they came from.
+    public var preset: Preset?
     public var project: Project
     public var product: Product
     public var language: Language
@@ -28,6 +32,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
 
     public init(
         schemaVersion: Int? = nil,
+        preset: Preset? = nil,
         project: Project,
         product: Product? = nil,
         language: Language? = nil,
@@ -45,6 +50,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         extensions: AppExtensions? = nil
     ) {
         self.schemaVersion = schemaVersion ?? ConfigurationDefaults.schemaVersion
+        self.preset = preset
         self.project = project
         self.product = product ?? Product()
         self.language = language ?? Language()
@@ -66,6 +72,7 @@ public struct ProjectConfiguration: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             schemaVersion: container.decodeIfPresent(Int.self, forKey: .schemaVersion),
+            preset: container.decodeIfPresent(Preset.self, forKey: .preset),
             project: container.decode(Project.self, forKey: .project),
             product: container.decodeIfPresent(Product.self, forKey: .product),
             language: container.decodeIfPresent(Language.self, forKey: .language),
