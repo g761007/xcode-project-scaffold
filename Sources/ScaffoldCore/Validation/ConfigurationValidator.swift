@@ -307,7 +307,7 @@ extension ConfigurationValidator {
         return quoted.dropLast().joined(separator: ", ") + " or " + (quoted.last ?? "")
     }
 
-    private func display(_ version: VersionNumber) -> String {
+    func display(_ version: VersionNumber) -> String {
         version.components.map(String.init).joined(separator: ".")
     }
 }

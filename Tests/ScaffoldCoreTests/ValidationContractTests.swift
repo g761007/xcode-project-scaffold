@@ -55,6 +55,16 @@ private let validationTriggers: [ValidationTrigger] = [
         }
     ),
     ValidationTrigger(
+        code: .swiftUIExampleRequiresObservation,
+        message: "The SwiftUI architecture example needs iOS 17.0, which is above this "
+            + "project's deployment target, in this version.",
+        configuration: .validBaseline.with {
+            $0.interface = .init(primary: .swiftUI)
+            $0.architecture = .init(pattern: .mvvm, includeExample: true)
+            $0.product = .init(platform: .iOS, deploymentTarget: "16.0")
+        }
+    ),
+    ValidationTrigger(
         code: .widgetRequiresIOS,
         message: "Widget extensions are only generated for iOS in this version.",
         configuration: .validBaseline.with {
