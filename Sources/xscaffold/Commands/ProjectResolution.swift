@@ -86,8 +86,11 @@ func reportPlan(
     }
     if showingResolvedConfiguration, let manifest = plan.files.first(where: { $0.path == "scaffold.yml" }) {
         // The plan's own scaffold.yml is the resolved configuration, already
-        // rendered — the same bytes generating would write.
-        text += "\n\nResolved configuration:\n" + manifest.contents.trimmingCharacters(in: .newlines)
+        // rendered — the bytes generating would write, except that credentials
+        // in source URLs never reach output (§11.4); only the file keeps them.
+        text += "\n\nResolved configuration:\n"
+            + CredentialMasking.masked(manifest.contents, for: configuration)
+            .trimmingCharacters(in: .newlines)
     }
 
     reporter.succeed(
@@ -97,7 +100,8 @@ func reportPlan(
             issues: warnings,
             destination: destination.path,
             plan: PlanSummary(plan, overwrites: overwrites),
-            resolvedConfiguration: showingResolvedConfiguration ? configuration : nil
+            resolvedConfiguration: showingResolvedConfiguration
+                ? CredentialMasking.masked(configuration) : nil
         ),
         text: text
     )

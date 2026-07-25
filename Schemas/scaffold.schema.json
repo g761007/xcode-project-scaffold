@@ -235,6 +235,12 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "pods": {
               "type": "array",
               "items": {

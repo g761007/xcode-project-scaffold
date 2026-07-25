@@ -5,13 +5,14 @@ import Testing
 
 private func makeConfiguration(
     platform: ApplePlatform = .iOS,
+    sources: [String] = [],
     pods: [Pod]
 ) -> ProjectConfiguration {
     ProjectConfiguration(
         project: .init(name: "Bookshelf", bundleIdentifier: "com.example.bookshelf"),
         product: .init(platform: platform),
         interface: .init(primary: platform == .iOS ? .swiftUI : .appKit),
-        dependencyManagement: .init(mode: .cocoapods, cocoapods: .init(pods: pods))
+        dependencyManagement: .init(mode: .cocoapods, cocoapods: .init(sources: sources, pods: pods))
     )
 }
 
@@ -57,6 +58,48 @@ struct PodfileRendererTests {
         let podfile = renderer.render(makeConfiguration(platform: platform, pods: []))
 
         #expect(podfile.contains(expected))
+    }
+
+    /// Issue #79: private specs and the public CDN coexist, and CocoaPods
+    /// searches them in the order the file states — so the declared order is
+    /// the contract, not a set.
+    @Test("spec repositories head the file in declaration order")
+    func specSources() throws {
+        let podfile = renderer.render(makeConfiguration(
+            sources: [
+                "https://github.com/example/private-specs.git",
+                "https://cdn.cocoapods.org/"
+            ],
+            pods: [Pod(name: "SnapKit", source: .version("5.7.0"))]
+        ))
+
+        let lines = podfile.split(separator: "\n").map(String.init)
+        #expect(lines[0] == "source 'https://github.com/example/private-specs.git'")
+        #expect(lines[1] == "source 'https://cdn.cocoapods.org/'")
+        let platform = try #require(lines.firstIndex { $0.hasPrefix("platform :") })
+        #expect(platform > 1, "sources come before everything else")
+    }
+
+    @Test("no declared sources writes no source line — the CDN default is CocoaPods' own")
+    func noSources() {
+        let podfile = renderer.render(makeConfiguration(pods: [
+            Pod(name: "SnapKit", source: .version("5.7.0"))
+        ]))
+
+        #expect(!podfile.contains("source '"))
+        #expect(podfile.hasPrefix("platform :"))
+    }
+
+    /// The Podfile is the user's own file: `pod install` needs the real URL,
+    /// so masking stops at the output boundary and never reaches it.
+    @Test("the Podfile keeps a credentialed source URL as written")
+    func credentialedSourceKeptInPodfile() {
+        let podfile = renderer.render(makeConfiguration(
+            sources: ["https://ci:token123@enterprise.example.com/specs.git"],
+            pods: []
+        ))
+
+        #expect(podfile.contains("source 'https://ci:token123@enterprise.example.com/specs.git'"))
     }
 
     @Test("pods live in the app target block, with frameworks on")

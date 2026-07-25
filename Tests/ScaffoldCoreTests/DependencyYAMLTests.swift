@@ -87,6 +87,58 @@ struct DependencyYAMLTests {
         #expect(cocoapods?.bundler?.enabled == true)
     }
 
+    /// Issue #79: the list is ordered, and the order is the point — CocoaPods
+    /// searches repositories in the order the Podfile states them.
+    @Test("spec sources decode in declaration order, and omitted means none")
+    func specSourcesDecode() throws {
+        let stated = try decode("""
+          mode: cocoapods
+          cocoapods:
+            sources:
+              - https://github.com/example/private-specs.git
+              - https://cdn.cocoapods.org/
+            pods:
+              - name: SnapKit
+                version: "5.7.0"
+        """)
+        #expect(stated.dependencyManagement.cocoapods?.sources == [
+            "https://github.com/example/private-specs.git",
+            "https://cdn.cocoapods.org/"
+        ])
+
+        let omitted = try decode("""
+          mode: cocoapods
+          cocoapods:
+            pods:
+              - name: SnapKit
+                version: "5.7.0"
+        """)
+        #expect(omitted.dependencyManagement.cocoapods?.sources == [])
+    }
+
+    /// An unstated list must round-trip unstated: `sources: []` appearing in
+    /// every scaffold.yml would read as a choice no one made.
+    @Test("empty sources are omitted on encode, stated ones round-trip")
+    func specSourcesRoundTrip() throws {
+        func configuration(sources: [String]) -> ProjectConfiguration {
+            ProjectConfiguration(
+                project: .init(name: "MyApp", bundleIdentifier: "com.example.myapp"),
+                interface: .init(primary: .swiftUI),
+                dependencyManagement: .init(mode: .cocoapods, cocoapods: .init(
+                    sources: sources,
+                    pods: [Pod(name: "SnapKit", source: .version("5.7.0"))]
+                ))
+            )
+        }
+
+        let unstated = try coder.encode(configuration(sources: []))
+        #expect(!unstated.contains("sources"))
+
+        let stated = configuration(sources: ["https://cdn.cocoapods.org/"])
+        let decoded = try coder.decode(coder.encode(stated))
+        #expect(decoded.dependencyManagement == stated.dependencyManagement)
+    }
+
     @Test("an omitted section means mode none")
     func omittedDefaultsToNone() throws {
         let configuration = try coder.decode("""

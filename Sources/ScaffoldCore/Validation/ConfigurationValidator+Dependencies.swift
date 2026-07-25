@@ -11,6 +11,7 @@ extension ConfigurationValidator {
         return modeMismatchIssues(dependencies)
             + packageIssues(dependencies, targets: expectedTargets(of: configuration))
             + podIssues(dependencies)
+            + podSourceIssues(dependencies)
             + crossManagerIssues(dependencies)
     }
 
@@ -19,6 +20,7 @@ extension ConfigurationValidator {
     private func modeMismatchIssues(_ dependencies: DependencyManagement) -> [ValidationIssue] {
         let declaresPackages = dependencies.spm?.packages.isEmpty == false
         let declaresPods = dependencies.cocoapods?.pods.isEmpty == false
+        let declaresSources = dependencies.cocoapods?.sources.isEmpty == false
         var issues: [ValidationIssue] = []
 
         func outside(_ what: String, at path: String) -> ValidationIssue {
@@ -39,9 +41,15 @@ extension ConfigurationValidator {
             if declaresPods {
                 issues.append(outside("Pods", at: "dependencyManagement.cocoapods"))
             }
+            if declaresSources {
+                issues.append(outside("Pod sources", at: "dependencyManagement.cocoapods.sources"))
+            }
         case .spm:
             if declaresPods {
                 issues.append(outside("Pods", at: "dependencyManagement.cocoapods"))
+            }
+            if declaresSources {
+                issues.append(outside("Pod sources", at: "dependencyManagement.cocoapods.sources"))
             }
         case .cocoapods:
             if declaresPackages {
@@ -114,6 +122,35 @@ extension ConfigurationValidator {
                     suggestion: "Declare each pod once; use subspecs for its parts."
                 )
             }
+    }
+
+    /// Source URLs may carry credentials, so every message spells them through
+    /// `CredentialMasking` — the issue travels into logs and JSON documents,
+    /// which is exactly where the token must not go (§11.4).
+    private func podSourceIssues(_ dependencies: DependencyManagement) -> [ValidationIssue] {
+        let sources = dependencies.cocoapods?.sources ?? []
+        var issues: [ValidationIssue] = []
+
+        issues += sources.enumerated().compactMap { index, source in
+            guard source.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            return ValidationIssue(
+                code: .emptyPodSource,
+                message: "A pod source is empty.",
+                path: "dependencyManagement.cocoapods.sources[\(index)]",
+                suggestion: "State the spec repository URL, such as 'https://cdn.cocoapods.org/'."
+            )
+        }
+
+        issues += duplicates(sources, ignoringCase: true).map { index, source in
+            ValidationIssue(
+                code: .duplicatePodSource,
+                message: "Pod source '\(CredentialMasking.masked(source))' is declared more than once.",
+                path: "dependencyManagement.cocoapods.sources[\(index)]",
+                suggestion: "List each spec repository once; the Podfile keeps the declared order."
+            )
+        }
+
+        return issues
     }
 
     /// The same library arriving through both managers would be linked twice.

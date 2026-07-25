@@ -9,10 +9,17 @@ import ScaffoldSchema
 /// with one destination in this version.
 struct PodfileRenderer: Sendable {
     func render(_ configuration: ProjectConfiguration) -> String {
-        let pods = configuration.dependencyManagement.cocoapods?.pods ?? []
+        let cocoapods = configuration.dependencyManagement.cocoapods
+        let pods = cocoapods?.pods ?? []
         let podLines = pods.flatMap(lines(for:)).map { "  \($0)" }
 
-        return """
+        // Spec repositories head the file in declaration order (§11.4) — the
+        // order CocoaPods searches them in. None declared writes no line: the
+        // CDN default is CocoaPods' own, not something to restate.
+        let sources = (cocoapods?.sources ?? []).map { "source '\($0)'" }
+        let sourceBlock = sources.isEmpty ? "" : sources.joined(separator: "\n") + "\n\n"
+
+        return sourceBlock + """
         platform :\(platformName(configuration.product.platform)), '\(configuration.product.deploymentTarget)'
 
         target '\(configuration.project.name)' do
