@@ -118,6 +118,29 @@ one_line_macos() {
         -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
 }
 
+# The generated project's own Makefile, run the way its README tells a user to.
+# Everything else here calls xcodebuild directly, with a udid resolved above —
+# which is correct for a matrix, and means the recipes the project ships were
+# never executed. They were wrong in three ways for three versions because of
+# it: a hardcoded simulator, an iOS destination on macOS projects, and the
+# `.xcodeproj` where a CocoaPods project needs its workspace.
+#
+# No `make test` on iOS: it boots a simulator, and the run above has already
+# proved the tests pass. What this adds is that the recipes resolve and run.
+check_makefile() {
+    local name="$1"
+    shift
+    echo
+    echo "==> $name (its own Makefile)"
+    "$xscaffold" generate "$@" --yes --destination "$root/$name"
+
+    # Not `make lint`: the linters are the lint job's business and are not
+    # installed here. What this proves is that the recipes resolve — a
+    # destination that exists, and the container the project is actually
+    # driven through.
+    ( cd "$root/$name" && make build )
+}
+
 one_line UIKitApp ios-uikit
 one_line SwiftUIApp ios-swiftui
 
@@ -525,6 +548,43 @@ test -f "$root/PresetPodsApp/Gemfile" || { echo "production + pods produced no G
 grep -q "cocoapods', '1.16.2'" "$root/PresetPodsApp/Gemfile" \
     || { echo "production + pods did not pin the CocoaPods version"; exit 1; }
 test -f "$root/PresetPodsApp/Gemfile.lock" || { echo "bundle install left no lock"; exit 1; }
+
+# One per platform, and one through a workspace: the three shapes the Makefile
+# renders differently.
+cat > "$root/make-ios.yml" <<'YML'
+project:
+  name: MakeIOSApp
+  bundleIdentifier: com.example.makeiosapp
+interface:
+  primary: swiftui
+YML
+check_makefile MakeIOSApp --config "$root/make-ios.yml"
+
+cat > "$root/make-mac.yml" <<'YML'
+project:
+  name: MakeMacApp
+  bundleIdentifier: com.example.makemacapp
+product:
+  platform: macos
+interface:
+  primary: appkit
+YML
+check_makefile MakeMacApp --config "$root/make-mac.yml"
+
+cat > "$root/make-pods.yml" <<'YML'
+project:
+  name: MakePodsApp
+  bundleIdentifier: com.example.makepodsapp
+interface:
+  primary: swiftui
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_makefile MakePodsApp --config "$root/make-pods.yml"
 
 echo
 echo "Every variant, preset and dependency combination generated, built and tested."
