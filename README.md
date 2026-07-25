@@ -100,7 +100,8 @@ brew install brings it along.
 brew install g761007/tap/xscaffold
 ```
 
-Or from source:
+That brings XcodeGen with it, and installs shell completions for zsh, bash and
+fish. From source instead:
 
 ```bash
 git clone https://github.com/g761007/xcode-project-scaffold.git
@@ -110,29 +111,14 @@ make install          # swift build -c release, then copy to ~/.local/bin
 
 Override the destination with `make install PREFIX=/usr/local`. A source build
 reports its version as `0.0.0-dev` — the release number is stamped from the
-release tag, so only tagged builds carry one.
-
-Release binaries are universal (Apple silicon + Intel), published on
+release tag, so only tagged builds carry one. Release binaries are universal
+(Apple silicon + Intel), published on
 [GitHub Releases](https://github.com/g761007/xcode-project-scaffold/releases)
 with a SHA256 alongside, and smoke-tested — the published archive itself, not
 the checkout — before the release goes out.
 
-### Shell completions
-
-Homebrew installs them for zsh, bash and fish; nothing else to do. For any
-other installation, xscaffold writes its own:
-
-```bash
-xscaffold --generate-completion-script zsh  > ~/.zsh/completions/_xscaffold
-xscaffold --generate-completion-script bash > ~/.bash_completion.d/xscaffold
-xscaffold --generate-completion-script fish > ~/.config/fish/completions/xscaffold.fish
-```
-
-Subcommands and flags complete, and so do the values that are otherwise worth
-remembering: `--variant` offers the four variants, `--preset` the three
-presets, `--config` and `validate` offer `.yml` and `.yaml` files, and
-`--destination` offers directories. The lists come from the binary, so they are
-whatever that binary can actually generate.
+Completions for any other installation, and the rest of the CLI surface, are in
+[the CLI reference](docs/cli-reference.md).
 
 ## Usage
 
@@ -146,468 +132,66 @@ xscaffold capabilities                        # show what this version can gener
 xscaffold config example > scaffold.yml       # print a configuration to start from
 ```
 
-```text
---variant <name>       ios-uikit, ios-swiftui, macos-swiftui or macos-appkit —
-                       answers the platform and interface questions
-                       (new, config example)
---preset <name>        minimal, standard or production — how much project comes
-                       with it (new, config example)
---dependency-manager <mode>
-                       none, spm, cocoapods or mixed — what reads the packages
-                       (config example)
---config <path>        a scaffold.yml to generate from (default: ./scaffold.yml)
---destination <path>   where to create the project (default: ./<name>)
---output <text|json>   how to report the result
---yes, -y              skip the confirmation; with --variant, skip every question
---advanced             also ask about the fields most projects leave at defaults (new)
---open                 open the generated project on success (new)
---files                list every file and command in the plan (plan)
---resolved-config      show the configuration with every default resolved (plan)
---force                write into a non-empty destination without project markers
---skip-git             do not create a git repository
---skip-generate        do not run XcodeGen
---validate-build       build the generated project before reporting success
-```
+Two independent choices run through all of them:
 
-`plan` shares `generate`'s inputs and its implementation, so a preview cannot
-disagree with the run it previews.
-
-`doctor` separates what generation cannot do without — `git` and `xcodegen` —
-from what only the generated project needs: `xcodebuild` for `make test`,
-`swiftformat` and `swiftlint` for `make lint`. Only a missing requirement exits
-10; the rest are reported and shrugged at.
-
-Execution behaviour lives in flags, never in `scaffold.yml` — the configuration
-file describes the *project*, not a particular run.
-
-### Creating a project interactively
-
-`xscaffold new` asks for the platform, name, bundle identifier, interface,
-architecture, whether to include the pattern's example, and the environments —
-then stops at a **Configuration Preview**: the resolved settings, the file
-count, any files a forced run would overwrite, the commands that will run, and
-a menu.
-
-```text
-What next?
-  1) Generate project
-  2) Save scaffold.yml and exit
-  3) Edit configuration
-  4) Show complete file plan
-  5) Show resolved configuration
-  6) Cancel
-```
-
-Nothing touches disk until an option says otherwise. **Generate** runs the plan
-it previewed. **Save** writes only `scaffold.yml` — the same bytes generating
-would have written — for review, version control, or a later `generate`.
-**Edit** re-asks one section (project, platform and interface, architecture, or
-environments) and comes back to a fresh preview, as many rounds as it takes.
-The two **Show** options print the full file list and the fully-resolved
-configuration, then return to the menu. **Cancel** — or Ctrl-C, or ended
-input, anywhere — exits `130` and writes nothing.
-
-`--variant` answers the platform and interface questions from the command line;
-with `--yes` as well there is no question left standing:
-
-```bash
-xscaffold new MyApp --variant ios-uikit --yes   # one line, no terminal needed
-```
-
-`--advanced` appends questions for the fields most projects leave at their
-defaults: organization name, deployment target, unit test framework, the
-SwiftLint and SwiftFormat switches, and the git default branch. Every interface
-is offered on every platform; `validate` decides, and a refused combination —
-UIKit on macOS, AppKit on iOS — re-asks the question rather than being filtered
-out, so the prompt holds no rules of its own.
-
-### Presets: how much project
-
-A **preset** is a project's scale. A **variant** is its platform and interface.
-They are independent axes, and answer different questions:
+- a **variant** — `ios-uikit`, `ios-swiftui`, `macos-swiftui`, `macos-appkit` —
+  the platform and the interface;
+- a **preset** — `minimal`, `standard`, `production` — how much project comes
+  with it.
 
 ```bash
 xscaffold new MyApp --variant ios-swiftui --preset standard --yes
 ```
 
-`--variant` says what the project is built with; `--preset` says how much comes
-with it. Either can be given alone, or both together, and neither implies the
-other.
+Execution behaviour lives in flags, never in `scaffold.yml` — the configuration
+file describes the *project*, not a particular run. Every command, every flag
+and every exit code is in [the CLI reference](docs/cli-reference.md).
 
-| | `minimal` | `standard` | `production` |
-|---|---|---|---|
-| architecture | minimal | MVVM, with its example | MVVM, with its example |
-| dependencies | none | SPM | SPM |
-| SwiftLint / SwiftFormat | off | on | on |
-| UI tests | — | — | on |
-| environments | none | development, production | development, staging, production |
-| `.xcconfig` values | — | — | one per environment |
-| secrets example | — | — | `API_KEY` |
-| localization | — | — | `en` |
-| GitHub Actions | — | — | build, test, lint |
-
-Every preset gets a unit test target — that is the schema's own default, not
-something a scale switches on — so the row above is about UI tests only.
-
-Naming a preset changes only fields your `scaffold.yml` leaves unstated —
-anything you write wins — so a preset is a starting point rather than a mode
-the rest of the file has to work around. The resolution order is fixed: preset
-defaults, then your overrides, then normalization, then validation.
-
-`preset` is an ordinary field, so the flag and the file are the same mechanism:
+### A minimal `scaffold.yml`
 
 ```yaml
-preset: production
 project:
   name: MyApp
   bundleIdentifier: com.example.myapp
+
 interface:
   primary: swiftui
-dependencyManagement:
-  mode: cocoapods       # production + CocoaPods also pins Bundler and the
-  cocoapods:            # CocoaPods version, because that is what the teams
-    pods:               # who reach for CocoaPods came for
-      - name: SnapKit
-        version: "5.7.1"
 ```
 
-The generated `scaffold.yml` records every value the preset supplied, and keeps
-the `preset:` line saying where they came from — so the file is readable on its
-own, and reading it back resolves to itself.
-
-To see what a preset resolves to before generating anything:
-
-```bash
-xscaffold config example --preset production > scaffold.yml
-xscaffold plan --config scaffold.yml --resolved-config
-```
-
-`config example` prints the preset resolved in full — every field, not one
-`preset:` line — with a placeholder project identity to replace. It writes
-nothing; the shell decides where the file goes.
-
-Its three flags are the independent axes they are on `new`, and can be combined
-freely:
-
-```bash
-xscaffold config example --variant macos-appkit --preset production
-xscaffold config example --preset production --dependency-manager cocoapods
-```
-
-The last one is why the dependency manager is a flag rather than a word to
-edit: under `production`, choosing pods also pins Bundler and a CocoaPods
-version, and the example shows that rather than leaving it to be discovered at
-generation time.
-
-### The save-now, generate-later flow
-
-```bash
-xscaffold new MyApp            # answer, review the preview, choose Save
-cd MyApp
-# edit scaffold.yml, commit it, have it reviewed…
-xscaffold plan --config scaffold.yml --destination .
-xscaffold generate --destination .
-```
-
-`generate` reads an existing `scaffold.yml` (`--config`, defaulting to
-`./scaffold.yml`), shows a summary — including anything it would overwrite —
-and asks before writing. `--yes` skips the question but not the validation, the
-plan, or the destination rules; without a terminal and without `--yes` it
-refuses rather than hangs, so a forgotten flag cannot stall a pipeline:
-
-```bash
-xscaffold generate --yes --output json         # CI and agents
-```
-
-### Where generation may land
-
-- **Always allowed:** a missing directory, an empty one, or one holding only a
-  `scaffold.yml` (how Save leaves it).
-- **`--force` moves in:** a non-empty directory without project markers — the
-  GitHub-starter clone with README, LICENSE and `.git`. What would be
-  overwritten is listed in the plan and the preview first; nothing else is
-  touched, and the directory is never emptied.
-- **Never:** a directory containing an `.xcodeproj`, `.xcworkspace`,
-  `project.yml` or top-level Swift source. `OUTPUT_DIRECTORY_HAS_PROJECT`,
-  exit 6, no flag bypasses it — xscaffold creates new projects and does not
-  update existing ones.
-
-**xscaffold only ever deletes what it created:** files are staged beside the
-destination and moved in atomically; if a run fails after creating the
-destination, the destination is removed; if it was already there, it is left
-as it is and the error says so.
-
-### Dependencies
-
-`dependencyManagement.mode` is `none`, `spm`, `cocoapods` or `mixed` — SPM is
-the default recommendation; CocoaPods exists for the teams that need it, and
-`mixed` runs both while refusing the same library arriving through each.
-
-```yaml
-dependencyManagement:
-  mode: spm
-  spm:
-    packages:
-      - name: Alamofire
-        url: https://github.com/Alamofire/Alamofire.git
-        from: "5.9.0"          # or exact: / branch: / revision:
-        products:
-          - name: Alamofire
-            targets: [MyApp]
-```
-
-Packages land in `project.yml` and resolve on first build. Pods state exactly
-one source each — `version`, `path`, or `git` with one of `tag`, `branch` or
-`commit` — and xscaffold writes the Podfile, runs `pod install` after XcodeGen,
-verifies the workspace it produced, and drives Build, Test and Open through
-that workspace from then on. `doctor` requires CocoaPods exactly when the
-configuration reads pods.
-
-Teams whose CocoaPods use is tied to internal infrastructure get the three
-things that actually make it enterprise:
-
-```yaml
-dependencyManagement:
-  mode: cocoapods
-  cocoapods:
-    bundler:
-      enabled: true
-      cocoapodsVersion: "1.16.2"    # omit to take whatever resolves
-    sources:                        # declaration order is preserved
-      - https://internal.example.com/specs.git
-      - https://cdn.cocoapods.org/
-    pods:
-      - name: InternalKit
-        git: https://internal.example.com/internalkit.git
-        tag: "2.1.0"
-```
-
-**Bundler** puts a `Gemfile` beside the Podfile and changes the install
-sequence to `bundle install` → `bundle exec pod install`, so every machine and
-every CI run installs pods with the CocoaPods the Gemfile names rather than
-whichever one happens to be on the `PATH`. `doctor` follows: with Bundler it
-requires `bundle` and stops requiring `pod`, because `bundle exec` provides
-that one itself.
-
-**Sources** keep the order you wrote them in, so a private specs repo listed
-before the public CDN resolves internal pods first. A credential embedded in a
-source URL is masked everywhere xscaffold prints it — log output, `--output
-json`, and validation messages alike. It is not masked in the Podfile, which
-needs the real URL to work.
-
-### Project essentials
-
-- **UI tests** — `testing.ui.enabled` grows a ui-testing target with a launch
-  test and a smoke test (`launchPerformanceTest` adds a measured launch),
-  configured apart from `testing.unit`.
-- **Environment values** — `environments[].values` become per-configuration
-  `.xcconfig` files, reach the Info.plist as `$(KEY)` references, and are read
-  in code through the generated `AppConfiguration` (`API_BASE_URL` reads as
-  `AppConfiguration.apiBaseURL`).
-- **Secrets** — `secrets.keys` may state a name and an obviously-fake example,
-  and nothing else; `Secrets.example.xcconfig` is the committed record, the
-  real `Secrets.xcconfig` starts as a copy and is git-ignored.
-- **Localization** — `localization.languages` generates one
-  `Resources/<language>.lproj/Localizable.strings` per shipped language.
-- **Machine-readable capabilities** — `xscaffold capabilities --output json`
-  lists what this binary actually generates, sourced from the same sets the
-  validator enforces. Generated `scaffold.yml` files carry a
-  `yaml-language-server` annotation pointing at
-  [`Schemas/scaffold.schema.json`](Schemas/scaffold.schema.json), so editors
-  validate while you type.
-
-### Continuous integration
-
-The `ci` section generates GitHub Actions workflows, so a project has CI from
-the first push:
-
-```yaml
-ci:
-  provider: github-actions
-  workflows:
-    build: true
-    test: true
-    lint: true
-```
-
-Omitting the section generates nothing — CI is a choice, not a default —
-while stating it turns every switch on. Each workflow rebuilds the project the
-way a person would: XcodeGen first, then whatever the dependency mode reads
-(SPM resolves packages on a step of its own, so a bad manifest fails there;
-CocoaPods runs `pod install`, or `bundle install` + `bundle exec pod install`
-when Bundler is on), then `xcodebuild` against the project or the workspace —
-the same container rule every other command follows. Lint installs only the
-enabled linters and runs `make lint`, the generated Makefile's own recipe, so
-the workflow and your laptop cannot come to different conclusions.
-
-### App Extensions
-
-```yaml
-extensions:
-  widget: {}
-  notificationService: {}
-```
-
-Naming an extension is what asks for it. Omitting the section — or stating it
-while naming nothing — generates nothing, and `enabled: false` parks a section
-without generating its target. Each extension becomes an `app-extension` target
-the app embeds, bringing its own sources directory:
-
-| | Directory | Ships as |
-|---|---|---|
-| `widget` | `Widget/` | a `WidgetBundle` and a static-configuration widget |
-| `notificationService` | `NotificationService/` | a `UNNotificationServiceExtension` subclass |
-
-Each ships under the app's bundle identifier plus a suffix — `.widget`,
-`.notificationservice` — per environment as well as at the base, because an
-extension whose identifier is not prefixed by its container's cannot be
-installed. A package product may name an extension target exactly as it may
-name the app's. Both extensions are iOS-only in this version.
-
-### `init` was removed in v0.6
-
-Its deprecation period ended as scheduled. Typing it gets a clear pointer,
-not an unknown-command error:
-
-```text
-init --config existing.yml     →   generate --config existing.yml
-init MyApp --preset ios-uikit  →   new MyApp --variant ios-uikit --yes
-```
-
-The reasoning is recorded in
-[ADR-0007](docs/adr/0007-init-retires-preset-becomes-variant.md).
-
-### Machine-readable output
-
-`--output json` puts one JSON document on stdout and nothing else; anything a
-person would read goes to stderr. Failures produce a document too — that is
-when a caller needs it most:
-
-```console
-$ xscaffold validate scaffold.yml --output json
-{"command":"validate","exitCode":0,"issues":[],"ok":true}
-
-$ xscaffold plan --config scaffold.yml --resolved-config --output json \
-    | jq .resolvedConfiguration.product
-
-$ xscaffold doctor --output json | jq '.checks[] | select(.found == false)'
-```
-
-`ok`, `command` and `exitCode` are always present, and `message` on failure.
-`issues`, `plan`, `resolvedConfiguration`, `checks`, `capabilities` and
-`destination` appear
-only when that command has them to report — an absent key, never `null`.
-`plan` carries file paths and sizes, not file contents, plus an `overwrites`
-list when a forced run would replace existing files.
-
-### What a failure says
-
-Every failure carries an `error` object and the `phase` it happened in, so a
-caller can branch without parsing English:
-
-```console
-$ xscaffold generate --config scaffold.yml --yes --output json | jq '{phase, error}'
-{
-  "phase": "dependencyInstallation",
-  "error": {
-    "code": "POD_INSTALL_FAILED",
-    "message": "`bundle exec pod install` failed with exit status 1, while trying to: Install pods…",
-    "exitCode": 8,
-    "command": "bundle exec pod install",
-    "recoverySuggestion": "Run the install again with --verbose in the destination to see what CocoaPods decided."
-  }
-}
-```
-
-`code`, `message`, `exitCode` and `recoverySuggestion` are always there;
-`command` appears when an external command failed and `path` when the failure is
-about a file or directory. `phase` is one of `invocation`, `configuration`,
-`validation`, `planning`, `confirmation`, `generation`, `projectGeneration`,
-`dependencyInstallation`, `buildValidation` or `environmentCheck` — see
-[ADR-0009](docs/adr/0009-a-failure-reports-the-stage-it-was-in.md).
-
-In text mode the same three facts arrive on stderr:
-
-```text
-Error: OUTPUT_DIRECTORY_NOT_EMPTY: '/tmp/Bookshelf' already exists and is not empty.
-Try: Choose an empty destination, or pass --force to write into this one anyway.
-```
-
-### Exit codes
-
-```text
-0   success                        6   file conflict
-1   unexpected failure             7   generation failure
-2   invalid CLI arguments          8   external command failure
-3   configuration parsing failure  9   build validation failure
-4   configuration validation       10  environment requirement missing
-5   template resolution failure    130 cancelled (new, generate)
-```
-
-### Minimal `scaffold.yml`
-
-```yaml
-schemaVersion: 1
-
-project:
-  name: MyApp
-  organizationName: My Company
-  bundleIdentifier: com.example.myapp
-
-product:
-  platform: ios
-  type: application
-  deploymentTarget: "18.0"
-
-language:
-  primary: swift
-  languageMode: "6"
-
-interface:
-  primary: uikit
-  lifecycle: app-delegate-scene-delegate
-
-architecture:
-  pattern: minimal
-
-generator:
-  type: xcodegen
-
-environments: []
-
-quality:
-  swiftlint: true
-  swiftformat: true
-
-testing:
-  unit: swift-testing
-
-git:
-  defaultBranch: main
-```
-
-Every field but `project.name`, `project.bundleIdentifier` and
-`interface.primary` has a default — `plan --resolved-config` shows what an
-omitted field will actually be.
-
-For an architecture with a worked example, set `architecture.pattern` to `mvvm`
-or `mvvm-c` (`mvvm-c` on UIKit only). `architecture.includeExample` controls
-whether the example is generated: left out it follows the pattern, so `mvvm`
-gets the example without stating it; set `false` for the structure and notes
-without the example code.
-
-Note that `language.languageMode` is Xcode's `SWIFT_VERSION` build setting — a
-*language mode*, whose only valid values are `5` and `6`. It is not a compiler
-or toolchain version.
+Three fields are required; everything else has a default, and a preset supplies
+what you leave out. `xscaffold plan --config scaffold.yml --resolved-config`
+shows what an omitted field will actually be. Every field is documented in
+[the configuration reference](docs/configuration.md).
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [docs/getting-started.md](docs/getting-started.md) | Install to first project, both ways |
+| [docs/cli-reference.md](docs/cli-reference.md) | Every command, flag, exit code and JSON field |
+| [docs/configuration.md](docs/configuration.md) | Every `scaffold.yml` field, default and validation code |
+| [docs/presets.md](docs/presets.md) | What each preset brings, and how overrides resolve |
+| [docs/templates.md](docs/templates.md) | What each variant generates |
+| [docs/architecture.md](docs/architecture.md) | `minimal`, `mvvm`, `mvvm-c` and their examples |
+| [docs/dependencies.md](docs/dependencies.md) | Swift packages |
+| [docs/cocoapods.md](docs/cocoapods.md) | Podfile, private specs repos, Bundler, the workspace rule |
+| [docs/agent-workflow.md](docs/agent-workflow.md) | Driving it from an AI agent |
+| [docs/development.md](docs/development.md) | Working on xscaffold itself |
+| [docs/release.md](docs/release.md) | Cutting a release |
+| [CONTEXT.md](CONTEXT.md) | Project glossary. Read before introducing new terminology |
+| [docs/adr/](docs/adr/) | Architecture decision records |
+| [docs/plans/](docs/plans/) | Scope, schema, roadmap, and what is explicitly excluded |
+| [examples/](examples/) | Four `scaffold.yml` files to start from, each validated by a test |
+| [Skills/xcode-project-scaffold/](Skills/xcode-project-scaffold/) | The bundled Skill, and the field reference it points at |
 
 ## Examples and demo
 
-[`examples/`](examples/) holds four `scaffold.yml` files, each a project
-someone might actually be starting — the smallest file that generates anything,
-a UIKit app with a coordinator and packages, a preset with two fields overridden
-against it, and the enterprise CocoaPods configuration. They are files edited
-down to what was chosen, not `config example`'s resolved output, and a test
-validates and plans every one of them.
+[`examples/`](examples/) holds four `scaffold.yml` files, each a project someone
+might actually be starting — the smallest file that generates anything, a UIKit
+app with a coordinator and packages, a preset with two fields overridden against
+it, and the enterprise CocoaPods configuration. They are files edited down to
+what was chosen, not `config example`'s resolved output, and a test validates
+and plans every one of them.
 
 Two recordings of the real binary live in [`docs/demo/`](docs/demo/):
 [`new-preview.txt`](docs/demo/new-preview.txt) is the interactive flow through
@@ -616,51 +200,16 @@ the Configuration Preview to Save-and-exit, and
 with `--preset standard --yes`. Regenerate both with `Scripts/record-demo.sh`
 after changing a flow, so the demos and the binary cannot drift apart.
 
-## Development
+## Contributing
 
 ```bash
-make build            # swift build
-make test             # swift test
-make e2e              # generate, build and test every variant
-make lint             # swiftformat --lint and swiftlint --strict
-make format           # apply formatting in place
-make benchmark        # p50/p95 for startup, capabilities and plan
-make install          # release build, installed to $PREFIX/bin
+make build && make test && make lint
 ```
 
-`make benchmark` measures a release build, not a debug one, and reports the
-three things an interactive session waits on. It is not a CI gate: it exists so
-that a change suspected of costing time can be answered with a number.
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow, test
-layout and pull-request conventions, and [`SECURITY.md`](SECURITY.md) for how
-to report a vulnerability.
-
-When invoking `xcodebuild` locally, **always pass an unambiguous destination.**
-A device name alone matches several simulators across installed runtimes, and
-`xcodebuild` will pick one arbitrarily:
-
-```bash
-# ambiguous — do not do this
--destination 'platform=iOS Simulator,name=iPhone 16'
-
-# unambiguous
--destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0'
--destination 'id=<simulator-udid>'
-```
-
----
-
-## Documentation
-
-| Document | Purpose |
-|---|---|
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed in each release. |
-| [`CONTEXT.md`](CONTEXT.md) | Project glossary. Read before introducing new terminology. |
-| [`docs/plans/`](docs/plans/) | Scope, schema, roadmap, and what is explicitly excluded. |
-| [`docs/adr/`](docs/adr/) | Architecture decision records. |
-| [`examples/`](examples/) | Four `scaffold.yml` files to start from, each validated by a test. |
-| [`Skills/xcode-project-scaffold/`](Skills/xcode-project-scaffold/) | The bundled Skill, and the `scaffold.yml` field reference it points at. |
+[`docs/development.md`](docs/development.md) covers the codebase, the test
+layout and the checks; [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the workflow
+and pull-request conventions; [`SECURITY.md`](SECURITY.md) covers how to report
+a vulnerability.
 
 ## License
 
