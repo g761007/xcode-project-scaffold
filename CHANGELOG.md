@@ -8,17 +8,73 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
-## [Unreleased]
+## [0.8.0] — 2026-07-26
 
 ### Added
 
-- **The documentation's command lines are run, not just read.** Every
-  `xscaffold …` in `SKILL.md`, the README, `docs/` and `examples/` is checked
-  against the binary — 74 of them — and the read-only ones that are documented
-  whole are executed in a temporary project and required to be command lines
-  the CLI accepts. `init` was named in the Skill for two versions after it was
-  removed; that is what this catches, and no code diff would ever have shown
-  it.
+- **Shell completions for zsh, bash and fish.** Homebrew installs all three;
+  `xscaffold --generate-completion-script <shell>` writes one for any other
+  installation. Beyond subcommands and flags, the values worth not having to
+  remember complete too: `--variant` offers the four variants, `--preset` the
+  three presets, `--config` and `validate` offer `.yml` and `.yaml` files, and
+  `--destination` offers directories. The value lists are read out of the
+  binary's own types rather than written into a script, so a fifth variant
+  completes the day it exists — and a test asserts that, against
+  `Variant.all` and `Preset.allowedValues`, in all three scripts.
+
+- **Every failure names itself.** `--output json` failures now carry an `error`
+  object — `code`, `message`, `exitCode`, `recoverySuggestion`, plus `command`
+  when an external command failed and `path` when the failure is about a file —
+  and a `phase` saying which stage the run reached. A caller can tell
+  `POD_INSTALL_FAILED` from `XCODEGEN_FAILED` without parsing English, and tell
+  a failure that wrote nothing from one that left a directory behind. In text
+  mode the same facts arrive as `Error: CODE: message` followed by `Try: …`.
+
+  The codes are the error contract's (§23), minus the six it names that no
+  failure path could emit — an unreachable code is dead the same way an
+  unreachable validation code is — plus the ones that existed with no name:
+  wrong arguments, an unreadable configuration, a malformed one, and the two
+  catch-alls. `phase` follows ADR-0009: the stage that was under way, not the
+  state the run ended in.
+
+  Every code carries its own exit code and its own recovery suggestion, so a
+  new failure mode cannot ship without deciding both.
+
+- **`config example` takes `--variant` and `--dependency-manager`**, the two
+  flags §4.9 documents beside `--preset`. All three are independent axes, as
+  they are on `new`: the variant states the platform and the interface (and
+  what follows from them — an AppKit example says `lifecycle: app-delegate`),
+  the preset states how much project, and the dependency manager states what
+  reads the packages. An unknown name for any of them is refused with the real
+  ones, and a variant given to `--preset` is now pointed at `--variant` rather
+  than at the document.
+
+  The dependency manager earns a flag rather than being a word to edit because
+  it is not one word in the resolved document: under `production`, choosing
+  pods also pins Bundler and a CocoaPods version during normalization. An
+  example that hid that would be hiding what its reader is about to generate,
+  which is the one thing this command exists not to do.
+
+  All three route through the same document builder `new --variant --preset`
+  uses, so the same two flags cannot come to mean different things depending on
+  which command they follow.
+
+- **`examples/`.** Four `scaffold.yml` files, each a project someone might
+  actually be starting: the smallest file that generates anything, a UIKit app
+  with a coordinator and two packages, a preset with two fields overridden
+  against it, and the enterprise CocoaPods configuration with private sources,
+  Bundler pinning, extensions and CI. They are deliberately not what
+  `config example` prints — that command shows every field resolved, and these
+  show a file edited down to what was chosen, which is what a `scaffold.yml` in
+  a repository looks like. A test discovers the directory and validates and
+  plans every file in it, so an example cannot go stale unnoticed.
+
+- **A second terminal demo.** `docs/demo/new-preset.txt` records the one-line
+  flow — `new Bookshelf --variant ios-swiftui --preset standard --yes` — beside
+  the interactive one that was already there. `Scripts/record-demo.sh` produces
+  both, and now replaces the temporary working directory with a stable
+  stand-in, so re-recording an unchanged flow leaves no diff and a real change
+  is visible.
 
 - **The Skill knows what this version's CLI actually is.** `SKILL.md` had not
   been touched since before `--preset` existed, and still described a workflow
@@ -33,6 +89,15 @@ migration path until `1.0` (see the README).
   exit-code table has to match `ScaffoldExitCode`. `init` was named in the Skill
   for two versions after it was removed; that is the class of drift this
   catches.
+
+- **The documentation's command lines are run, not just read.** Every
+  `xscaffold …` in `SKILL.md`, the README, `docs/` and `examples/` is checked
+  against the binary — 74 of them — and the read-only ones that are documented
+  whole are executed in a temporary project and required to be command lines
+  the CLI accepts. `init` was named in the Skill for two versions after it was
+  removed; that is what this catches, and no code diff would ever have shown
+  it.
+
 - **`make benchmark`.** Reports p50 and p95 for the three things an interactive
   session waits on: process start, which every tab completion pays for;
   `capabilities`, which an agent asks first every session; and `plan` against
@@ -40,19 +105,9 @@ migration path until `1.0` (see the README).
   threshold on a shared runner measures the runner — it exists so a change
   suspected of costing time can be answered with a number. Nothing was
   optimised: on an M-series Mac those are 10.5ms, 11.3ms and 18.2ms at p50.
-- **Shell completions for zsh, bash and fish.** Homebrew installs all three;
-  `xscaffold --generate-completion-script <shell>` writes one for any other
-  installation. Beyond subcommands and flags, the values worth not having to
-  remember complete too: `--variant` offers the four variants, `--preset` the
-  three presets, `--config` and `validate` offer `.yml` and `.yaml` files, and
-  `--destination` offers directories. The value lists are read out of the
-  binary's own types rather than written into a script, so a fifth variant
-  completes the day it exists — and a test asserts that, against
-  `Variant.all` and `Preset.allowedValues`, in all three scripts.
-
-## [Unreleased]
 
 ### Changed
+
 - **The documentation is eleven documents instead of one README.** A 600-line
   README was simultaneously an introduction, a tutorial, a CLI reference and a
   schema reference, and the four readers were in each other's way.
@@ -66,52 +121,7 @@ migration path until `1.0` (see the README).
   the repository. The contract test that kept the Skill's reference honest now
   runs against both, so neither can fall behind the schema.
 
-
 ### Fixed
-
-- **`make clean` left a workspace pointing at a project it had deleted.** It
-  removed `DerivedData`, `build` and the `.xcodeproj`, and left the
-  `.xcworkspace` and `Pods/` that `pod install` produced — so the next
-  `make open` in a CocoaPods project opened a workspace whose project was
-  gone. Clean now removes everything a run produces, and only what a run
-  produces.
-- **The generated project's README described a project other than itself.** It
-  told a macOS project that `make build` builds "for the simulator", told a
-  CocoaPods project to open the `.xcodeproj` its Makefile no longer touches,
-  and told every project to `brew install xcodegen` and nothing else, however
-  many other tools its own `make generate` runs. Same cause as the Makefile
-  above, in the file that sits beside it: constants where the configuration
-  already knew the answer.
-
-- **`new --preset standard`, answered `Minimal`, looped forever.** Both
-  `standard` and `production` state `mvvm` with its example, and the example
-  question is only asked for a pattern that has one — so answering `Minimal`
-  left the preset's `includeExample: true` in place, which is `XS1201`. The
-  interactive loop re-asks whatever it cannot resolve, so it re-asked a
-  question with no acceptable answer, and Ctrl-C was the only way out.
-
-  `includeExample` qualifies a pattern and nothing else, so answering the
-  pattern now answers it too. Present since `--preset` returned to `new` in
-  v0.7.0; the non-interactive paths were never affected.
-- **A generated project's `make lint` now looks at everything it generated.**
-  Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
-  (since v0.5), `Widget/` and `NotificationService/` (both since v0.6) were
-  never read — and `make lint` reported zero violations without having opened
-  them. The list is gone rather than extended: SwiftLint reads the working
-  directory by default, which is exactly the set of directories the project
-  actually has, and cannot fall behind the next one.
-
-  Both linters now leave `Pods/` alone. Dropping the include list would
-  otherwise have pointed SwiftLint at vendored sources, and SwiftFormat has
-  been rewriting them all along — `make format` in a CocoaPods project
-  reformatted third-party code.
-
-- **The UI test templates did not pass the linters they ship with.** Three
-  `func test…() throws` with nothing throwing in them, which `swiftformat
-  --lint` refuses, so `make lint` failed in every generated project with UI
-  tests switched on. Present since v0.5; caught now because the CI job that
-  lints generated projects finally generates one with UI tests and both App
-  Extensions in it.
 
 - **`make build`, `make test` and `make open` were wrong in every generated
   project.** Three constants in the shared `Makefile` template, each of which
@@ -140,6 +150,52 @@ migration path until `1.0` (see the README).
   a udid it resolves itself; the recipes a generated project ships had never
   been executed by CI. Three e2e cases now run `make build` in the generated
   project — one per platform, and one through a workspace.
+
+- **The generated project's README described a project other than itself.** It
+  told a macOS project that `make build` builds "for the simulator", told a
+  CocoaPods project to open the `.xcodeproj` its Makefile no longer touches,
+  and told every project to `brew install xcodegen` and nothing else, however
+  many other tools its own `make generate` runs. Same cause as the Makefile
+  above, in the file that sits beside it: constants where the configuration
+  already knew the answer.
+
+- **`make clean` left a workspace pointing at a project it had deleted.** It
+  removed `DerivedData`, `build` and the `.xcodeproj`, and left the
+  `.xcworkspace` and `Pods/` that `pod install` produced — so the next
+  `make open` in a CocoaPods project opened a workspace whose project was
+  gone. Clean now removes everything a run produces, and only what a run
+  produces.
+
+- **A generated project's `make lint` now looks at everything it generated.**
+  Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
+  (since v0.5), `Widget/` and `NotificationService/` (both since v0.6) were
+  never read — and `make lint` reported zero violations without having opened
+  them. The list is gone rather than extended: SwiftLint reads the working
+  directory by default, which is exactly the set of directories the project
+  actually has, and cannot fall behind the next one.
+
+  Both linters now leave `Pods/` alone. Dropping the include list would
+  otherwise have pointed SwiftLint at vendored sources, and SwiftFormat has
+  been rewriting them all along — `make format` in a CocoaPods project
+  reformatted third-party code.
+
+- **The UI test templates did not pass the linters they ship with.** Three
+  `func test…() throws` with nothing throwing in them, which `swiftformat
+  --lint` refuses, so `make lint` failed in every generated project with UI
+  tests switched on. Present since v0.5; caught now because the CI job that
+  lints generated projects finally generates one with UI tests and both App
+  Extensions in it.
+
+- **`new --preset standard`, answered `Minimal`, looped forever.** Both
+  `standard` and `production` state `mvvm` with its example, and the example
+  question is only asked for a pattern that has one — so answering `Minimal`
+  left the preset's `includeExample: true` in place, which is `XS1201`. The
+  interactive loop re-asks whatever it cannot resolve, so it re-asked a
+  question with no acceptable answer, and Ctrl-C was the only way out.
+
+  `includeExample` qualifies a pattern and nothing else, so answering the
+  pattern now answers it too. Present since `--preset` returned to `new` in
+  v0.7.0; the non-interactive paths were never affected.
 
 ## [0.7.0] — 2026-07-25
 
