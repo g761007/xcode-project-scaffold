@@ -27,9 +27,12 @@ _Avoid_: answers、draft config、partial
 _Avoid_: checked config、safe config
 
 **Preset**:
-專案規模與預設功能的具名集合（minimal / standard / production），v0.7 生效，屆時以
-`--preset` 提供。在那之前這個詞不指任何現役概念——v0.4 之前掛在 `--preset` 下的四個
-平台組合現在叫 Variant（ADR-0007）。
+專案規模與預設功能的具名集合（minimal / standard / production）。以 `--preset` 或
+`scaffold.yml` 的 `preset` 欄位選取——兩者走同一套解析，因為旗標是透過文件生效的
+（ADR-0008）。它只補文件沒說的欄位，寫下的一律勝出，所以是起點而非模式。
+
+與 Variant 正交：一個選規模，一個選平台組合，可同時使用。v0.4 之前掛在 `--preset`
+下的四個平台組合現在叫 Variant（ADR-0007）。
 _Avoid_: profile、template、範本、（舊語意）平台組合
 
 ## 生成

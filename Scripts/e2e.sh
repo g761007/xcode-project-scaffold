@@ -95,9 +95,10 @@ check_macos() {
 
 one_line() {
     local name="$1" variant="$2"
+    shift 2
     echo
-    echo "==> $name (new --variant $variant --yes)"
-    "$xscaffold" new "$name" --variant "$variant" --yes --destination "$root/$name"
+    echo "==> $name (new --variant $variant $* --yes)"
+    "$xscaffold" new "$name" --variant "$variant" "$@" --yes --destination "$root/$name"
 
     xcodebuild build -project "$root/$name/$name.xcodeproj" -scheme "$name" \
         -destination "id=$udid" -quiet
@@ -120,9 +121,10 @@ one_line_macos() {
 one_line UIKitApp ios-uikit
 one_line SwiftUIApp ios-swiftui
 
-# The MVVM architecture example, which no preset produces: it replaces the app's
-# main screen with a view and a concrete view model, and ships its own tests.
-# The plain variants above never compile that code, so it earns a run of its own.
+# The MVVM architecture example, stated directly rather than through the preset
+# that also brings it: it replaces the app's main screen with a view and a
+# concrete view model, and ships its own tests. The plain variants above never
+# compile that code, so it earns a run of its own.
 cat > "$root/mvvm-uikit.yml" <<'YML'
 project:
   name: MVVMApp
@@ -200,10 +202,10 @@ architecture:
 YML
 check MVVMCApp --config "$root/mvvmc-uikit.yml"
 
-# Environments, which no preset produces and which the two runs above therefore
-# say nothing about. They earn a case of their own because they change the
-# generated schemes: the default scheme belongs to the Release environment, and
-# a project whose first ⌘U cannot compile its own tests is broken on arrival.
+# Environments, which the runs above say nothing about. They earn a case of
+# their own because they change the generated schemes: the default scheme
+# belongs to the Release environment, and a project whose first ⌘U cannot
+# compile its own tests is broken on arrival.
 cat > "$root/environments.yml" <<'YML'
 project:
   name: EnvApp
@@ -253,10 +255,11 @@ extensions:
 YML
 check ExtensionsApp --config "$root/widget.yml"
 
-# macOS, the platform axis v0.3 adds. The two presets cover the plain variants;
-# the MVVM overlay ships its own sources, so each interface earns a run of its
-# own — SwiftUI observing an @Observable model, AppKit driving one through a
-# closure from a code-built NSViewController with no storyboard or xib.
+# macOS, the platform axis v0.3 adds. The two one-line runs below cover the
+# plain variants; the MVVM overlay ships its own sources, so each interface
+# earns a run of its own — SwiftUI observing an @Observable model, AppKit
+# driving one through a closure from a code-built NSViewController with no
+# storyboard or xib.
 one_line_macos MacSwiftUIApp macos-swiftui
 one_line_macos MacAppKitApp macos-appkit
 
@@ -431,5 +434,97 @@ YML
 check_pods MacPodsApp "$root/pods-macos.yml" \
     -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-
 
+# The preset axis (§17). Every case above states its fields directly, so none of
+# them says whether a preset's own combination compiles — and a preset is the
+# one thing here nobody reviews field by field before generating, because
+# choosing it is the whole point.
+#
+# Each runs at the floor its own contents impose, not at the default target
+# (§24.3, and the v0.6 lesson: the default target hid an availability bug for
+# two releases). That floor is not one number. Both presets bring the MVVM
+# example, and the SwiftUI example observes through `@Observable`, which arrived
+# in iOS 17 — so `standard` on SwiftUI cannot go below 17.0 and the validator
+# says so (XS0014), while the UIKit example observes through a closure and
+# builds at the project floor of 15.0. The two cases take one floor each.
+#
+# Stated as `preset:` in a document rather than passed as `--preset`: the flag
+# routes through the document, so the resolution under test is the same one,
+# and only a document can also pin the deployment target these cases exist for.
+cat > "$root/preset-standard.yml" <<'YML'
+preset: standard
+project:
+  name: PresetStandardApp
+  bundleIdentifier: com.example.presetstandardapp
+product:
+  deploymentTarget: "17.0"
+interface:
+  primary: swiftui
+YML
+check PresetStandardApp --config "$root/preset-standard.yml"
+
+cat > "$root/preset-production.yml" <<'YML'
+preset: production
+project:
+  name: PresetProductionApp
+  bundleIdentifier: com.example.presetproductionapp
+product:
+  deploymentTarget: "15.0"
+interface:
+  primary: uikit
+YML
+check PresetProductionApp --config "$root/preset-production.yml"
+
+# production brings UI tests, three environments with values, the xcconfigs
+# those imply, a secrets example and CI. The build above proves they compile
+# together; these say the files a user was promised are actually there.
+for expected in \
+    Configurations/Debug.xcconfig \
+    Configurations/Staging.xcconfig \
+    Configurations/Release.xcconfig \
+    Configurations/Secrets.example.xcconfig \
+    Resources/en.lproj/Localizable.strings \
+    .github/workflows/build.yml
+do
+    test -f "$root/PresetProductionApp/$expected" \
+        || { echo "production preset did not produce $expected"; exit 1; }
+done
+
+# production + CocoaPods (§17): the enterprise default nobody switches on by
+# hand. Naming the mode is enough — normalization adds Bundler and pins the
+# CocoaPods version, so the install runs through `bundle exec` and the whole
+# team resolves the same one. The plan tests assert the sequence; only this
+# proves it installs, and that the workspace it produces builds and tests.
+cat > "$root/preset-production-pods.yml" <<'YML'
+preset: production
+project:
+  name: PresetPodsApp
+  bundleIdentifier: com.example.presetpodsapp
+product:
+  deploymentTarget: "15.0"
+interface:
+  primary: uikit
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_pods PresetPodsApp "$root/preset-production-pods.yml" -destination "id=$udid"
+
+# The flag itself, once. The three cases above name the preset in a document,
+# which is where `--preset` routes anyway — but "anyway" is a claim about the
+# CLI, and this is the layer that stops taking claims. It runs at the default
+# target, because no flag sets the deployment target; the floors are the
+# documents' job above.
+one_line PresetFlagApp ios-swiftui --preset standard
+
+# Nothing in that document asked for Bundler; the preset did. The pin is the
+# point — an unpinned Gemfile would install whatever resolved that day.
+test -f "$root/PresetPodsApp/Gemfile" || { echo "production + pods produced no Gemfile"; exit 1; }
+grep -q "cocoapods', '1.16.2'" "$root/PresetPodsApp/Gemfile" \
+    || { echo "production + pods did not pin the CocoaPods version"; exit 1; }
+test -f "$root/PresetPodsApp/Gemfile.lock" || { echo "bundle install left no lock"; exit 1; }
+
 echo
-echo "Every variant and dependency combination generated, built and tested."
+echo "Every variant, preset and dependency combination generated, built and tested."
