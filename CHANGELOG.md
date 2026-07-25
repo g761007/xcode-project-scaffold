@@ -12,6 +12,14 @@ migration path until `1.0` (see the README).
 
 ### Added
 
+- **The documentation's command lines are run, not just read.** Every
+  `xscaffold …` in `SKILL.md`, the README, `docs/` and `examples/` is checked
+  against the binary — 74 of them — and the read-only ones that are documented
+  whole are executed in a temporary project and required to be command lines
+  the CLI accepts. `init` was named in the Skill for two versions after it was
+  removed; that is what this catches, and no code diff would ever have shown
+  it.
+
 - **The Skill knows what this version's CLI actually is.** `SKILL.md` had not
   been touched since before `--preset` existed, and still described a workflow
   in which the only axis was `--variant`. It now leads with the two axes,
