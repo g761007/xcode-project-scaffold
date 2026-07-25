@@ -11,20 +11,40 @@ with one commit — and guarantees the same configuration produces the same
 project.
 
 Call the CLI directly. The commands this skill uses — `capabilities`,
-`validate`, `plan`, `generate` and `doctor` — take `--output json` and exit
-with a code that says what went wrong; a wrapper script would only hide both.
-If `xscaffold` is not on the PATH, say so and stop — it is installed with
-`brew install g761007/tap/xscaffold`, or `make install` from its repository.
+`config example`, `validate`, `plan`, `generate` and `doctor` — take
+`--output json` and exit with a code that says what went wrong; a wrapper
+script would only hide both. If `xscaffold` is not on the PATH, say so and
+stop — it is installed with `brew install g761007/tap/xscaffold`, or
+`make install` from its repository.
 
 There is also an interactive `xscaffold new`, which asks a person questions at a
 terminal. It is not for this skill: an agent has the answers already, so it
 writes a `scaffold.yml` and takes the declarative path below.
 
+## The two axes
+
+Two independent choices run through every command here, and confusing them is
+the most common way to ask for the wrong project:
+
+- **Variant** — the platform and the interface: `ios-uikit`, `ios-swiftui`,
+  `macos-swiftui`, `macos-appkit`. In `scaffold.yml` it is two fields,
+  `product.platform` and `interface.primary`; on the command line it is one
+  name.
+- **Preset** — how much project: `minimal`, `standard`, `production`. A scale,
+  not a platform. It supplies only what the document leaves unstated, so
+  anything written wins over it, including an explicit `false` against a
+  preset's `true`.
+
+They compose freely. `--preset` named platform combinations before v0.4 and no
+longer does; a variant name given to it is refused with a pointer to
+`--variant`.
+
 ## The workflow
 
 1. **Ask what this version can do.** `xscaffold capabilities --output json`
-   lists the variants, architectures, dependency modes and test frameworks this
-   binary actually generates — consult it instead of guessing options.
+   lists the variants, presets, architectures, dependency modes, test
+   frameworks and features this binary actually generates — consult it instead
+   of guessing options.
 2. **Check the machine.** `xscaffold doctor --output json` (pass
    `--config <path>` once the scaffold.yml exists — CocoaPods is required
    exactly when the configuration reads pods). Exit code `10` means something
@@ -33,11 +53,20 @@ writes a `scaffold.yml` and takes the declarative path below.
 3. **Write a `scaffold.yml`** from what the user asked for. Fields, defaults and
    allowed values are in `references/configuration-schema.md`. Put it outside
    the destination: `generate` writes its own copy into the project.
+
+   State only what was decided. Everything else has a default, and a preset
+   fills the rest — `preset: standard` with four stated fields is a better
+   document than forty fields copied out of a reference. To see what a preset
+   resolves to before choosing one:
+   `xscaffold config example --preset production --variant ios-swiftui`.
 4. **Validate it.** `xscaffold validate <path> --output json`. Fix what it
    reports and validate again. Never generate from a configuration that has not
    come back clean.
 5. **Preview it.** `xscaffold plan --config <path> --output json`, and show the
-   user what will be created before creating it.
+   user what will be created before creating it. Adding `--resolved-config`
+   puts the configuration with every default and preset value filled in beside
+   the file list — that is what to show when the user asks what a preset
+   actually gave them.
 6. **Create it.** `xscaffold generate --config <path> --yes --output json`.
    `--yes` is required for a non-interactive run — without it, `generate` asks
    at a terminal, and refuses when there is none. Report the `destination` it
@@ -47,11 +76,21 @@ writes a `scaffold.yml` and takes the declarative path below.
 creates `./<project.name>`.
 
 For a request with nothing in it beyond "an iOS app in SwiftUI", steps 3 to 5
-can be one line instead — `xscaffold new MyApp --variant ios-swiftui --yes`
-(variants: `ios-swiftui`, `ios-uikit`, `macos-swiftui`, `macos-appkit`). It
-derives the bundle identifier as `com.example.myapp`, so it suits someone who
-has not said what theirs is. The old `init` was removed in v0.6; typing it
-gets a pointer to the two commands above.
+can be one line instead:
+
+```bash
+xscaffold new MyApp --variant ios-swiftui --preset standard --yes
+```
+
+`--yes` with `--variant` skips the questions as well as the confirmation, so
+this needs no terminal. It derives the bundle identifier as `com.example.myapp`,
+which suits someone who has not said what theirs is. Take this path only when
+there is nothing else to state: anything beyond the two axes — packages,
+environments, extensions, CI — belongs in a `scaffold.yml`, where it can be read
+and reviewed.
+
+The old `init` was removed in v0.6; typing it gets a pointer to the two commands
+above.
 
 ## Reading the output
 
@@ -63,9 +102,10 @@ envelope, whether they succeeded or failed:
 ```
 
 `ok`, `command` and `exitCode` are always present, and `message` on failure.
-`issues`, `plan`, `checks` and `destination` appear when that command has them to
-report — an absent key, never `null`. Anything a person would read goes to
-stderr, so stdout always parses.
+`issues`, `plan`, `resolvedConfiguration`, `capabilities`, `checks` and
+`destination` appear when that command has them to report — an absent key,
+never `null`. Anything a person would read goes to stderr, so stdout always
+parses.
 
 Branch on `exitCode`, not on the message:
 
@@ -75,11 +115,48 @@ Branch on `exitCode`, not on the message:
 2   invalid CLI arguments          8   external command failure
 3   configuration parsing failure  9   build validation failure
 4   configuration validation       10  environment requirement missing
-5   template resolution failure
+5   template resolution failure    130 cancelled
 ```
 
 `plan` reports file paths and byte counts, not file contents. To show someone
 what they are about to get, that is the list to show.
+
+## Reading a failure
+
+A failure carries `error` and `phase` beside the envelope's `exitCode`:
+
+```json
+{
+  "ok": false,
+  "exitCode": 8,
+  "phase": "dependencyInstallation",
+  "error": {
+    "code": "POD_INSTALL_FAILED",
+    "message": "`bundle exec pod install` failed with exit status 1, …",
+    "exitCode": 8,
+    "command": "bundle exec pod install",
+    "recoverySuggestion": "Run the install again with --verbose in the destination …"
+  }
+}
+```
+
+`error.code` is the name to branch on when the exit code is too coarse — it
+separates `XCODEGEN_NOT_INSTALLED` from `COCOAPODS_NOT_INSTALLED`, which are
+both exit code `10` and two different things to tell the user to install.
+`command` appears when an external command failed and `path` when the failure
+is about a file or directory.
+
+`phase` says how far the run got, which decides what to say next:
+
+| Phase | Anything on disk? |
+|---|---|
+| `invocation`, `configuration`, `validation`, `planning`, `confirmation` | No. Nothing was written; fix and re-run. |
+| `generation`, `projectGeneration`, `dependencyInstallation` | Possibly. The message says so when files were left behind. |
+| `buildValidation` | Yes — the project generated, and only the build check failed. |
+| `environmentCheck` | No; this is `doctor` reporting a missing tool. |
+
+Pass `error.recoverySuggestion` on rather than inventing one: it is written
+against the code and does not guess at what the user was doing.
 
 ## Fixing what validate reports
 
