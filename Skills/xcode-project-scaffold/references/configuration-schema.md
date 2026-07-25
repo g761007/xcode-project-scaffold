@@ -83,6 +83,38 @@ afterwards.
 | Type | integer |
 | Default | `1` |
 
+### `preset`
+
+| Type | Default | Allowed |
+|---|---|---|
+| enum | none | `minimal`, `standard`, `production` |
+
+A named set of defaults for the project's **scale**. Orthogonal to the platform
+and interface — a preset never states identity, a platform or an interface, so
+it cannot contradict them.
+
+Resolution order is fixed: **preset defaults → your overrides → normalization →
+validation**. The preset supplies only what the document leaves unstated, and
+anything written wins — including an explicit `false` against a preset's `true`.
+Sections merge key by key, so stating one field keeps the preset's siblings; a
+stated list replaces the preset's entirely, so `environments: []` means none.
+
+| | Brings |
+|---|---|
+| `minimal` | minimal architecture, no dependency management, no environments, no CI, **no linters** |
+| `standard` | MVVM with its example, SPM, Swift Testing, both linters, development/production |
+| `production` | everything `standard` has, plus UI tests, three environments with values, a secrets example, localization, and GitHub Actions |
+
+`production` additionally pins CocoaPods and runs it through Bundler *when the
+project reads pods* — that one is applied in normalization, because whether it
+applies depends on a `dependencyManagement.mode` you may override.
+
+```yaml
+preset: standard
+quality:
+  swiftlint: false     # beats the preset
+```
+
 ### `project`
 
 | Key | Type | Default | Notes |

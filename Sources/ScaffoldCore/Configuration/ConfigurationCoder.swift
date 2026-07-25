@@ -16,7 +16,16 @@ public struct ConfigurationCoder: Sendable {
         }
 
         do {
-            return try YAMLDecoder().decode(ProjectConfiguration.self, from: yaml)
+            // The preset overlay runs on the parsed document, before decoding,
+            // so that its defaults reach only the fields this document leaves
+            // unstated (ADR-0008). With no preset named it changes nothing.
+            guard let node = try Yams.compose(yaml: yaml) else {
+                throw ConfigurationParsingError(message: "The document is empty.")
+            }
+            return try YAMLDecoder().decode(
+                ProjectConfiguration.self,
+                from: PresetResolution.resolved(node)
+            )
         } catch let error as DecodingError {
             throw ConfigurationParsingError.from(error)
         } catch let error as YamlError {

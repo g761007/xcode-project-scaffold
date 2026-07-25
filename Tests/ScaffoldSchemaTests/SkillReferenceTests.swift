@@ -42,7 +42,8 @@ struct SkillReferenceTests {
         ("UnitTestFramework", UnitTestFramework.allowedValues),
         ("UITestFramework", UITestFramework.allowedValues),
         ("DependencyMode", DependencyMode.allowedValues),
-        ("CIProvider", CIProvider.allowedValues)
+        ("CIProvider", CIProvider.allowedValues),
+        ("Preset", Preset.allowedValues)
     ]
 
     private func reference() throws -> String {
