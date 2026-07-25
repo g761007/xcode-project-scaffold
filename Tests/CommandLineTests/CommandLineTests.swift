@@ -307,12 +307,48 @@ struct NewVariantTests {
         #expect(result.standardError.contains("--variant ios-uikit"))
     }
 
-    @Test("--preset is met with 'did you mean --variant?'")
-    func presetPointsAtVariant() throws {
+    /// `--preset` works again from v0.7, so it can no longer refuse outright —
+    /// but the four platform combinations hung off it until v0.4, and someone
+    /// typing one still deserves the pointer rather than a list of scales that
+    /// does not contain what they meant.
+    @Test("a variant name given to --preset points at --variant")
+    func variantNameGivenToPreset() throws {
         let result = try xscaffoldWithoutInput("new", "App", "--preset", "ios-uikit")
 
         #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
-        #expect(result.standardError.contains("did you mean --variant?"))
+        #expect(result.standardError.contains("is a variant, not a preset"))
+        #expect(result.standardError.contains("--variant ios-uikit"))
+    }
+
+    @Test("an unknown preset lists the ones that exist")
+    func unknownPresetIsRefused() throws {
+        let result = try xscaffoldWithoutInput("new", "App", "--preset", "enormous")
+
+        #expect(result.exitStatus == ScaffoldExitCode.invalidArguments.rawValue)
+        #expect(result.standardError.contains("There is no preset named 'enormous'"))
+        #expect(result.standardError.contains("standard"))
+    }
+
+    /// The one-line path §17 asks for: scale and platform combination together,
+    /// no terminal needed.
+    @Test("a preset and a variant generate together in one line")
+    func presetAndVariantTogether() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("App")
+            let result = try xscaffoldWithoutInput(
+                "new", "App", "--variant", "ios-swiftui", "--preset", "standard", "--yes",
+                "--destination", destination.path, "--skip-git", "--skip-generate"
+            )
+
+            #expect(result.exitStatus == 0)
+            let manifest = try String(
+                contentsOf: destination.appendingPathComponent("scaffold.yml"), encoding: .utf8
+            )
+            #expect(manifest.contains("preset: standard"))
+            #expect(manifest.contains("pattern: mvvm"), "the preset's architecture reached the project")
+            #expect(manifest.contains("mode: spm"), "and its dependency mode")
+            #expect(manifest.contains("primary: swiftui"), "while the variant still decided the interface")
+        }
     }
 
     @Test("--variant alone still needs a terminal for the other questions")

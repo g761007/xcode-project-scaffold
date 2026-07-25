@@ -19,7 +19,13 @@ public enum InteractivePromptError: Error, Equatable, Sendable {
 /// question is asked again — which is why the questions are small methods, one
 /// per field, reused by both the first pass and the re-ask.
 public struct InteractiveConfiguration: Sendable {
-    public init() {}
+    /// The preset already resolved, so that a re-asked section is validated
+    /// against the same configuration the preview will show.
+    private let presetBase: ProjectConfiguration?
+
+    public init(presetBase: ProjectConfiguration? = nil) {
+        self.presetBase = presetBase
+    }
 
     /// Every parameter but the prompter is an answer already given on the
     /// command line, if any; a question that has its answer is not asked. The
@@ -160,7 +166,7 @@ extension InteractiveConfiguration {
     }
 
     private func firstError(in answers: PartialProjectConfiguration) -> ValidationIssue? {
-        ConfigurationValidator().validate(answers.resolved()).first { $0.severity == .error }
+        ConfigurationValidator().validate(answers.resolved(over: presetBase)).first { $0.severity == .error }
     }
 
     private func reask(

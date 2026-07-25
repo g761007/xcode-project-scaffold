@@ -21,6 +21,13 @@ struct NewCommand: ParsableCommand {
         discussion: """
           xscaffold new MyApp
           xscaffold new MyApp --variant ios-uikit --yes
+          xscaffold new MyApp --variant ios-swiftui --preset standard --yes
+
+        A variant picks the platform and interface; a preset picks how much
+        project comes with them. They are independent, and both are optional.
+
+        Available presets:
+        \(Preset.allCases.map { "  \($0.rawValue)" }.joined(separator: "\n"))
 
         Available variants:
         \(Variant.all.map { "  \($0.name.padding(toLength: 14, withPad: " ", startingAt: 0))\($0.summary)" }
@@ -37,11 +44,14 @@ struct NewCommand: ParsableCommand {
     @Option(name: .customLong("variant"), help: "A platform and interface combination; answers those two questions.")
     var variantName: String?
 
-    /// Defined only to be refused with a pointer at `--variant` (§17.1): the
-    /// four combinations hung off `--preset` until v0.4, and an unknown-option
-    /// error would leave whoever typed it to work the move out alone. Hidden,
-    /// so the help never advertises what exists only to say no.
-    @Option(name: .customLong("preset"), help: .hidden)
+    /// Back as a scale rather than as a platform combination (§17). Between
+    /// v0.4 and v0.6 this flag existed only to point at `--variant`; that
+    /// pointer is gone, because a flag that now works must not answer as
+    /// though it does not.
+    @Option(
+        name: .customLong("preset"),
+        help: "How much project to create: \(Preset.allowedValues.joined(separator: ", "))."
+    )
     var presetName: String?
 
     @OptionGroup var runOptions: RunOptions
@@ -71,9 +81,18 @@ struct NewCommand: ParsableCommand {
     /// `generate` catches applies here too, and `--open` joins it for the same
     /// reason: skipping the generator leaves no project file to act on.
     func validate() throws {
-        guard presetName == nil else {
-            throw ValidationError("new has no --preset — did you mean --variant? The platform "
-                + "combinations that used to hang off --preset are now variants.")
+        if let presetName, Preset(rawValue: presetName) == nil {
+            let known = Preset.allowedValues.joined(separator: ", ")
+            // The four platform combinations hung off --preset until v0.4.
+            // The flag works again now, so it can no longer refuse outright —
+            // but someone typing the old value still deserves the pointer it
+            // used to give, rather than a list that does not contain what they
+            // meant.
+            guard Variant.named(presetName) == nil else {
+                throw ValidationError("'\(presetName)' is a variant, not a preset. Try "
+                    + "--variant \(presetName), or a preset: \(known).")
+            }
+            throw ValidationError("There is no preset named '\(presetName)'. Try one of: \(known).")
         }
         if let variantName, Variant.named(variantName) == nil {
             let known = Variant.all.map(\.name).joined(separator: ", ")
@@ -93,10 +112,18 @@ struct NewCommand: ParsableCommand {
         }
     }
 
+    /// The preset the flags name. `validate()` has already refused anything
+    /// that is not one, so a nil here means none was given.
+    private var preset: Preset? {
+        presetName.flatMap(Preset.init(rawValue:))
+    }
+
     func run() throws {
         let reporter = Reporter(for: Self.self, format: .text)
         let prompter = SystemPrompter()
         let variant = variantName.flatMap(Variant.named)
+        // Resolved once, here, so the interactive loop stays a pure overlay.
+        let presetBase = try preset.map(Variant.baseConfiguration(for:))
 
         // --yes answered the menu in advance: no preview stop, straight to
         // generation once the answers exist. The summary still shows — the
@@ -129,7 +156,7 @@ struct NewCommand: ParsableCommand {
         // code it chose, the same mapping `writePlan` performs.
         let outcome = try mappingGenerationFailure(reportingTo: reporter) {
             do {
-                return try PreviewSession(force: force).run(
+                return try PreviewSession(force: force, presetBase: presetBase).run(
                     answers: answers,
                     destination: { destinationURL(for: $0) },
                     makePlan: { try makePlan(for: $0, options: runOptions.generationOptions,
@@ -171,7 +198,7 @@ extension NewCommand {
                     "A variant does not name the project. Try: xscaffold new MyApp --variant \(variant.name) --yes"
                 )
             }
-            return variant.configuration(projectName: name)
+            return try variant.configuration(projectName: name, preset: preset)
         }
 
         guard prompter.isInteractive else {
@@ -181,7 +208,8 @@ extension NewCommand {
                     + "generate --config <file>, or new <name> --variant <name> --yes."
             )
         }
-        return try collect(variant: nil, using: prompter, reportingTo: reporter).resolved()
+        return try collect(variant: nil, using: prompter, reportingTo: reporter)
+            .resolved(over: preset.map(Variant.baseConfiguration(for:)))
     }
 
     /// Everything after the files are down, shared by the --yes path and the
@@ -215,7 +243,7 @@ extension NewCommand {
         reportingTo reporter: Reporter
     ) throws -> PartialProjectConfiguration {
         do {
-            return try InteractiveConfiguration()
+            return try InteractiveConfiguration(presetBase: preset.map(Variant.baseConfiguration(for:)))
                 .collect(name: name, variant: variant, advanced: advanced, using: prompter)
         } catch InteractivePromptError.cancelled {
             throw cancelled(using: prompter, reportingTo: reporter)

@@ -15,10 +15,19 @@ public struct PreviewSession: Sendable {
     /// How Generate lands the plan — `PlanExecutor`'s parameter, carried here
     /// because the choice to force was made before the menu ever showed.
     private let force: Bool
+    /// The preset already resolved, or nil when none was named. Resolved once
+    /// by the caller rather than here: the loop re-resolves on every edit and
+    /// has nowhere to put a failure.
+    private let presetBase: ProjectConfiguration?
 
-    public init(processRunner: any ProcessRunner = SystemProcessRunner(), force: Bool = false) {
+    public init(
+        processRunner: any ProcessRunner = SystemProcessRunner(),
+        force: Bool = false,
+        presetBase: ProjectConfiguration? = nil
+    ) {
         executor = PlanExecutor(processRunner: processRunner)
         self.force = force
+        self.presetBase = presetBase
     }
 
     public enum Outcome: Sendable {
@@ -44,7 +53,7 @@ public struct PreviewSession: Sendable {
         makePlan: (ValidatedConfiguration) throws -> GenerationPlan,
         using prompter: some Prompter
     ) throws -> Outcome {
-        let interactive = InteractiveConfiguration()
+        let interactive = InteractiveConfiguration(presetBase: presetBase)
         var answers = answers
 
         while true {
@@ -125,7 +134,8 @@ public struct PreviewSession: Sendable {
     /// cannot come back invalid; the compiler cannot know that, and the next
     /// reader should.
     private func checked(_ answers: PartialProjectConfiguration) -> (ValidatedConfiguration, [ValidationIssue]) {
-        guard case let .valid(validated, warnings) = ConfigurationValidator().check(answers.resolved()) else {
+        let outcome = ConfigurationValidator().check(answers.resolved(over: presetBase))
+        guard case let .valid(validated, warnings) = outcome else {
             preconditionFailure("resolveAnswers returned answers that do not validate")
         }
         return (validated, warnings)
