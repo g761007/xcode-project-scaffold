@@ -44,6 +44,21 @@ enum PresetResolution {
         return mode == DependencyMode.cocoapods.rawValue || mode == DependencyMode.mixed.rawValue
     }
 
+    /// A preset resolved on its own, for callers that have no document — the
+    /// interactive flow, which collects answers rather than parsing YAML. The
+    /// identity it decodes against is a placeholder the answers replace; a
+    /// preset states none of it.
+    static func baseConfiguration(for preset: Preset) throws -> ProjectConfiguration {
+        try ConfigurationCoder().decode("""
+        preset: \(preset.rawValue)
+        project:
+          name: \(Preset.placeholderName)
+          bundleIdentifier: \(Preset.placeholderBundleIdentifier)
+        interface:
+          primary: swiftui
+        """)
+    }
+
     /// The `preset` field, if the document states one. An unrecognised value is
     /// left alone rather than reported here: the decoder rejects it with the
     /// same message it gives any other bad enum, and one telling of that is

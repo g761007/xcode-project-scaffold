@@ -58,6 +58,51 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         self.gitDefaultBranch = gitDefaultBranch
     }
 
+    /// The full configuration these answers describe, laid over a preset's.
+    ///
+    /// The base is the preset already resolved (`Preset.baseConfiguration`),
+    /// not the preset itself, so this stays a pure value overlay: the
+    /// interactive loop re-resolves on every edit and has nowhere to put a
+    /// failure. Every field the prompt asked about wins, because an answer is
+    /// a stated field; everything else is the preset's.
+    ///
+    /// Identity, platform and interface always come from the answers — a
+    /// preset states none of them.
+    public func resolved(over base: ProjectConfiguration?) -> ProjectConfiguration {
+        guard var configuration = base else { return resolved() }
+
+        configuration.project = .init(
+            name: name,
+            organizationName: organizationName ?? configuration.project.organizationName,
+            bundleIdentifier: bundleIdentifier
+        )
+        configuration.product = .init(
+            platform: platform,
+            type: configuration.product.type,
+            deploymentTarget: deploymentTarget
+        )
+        configuration.interface = .init(primary: interface)
+        configuration.architecture = .init(
+            pattern: pattern,
+            includeExample: includeExample ?? configuration.architecture.includeExample
+        )
+        configuration.environments = environments
+
+        if let unitTestFramework {
+            configuration.testing.unit = unitTestFramework
+        }
+        if let swiftlint {
+            configuration.quality.swiftlint = swiftlint
+        }
+        if let swiftformat {
+            configuration.quality.swiftformat = swiftformat
+        }
+        if let gitDefaultBranch {
+            configuration.git.defaultBranch = gitDefaultBranch
+        }
+        return configuration
+    }
+
     /// The full configuration these answers describe, with defaults applied for
     /// every field the prompt did not ask about. The deployment target follows
     /// from the platform (Product's own default), so the prompt need not ask.

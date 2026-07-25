@@ -9,6 +9,9 @@ public struct CapabilitiesDocument: Codable, Equatable, Sendable {
     public var platforms: [String]
     public var architectures: [String]
     public var dependencyManagementModes: [String]
+    /// The scales `--preset` accepts (§17). Present from v0.7; an agent that
+    /// finds it absent is talking to an older binary.
+    public var presets: [String]
     public var testingFrameworks: [String]
     public var features: [String]
 
@@ -19,6 +22,7 @@ public struct CapabilitiesDocument: Codable, Equatable, Sendable {
         platforms: [String],
         architectures: [String],
         dependencyManagementModes: [String],
+        presets: [String],
         testingFrameworks: [String],
         features: [String]
     ) {
@@ -28,6 +32,7 @@ public struct CapabilitiesDocument: Codable, Equatable, Sendable {
         self.platforms = platforms
         self.architectures = architectures
         self.dependencyManagementModes = dependencyManagementModes
+        self.presets = presets
         self.testingFrameworks = testingFrameworks
         self.features = features
     }

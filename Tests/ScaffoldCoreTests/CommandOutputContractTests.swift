@@ -154,7 +154,8 @@ struct CommandOutputContractTests {
             capabilities: CapabilitiesDocument(
                 version: "1.0.0", schemaVersions: [1], variants: ["ios-uikit"],
                 platforms: ["ios"], architectures: ["minimal"],
-                dependencyManagementModes: ["none"], testingFrameworks: ["swift-testing"],
+                dependencyManagementModes: ["none"], presets: ["standard"],
+                testingFrameworks: ["swift-testing"],
                 features: []
             )
         ))

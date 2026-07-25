@@ -1,4 +1,5 @@
 import ScaffoldSchema
+import Yams
 
 /// A platform × interface combination with a name (§17.1): the four concrete
 /// shapes a generated project can take, and the CLI shortcut that picks one —
@@ -63,6 +64,40 @@ public struct Variant: Equatable, Sendable {
             product: .init(platform: platform),
             interface: .init(primary: interface)
         )
+    }
+
+    /// The same, with a preset's defaults applied.
+    ///
+    /// Routed through a document rather than through values, because that is
+    /// where a preset can tell a stated field from an unstated one. It also
+    /// means `--preset standard` and a `scaffold.yml` saying `preset: standard`
+    /// go through one mechanism instead of two that can disagree.
+    ///
+    /// The document states only what a variant knows — identity, platform,
+    /// interface — so everything else is the preset's to fill.
+    public func configuration(projectName: String, preset: Preset?) throws -> ProjectConfiguration {
+        guard let preset else { return configuration(projectName: projectName) }
+
+        let document: [String: Any] = [
+            "preset": preset.rawValue,
+            "project": [
+                "name": projectName,
+                "bundleIdentifier": Self.bundleIdentifier(for: projectName)
+            ],
+            "product": ["platform": platform.rawValue],
+            "interface": ["primary": interface.rawValue]
+        ]
+        // Dumped rather than interpolated: a project name is arbitrary text at
+        // this point — validation has not run yet — and Yams knows how to quote
+        // it.
+        return try ConfigurationCoder().decode(Yams.dump(object: document))
+    }
+
+    /// The configuration a preset resolves to on its own, for the interactive
+    /// flow: it collects answers rather than parsing a document, so it needs
+    /// the preset applied once up front and then overlaid with what was asked.
+    public static func baseConfiguration(for preset: Preset) throws -> ProjectConfiguration {
+        try PresetResolution.baseConfiguration(for: preset)
     }
 
     /// `com.example` because there is nothing to infer a real organisation from,

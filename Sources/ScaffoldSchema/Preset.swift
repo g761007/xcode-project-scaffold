@@ -21,3 +21,12 @@ public enum Preset: String, ScaffoldEnum {
     /// localization, and GitHub Actions workflows.
     case production
 }
+
+extension Preset {
+    /// The identity a preset's own document is resolved against before real
+    /// answers replace it. Presets state no identity, platform or interface, so
+    /// these values reach nothing that survives — they exist only because the
+    /// schema requires a name, an identifier and an interface to decode at all.
+    public static let placeholderName = "Placeholder"
+    public static let placeholderBundleIdentifier = "com.example.placeholder"
+}

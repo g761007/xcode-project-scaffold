@@ -14,6 +14,7 @@ extension CapabilitiesDocument {
             platforms: ApplePlatform.allowedValues,
             architectures: ConfigurationValidator.Supported.architectures.map(\.rawValue).sorted(),
             dependencyManagementModes: DependencyMode.allowedValues,
+            presets: Preset.allowedValues,
             testingFrameworks: ConfigurationValidator.Supported.testFrameworks.map(\.rawValue).sorted(),
             features: [
                 "environment-values",
