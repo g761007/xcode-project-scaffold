@@ -324,6 +324,12 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                },
+                "cocoapodsVersion": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
                 }
               },
               "required": [

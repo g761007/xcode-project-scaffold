@@ -31,7 +31,25 @@ migration path until `1.0` (see the README).
   change after the freeze to go through the policy, and a process cannot be
   written after it is first needed.
 
+- **The `scaffold.yml` schema is frozen**, and the freeze is an assertion
+  rather than a label. What was actually pinned before was a *default*
+  configuration, so every key appearing only in an optional section — the whole
+  of `dependencyManagement`, `ci`, `extensions`, `secrets`, and an
+  environment's `values` — could have been renamed with the suite green. The
+  new golden documents are a *set*, because the schema has fields that exclude
+  each other and one document cannot state them all; together they state every
+  path the published JSON Schema allows, and a path in one and not the other
+  fails.
+
+  `docs/contracts.md` records what each of the three contracts contains, what
+  is deliberately outside it, and which test holds it.
+
 ### Fixed
+
+- **`cocoapodsVersion` was missing from the published JSON Schema.** The type
+  has carried it since v0.6, so an editor validating `scaffold.yml` against the
+  schema squiggled a field that works. Nothing could have caught it, because
+  nothing compared the schema's nested keys to anything; the freeze now does.
 
 - **`schemaVersion` is read back.** It was written into every generated
   `scaffold.yml` and never checked, so a document stating a version this binary
