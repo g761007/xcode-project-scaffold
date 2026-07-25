@@ -156,9 +156,9 @@ public struct PackageProduct: Codable, Equatable, Sendable {
 
 public struct CocoaPodsDependencies: Codable, Equatable, Sendable {
     public var pods: [Pod]
-    /// Decoded now, acted on in v0.6 (§27): declaring it early keeps the
-    /// schema stable, and the validator says "not yet" rather than the decoder
-    /// saying "never heard of it".
+    /// Bundler pins the whole team to one CocoaPods (§11.4): the Gemfile is
+    /// generated, `bundle install` resolves it, and pod install runs through
+    /// `bundle exec` so CI and every machine agree.
     public var bundler: Bundler?
 
     public init(pods: [Pod]? = nil, bundler: Bundler? = nil) {
@@ -176,9 +176,14 @@ public struct CocoaPodsDependencies: Codable, Equatable, Sendable {
 
     public struct Bundler: Codable, Equatable, Sendable {
         public var enabled: Bool
+        /// The CocoaPods version the Gemfile pins. Unstated means the Gemfile
+        /// takes whatever `bundle install` resolves — pinning is the point of
+        /// Bundler for a team, but it is the team's number to choose.
+        public var cocoapodsVersion: String?
 
-        public init(enabled: Bool) {
+        public init(enabled: Bool, cocoapodsVersion: String? = nil) {
             self.enabled = enabled
+            self.cocoapodsVersion = cocoapodsVersion
         }
     }
 }

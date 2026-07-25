@@ -159,13 +159,6 @@ private let validationTriggers: [ValidationTrigger] = [
         }
     ),
     ValidationTrigger(
-        code: .bundlerNotSupported,
-        message: "Bundler is not supported in this version.",
-        configuration: .validBaseline.with {
-            $0.dependencyManagement.cocoapods = .init(bundler: .init(enabled: true))
-        }
-    ),
-    ValidationTrigger(
         code: .duplicatePackageName,
         message: "Package name 'alamofire' is declared more than once.",
         configuration: .validBaseline.with {

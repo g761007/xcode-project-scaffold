@@ -30,12 +30,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// "in this version".
     case coordinatorRequiresUIKit = "XS0009"
 
-    // XS0010 (dependency mode) was removed once every mode generated — the
-    // same reason XS0001 and XS0006 went.
-
-    /// A boundary, not a verdict: the schema accepts the declaration today,
-    /// and Bundler execution arrives in v0.6 (§27).
-    case bundlerNotSupported = "XS0011"
+    // XS0010 (dependency mode) and XS0011 (bundler) were removed once their
+    // capabilities arrived — the same reason XS0001 and XS0006 went.
 
     // XS10xx — platform and interface pairings.
     case uiKitRequiresIOS = "XS1001"
@@ -92,8 +88,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .generatorNotSupported,
              .deploymentTargetNotSupported,
              .testFrameworkNotSupported,
-             .coordinatorRequiresUIKit,
-             .bundlerNotSupported:
+             .coordinatorRequiresUIKit:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,

@@ -117,3 +117,35 @@ struct DoctorPodTests {
         #expect(checks.first { $0.name == "pod" }?.detail?.contains("brew install cocoapods") == true)
     }
 }
+
+/// Issue #78: with Bundler, `bundle` carries the requirement and provides pod.
+@Suite("Bundler in the doctor's list")
+struct DoctorBundlerTests {
+    private func makeConfiguration(bundler: Bool) -> ProjectConfiguration {
+        ProjectConfiguration(
+            project: .init(name: "App", bundleIdentifier: "com.example.app"),
+            interface: .init(primary: .swiftUI),
+            dependencyManagement: .init(mode: .cocoapods, cocoapods: .init(
+                bundler: bundler ? .init(enabled: true) : nil
+            ))
+        )
+    }
+
+    @Test("bundler enabled requires bundle and relieves pod")
+    func bundlerShiftsTheRequirement() {
+        let checks = EnvironmentDoctor(processRunner: FakeProcessRunner())
+            .check(for: makeConfiguration(bundler: true))
+
+        #expect(checks.first { $0.name == "bundle" }?.required == true)
+        #expect(checks.first { $0.name == "pod" }?.required == false)
+    }
+
+    @Test("without bundler, pod carries the requirement and bundle is optional")
+    func bareCocoaPodsKeepsPod() {
+        let checks = EnvironmentDoctor(processRunner: FakeProcessRunner())
+            .check(for: makeConfiguration(bundler: false))
+
+        #expect(checks.first { $0.name == "pod" }?.required == true)
+        #expect(checks.first { $0.name == "bundle" }?.required == false)
+    }
+}

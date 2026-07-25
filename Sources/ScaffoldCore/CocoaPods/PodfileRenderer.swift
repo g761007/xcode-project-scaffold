@@ -55,3 +55,20 @@ struct PodfileRenderer: Sendable {
         }
     }
 }
+
+/// Renders the Gemfile Bundler runs on (§11.4). One gem, optionally pinned:
+/// the lock file is `bundle install`'s to write, the same division as the
+/// Podfile and its lock.
+struct GemfileRenderer: Sendable {
+    func render(_ configuration: ProjectConfiguration) -> String {
+        let pin = configuration.dependencyManagement.cocoapods?.bundler?.cocoapodsVersion
+        let gemLine = pin.map { "gem 'cocoapods', '\($0)'" } ?? "gem 'cocoapods'"
+
+        return """
+        source 'https://rubygems.org'
+
+        \(gemLine)
+
+        """
+    }
+}

@@ -285,9 +285,11 @@ Products map to the generated targets by name — the app target and
 `<name>Tests`. Pods (`cocoapods.pods`), each stating exactly one source:
 `version`, `path`, or `git` with one of `tag`, `branch` or `commit`; a
 `subspecs` list expands to one pod line per subspec. `cocoapods.bundler`
-decodes now and takes effect in v0.6. Generation runs `pod install` after
-XcodeGen and verifies the workspace it produces; Build, Test and Open then
-drive the workspace.
+(`enabled`, optional `cocoapodsVersion`) generates a Gemfile pinning CocoaPods
+and runs the install through `bundle install` + `bundle exec pod install`, so
+the whole team and CI agree on the version doing the installing. Generation
+runs the install after XcodeGen and verifies the workspace it produces;
+Build, Test and Open then drive the workspace.
 
 ## What this version generates
 
@@ -355,7 +357,6 @@ release may help.
 | `XS0007` | Deployment target below the supported floor |
 | `XS0008` | Test framework not supported |
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
-| `XS0011` | Bundler declared but not supported until v0.6 |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 
