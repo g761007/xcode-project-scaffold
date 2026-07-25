@@ -11,6 +11,20 @@ migration path until `1.0` (see the README).
 ## [Unreleased]
 
 ### Added
+
+- **The Skill knows what this version's CLI actually is.** `SKILL.md` had not
+  been touched since before `--preset` existed, and still described a workflow
+  in which the only axis was `--variant`. It now leads with the two axes,
+  routes an agent through `config example` when it needs to see a preset
+  resolved, reads a failure's `error.code` and `phase`, and lists `130` beside
+  the other exit codes.
+
+  Two contract tests keep it that way. Every `xscaffold …` line in the Skill,
+  the README and `examples/` is checked against the binary — the subcommand has
+  to exist and every flag has to appear in that command's help — and the
+  exit-code table has to match `ScaffoldExitCode`. `init` was named in the Skill
+  for two versions after it was removed; that is the class of drift this
+  catches.
 - **`make benchmark`.** Reports p50 and p95 for the three things an interactive
   session waits on: process start, which every tab completion pays for;
   `capabilities`, which an agent asks first every session; and `plan` against
