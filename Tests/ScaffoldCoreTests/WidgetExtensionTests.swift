@@ -230,6 +230,63 @@ struct WidgetExtensionSpecTests {
     }
 }
 
+/// The widget is a target like any other, so a package product may name it.
+/// Before it could, validation called it a target "this project does not
+/// generate" — an error message that was simply untrue.
+@Suite("The widget extension and Swift packages")
+struct WidgetExtensionPackageTests {
+    private func configuration(linking targets: [String]) -> ProjectConfiguration {
+        var configuration = makeConfiguration(widget: .init())
+        configuration.dependencyManagement.mode = .spm
+        configuration.dependencyManagement.spm = .init(packages: [
+            SwiftPackage(
+                name: "swift-collections",
+                url: "https://github.com/apple/swift-collections.git",
+                requirement: .from("1.1.0"),
+                products: [PackageProduct(name: "Collections", targets: targets)]
+            )
+        ])
+        return configuration
+    }
+
+    @Test("a product may name the widget target")
+    func widgetIsAKnownTarget() {
+        let issues = ConfigurationValidator().validate(configuration(linking: ["BookshelfWidget"]))
+
+        #expect(!issues.contains { $0.code == .unknownProductTarget })
+    }
+
+    @Test("a target the project really does not generate is still refused")
+    func unknownTargetIsStillRefused() {
+        let issues = ConfigurationValidator().validate(configuration(linking: ["Nowhere"]))
+
+        #expect(issues.contains { $0.code == .unknownProductTarget })
+    }
+
+    @Test("the named product reaches the widget target in project.yml")
+    func productReachesTheWidget() throws {
+        let yaml = try XcodeGenSpecEncoder()
+            .encode(XcodeGenSpecBuilder().makeSpec(for: configuration(linking: ["BookshelfWidget"])))
+        let document = try #require(Yams.load(yaml: yaml) as? [String: Any])
+
+        let targets = try #require(document["targets"] as? [String: Any])
+        let widget = try #require(targets["BookshelfWidget"] as? [String: Any])
+        let dependencies = try #require(widget["dependencies"] as? [[String: Any]])
+        #expect(dependencies.contains { $0["product"] as? String == "Collections" })
+    }
+
+    @Test("a widget linking nothing carries no dependencies key")
+    func noDependenciesWhenNothingLinked() throws {
+        let yaml = try XcodeGenSpecEncoder()
+            .encode(XcodeGenSpecBuilder().makeSpec(for: configuration(linking: ["Bookshelf"])))
+        let document = try #require(Yams.load(yaml: yaml) as? [String: Any])
+
+        let targets = try #require(document["targets"] as? [String: Any])
+        let widget = try #require(targets["BookshelfWidget"] as? [String: Any])
+        #expect(widget["dependencies"] == nil)
+    }
+}
+
 @Suite("The widget extension outside iOS")
 struct WidgetExtensionCapabilityTests {
     /// WidgetKit exists on macOS; the templates and the target shape here do

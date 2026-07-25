@@ -805,7 +805,19 @@ struct {{PROJECT_NAME}}Entry: TimelineEntry {
 struct {{PROJECT_NAME}}WidgetView: View {
     var entry: {{PROJECT_NAME}}Entry
 
+    /// The container background is required from iOS 17 — a widget that skips
+    /// it there draws on nothing — and does not exist before it. This project
+    /// deploys to {{DEPLOYMENT_TARGET}}, and the check keeps the widget correct
+    /// whichever side of that line the target sits on.
     var body: some View {
+        if #available(iOS 17.0, *) {
+            content.containerBackground(.fill.tertiary, for: .widget)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack {
             Text("{{PROJECT_NAME}}")
                 .font(.headline)
@@ -813,8 +825,6 @@ struct {{PROJECT_NAME}}WidgetView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        // Required since iOS 17: a widget without one draws on nothing.
-        .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 

@@ -206,8 +206,9 @@ extension XcodeGenSpecBuilder {
     private func makeWidgetTarget(for project: ProjectConfiguration) -> XcodeGenSpec.WidgetTarget? {
         guard project.generatesWidget else { return nil }
 
+        let name = "\(project.project.name)Widget"
         return XcodeGenSpec.WidgetTarget(
-            name: "\(project.project.name)Widget",
+            name: name,
             sources: Self.widgetSourceDirectories,
             infoPlistPath: Self.widgetInfoPlistPath,
             bundleIdentifier: project.project.bundleIdentifier + Self.widgetIdentifierSuffix,
@@ -216,7 +217,8 @@ extension XcodeGenSpecBuilder {
                 for: project,
                 identifierSuffix: Self.widgetIdentifierSuffix,
                 nameSuffix: Self.widgetNameSuffix
-            )
+            ),
+            packageProducts: packageProducts(for: name, in: project)
         )
     }
 }

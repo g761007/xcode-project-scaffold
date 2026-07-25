@@ -62,9 +62,16 @@ extension ConfigurationValidator {
     }
 
     /// The targets a generated project has, which is what a product mapping
-    /// may name: the app target and its unit-test target.
+    /// may name: the app target, its unit-test target, and the widget
+    /// extension when there is one. A generated target missing from this set
+    /// would be reported as one the project does not generate — an error
+    /// message that is simply untrue.
     private func expectedTargets(of configuration: ProjectConfiguration) -> Set<String> {
-        [configuration.project.name, "\(configuration.project.name)Tests"]
+        var targets: Set<String> = [configuration.project.name, "\(configuration.project.name)Tests"]
+        if configuration.generatesWidget {
+            targets.insert("\(configuration.project.name)Widget")
+        }
+        return targets
     }
 
     private func packageIssues(
