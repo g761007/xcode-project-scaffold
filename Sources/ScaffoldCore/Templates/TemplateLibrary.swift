@@ -24,7 +24,7 @@ struct TemplateFile: Equatable, Sendable {
 
 /// Selects the template files that apply to a configuration.
 ///
-/// Three layers, per the plan's §7.2:
+/// Four layers, per the plan's §7.2:
 ///
 /// - `Shared` — every project gets these, minus whatever it switched off.
 /// - `Variants/<platform>-<interface>` — the application sources. Variants
@@ -35,6 +35,9 @@ struct TemplateFile: Equatable, Sendable {
 ///   example, source files under `<pattern>/<variant>` that replace the
 ///   variant's default screen (ADR-0004). It never generates empty folders or
 ///   unused base protocols — the first things anyone deletes from a project.
+/// - `Features/<feature>` — an optional capability's own sources, added when
+///   the configuration asks for it. A feature adds files and patches none
+///   (§13.4), so it lands beside the layers above rather than overlaying them.
 struct TemplateLibrary: Sendable {
     private let templates: [String: String]
 
@@ -60,8 +63,15 @@ struct TemplateLibrary: Sendable {
             : []
 
         // Ordering is settled after rendering, because rendering changes paths.
-        return overlaid(files(under: "Shared") + specific, with: example)
+        return (overlaid(files(under: "Shared") + specific, with: example) + features(for: configuration))
             .filter { include($0, for: configuration) }
+    }
+
+    /// The features this configuration asks for. Each owns a directory the
+    /// other layers do not write into, so a feature can be added or dropped
+    /// without anything else in the project moving.
+    private func features(for configuration: ProjectConfiguration) -> [TemplateFile] {
+        configuration.generatesWidget ? files(under: "Features/Widget") : []
     }
 
     /// Overlay files win over base files sharing their path; everything else in

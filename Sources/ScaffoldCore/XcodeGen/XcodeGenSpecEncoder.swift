@@ -62,6 +62,9 @@ extension XcodeGenSpecEncoder {
         if let uiTestTarget = spec.uiTestTarget {
             targets.append((uiTestTarget.name, node(for: uiTestTarget, in: spec)))
         }
+        if let widgetTarget = spec.widgetTarget {
+            targets.append((widgetTarget.name, node(for: widgetTarget, in: spec)))
+        }
         pairs.append(("targets", map(targets)))
 
         pairs.append(("schemes", map(spec.schemes.map { scheme in
@@ -78,15 +81,52 @@ extension XcodeGenSpecEncoder {
     private func node(forAppTargetIn spec: XcodeGenSpec) -> Node {
         let target = spec.appTarget
 
-        var settings: [(String, Node)] = [
-            ("base", map([
-                ("PRODUCT_BUNDLE_IDENTIFIER", string(target.bundleIdentifier)),
-                ("PRODUCT_DISPLAY_NAME", string(target.displayName))
+        var pairs: [(String, Node)] = [
+            ("type", string(target.productType)),
+            ("platform", string(spec.platform)),
+            ("sources", sequence(target.sources.map(string))),
+            ("settings", identitySettings(
+                bundleIdentifier: target.bundleIdentifier,
+                displayName: target.displayName,
+                overrides: target.overrides
+            )),
+            ("info", map([
+                ("path", string(target.infoPlist.path)),
+                ("properties", map(properties(of: target.infoPlist)))
             ]))
         ]
 
-        if !target.overrides.isEmpty {
-            settings.append(("configs", map(target.overrides.map { override in
+        // The extension is embedded rather than merely built: without this the
+        // app ships without its widget, and nothing says so until run time.
+        var dependencies: [Node] = []
+        if let widget = spec.widgetTarget {
+            dependencies.append(map([("target", string(widget.name)), ("embed", boolean(true))]))
+        }
+        dependencies += target.packageProducts.map(node(for:))
+
+        if !dependencies.isEmpty {
+            pairs.append(("dependencies", sequence(dependencies)))
+        }
+        return map(pairs)
+    }
+
+    /// A target's identity as build settings: the base pair, plus one override
+    /// per configuration that differs. The app and its widget are described the
+    /// same way here so that they cannot drift apart in the generated file.
+    private func identitySettings(
+        bundleIdentifier: String,
+        displayName: String,
+        overrides: [XcodeGenSpec.TargetOverride]
+    ) -> Node {
+        var settings: [(String, Node)] = [
+            ("base", map([
+                ("PRODUCT_BUNDLE_IDENTIFIER", string(bundleIdentifier)),
+                ("PRODUCT_DISPLAY_NAME", string(displayName))
+            ]))
+        ]
+
+        if !overrides.isEmpty {
+            settings.append(("configs", map(overrides.map { override in
                 (override.configuration, map([
                     ("PRODUCT_BUNDLE_IDENTIFIER", string(override.bundleIdentifier)),
                     ("PRODUCT_DISPLAY_NAME", string(override.displayName))
@@ -94,20 +134,7 @@ extension XcodeGenSpecEncoder {
             })))
         }
 
-        var pairs: [(String, Node)] = [
-            ("type", string(target.productType)),
-            ("platform", string(spec.platform)),
-            ("sources", sequence(target.sources.map(string))),
-            ("settings", map(settings)),
-            ("info", map([
-                ("path", string(target.infoPlist.path)),
-                ("properties", map(properties(of: target.infoPlist)))
-            ]))
-        ]
-        if !target.packageProducts.isEmpty {
-            pairs.append(("dependencies", sequence(target.packageProducts.map(node(for:)))))
-        }
-        return map(pairs)
+        return map(settings)
     }
 
     private func node(for product: XcodeGenSpec.PackageProductDependency) -> Node {
@@ -162,6 +189,32 @@ extension XcodeGenSpecEncoder {
             ("sources", sequence(target.sources.map(string))),
             ("settings", map([("base", map([("GENERATE_INFOPLIST_FILE", boolean(true))]))])),
             ("dependencies", sequence([map([("target", string(spec.name))])]))
+        ])
+    }
+
+    /// XcodeGen writes the extension's Info.plist from these properties, so the
+    /// generated project ships none of its own — the same arrangement the app
+    /// target uses. `NSExtensionPointIdentifier` is what makes the bundle a
+    /// widget rather than any other kind of extension.
+    private func node(for target: XcodeGenSpec.WidgetTarget, in spec: XcodeGenSpec) -> Node {
+        map([
+            ("type", string("app-extension")),
+            ("platform", string(spec.platform)),
+            ("sources", sequence(target.sources.map(string))),
+            ("settings", identitySettings(
+                bundleIdentifier: target.bundleIdentifier,
+                displayName: target.displayName,
+                overrides: target.overrides
+            )),
+            ("info", map([
+                ("path", string(target.infoPlistPath)),
+                ("properties", map([
+                    ("CFBundleDisplayName", string("$(PRODUCT_DISPLAY_NAME)")),
+                    ("NSExtension", map([
+                        ("NSExtensionPointIdentifier", string("com.apple.widgetkit-extension"))
+                    ]))
+                ]))
+            ]))
         ])
     }
 }

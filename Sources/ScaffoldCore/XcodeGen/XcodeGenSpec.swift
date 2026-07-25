@@ -31,6 +31,7 @@ struct XcodeGenSpec: Equatable, Sendable {
     var appTarget: AppTarget
     var testTarget: TestTarget?
     var uiTestTarget: UITestTarget?
+    var widgetTarget: WidgetTarget?
     var schemes: [Scheme]
 
     /// The scheme Xcode selects when the project is opened. Decided where the
@@ -109,6 +110,24 @@ struct XcodeGenSpec: Equatable, Sendable {
     struct UITestTarget: Equatable, Sendable {
         var name: String
         var sources: [String]
+    }
+
+    /// The widget extension (§11.6). It carries an identity of its own because
+    /// an extension's bundle identifier has to be prefixed by its container's,
+    /// per configuration as well as at the base — the app's overrides alone
+    /// would leave an environment's widget under the wrong identifier.
+    ///
+    /// Its target type and the extension point it declares are not fields, for
+    /// the same reason `UITestTarget` does not carry `bundle.ui-testing`: they
+    /// are what "widget target" means rather than something decided per
+    /// project.
+    struct WidgetTarget: Equatable, Sendable {
+        var name: String
+        var sources: [String]
+        var infoPlistPath: String
+        var bundleIdentifier: String
+        var displayName: String
+        var overrides: [TargetOverride]
     }
 
     struct Scheme: Equatable, Sendable {

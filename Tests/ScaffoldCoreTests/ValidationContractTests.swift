@@ -55,6 +55,15 @@ private let validationTriggers: [ValidationTrigger] = [
         }
     ),
     ValidationTrigger(
+        code: .widgetRequiresIOS,
+        message: "Widget extensions are only generated for iOS in this version.",
+        configuration: .validBaseline.with {
+            $0.product.platform = .macOS
+            $0.interface = .init(primary: .swiftUI)
+            $0.extensions = AppExtensions(widget: .init())
+        }
+    ),
+    ValidationTrigger(
         code: .uiKitRequiresIOS,
         message: "UIKit is only available for iOS projects.",
         configuration: .validBaseline.with {

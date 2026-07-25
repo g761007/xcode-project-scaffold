@@ -17,7 +17,15 @@ struct XcodeGenSpecBuilder: Sendable {
     static let appSourceDirectories = ["App", "Resources"]
     static let testSourceDirectories = ["Tests"]
     static let uiTestSourceDirectories = ["UITests"]
+    static let widgetSourceDirectories = ["Widget"]
     static let infoPlistPath = "App/Info.plist"
+    static let widgetInfoPlistPath = "Widget/Info.plist"
+
+    /// What an extension's bundle identifier and display name add to the app's.
+    /// The identifier suffix is not cosmetic: an extension whose identifier is
+    /// not prefixed by its container's cannot be installed.
+    static let widgetIdentifierSuffix = ".widget"
+    static let widgetNameSuffix = " Widget"
 
     func makeSpec(for project: ProjectConfiguration) -> XcodeGenSpec {
         let schemes = makeSchemes(for: project)
@@ -35,6 +43,7 @@ struct XcodeGenSpecBuilder: Sendable {
             appTarget: makeAppTarget(for: project),
             testTarget: makeTestTarget(for: project),
             uiTestTarget: makeUITestTarget(for: project),
+            widgetTarget: makeWidgetTarget(for: project),
             schemes: schemes,
             // The bare-named scheme when there is one, which is the same rule
             // `schemeName(for:in:)` applies; otherwise simply the first.
@@ -152,7 +161,16 @@ extension XcodeGenSpecBuilder {
 
     /// Only environments that actually change something get an override — one
     /// that repeated the base values would be noise in the generated file.
-    private func makeOverrides(for project: ProjectConfiguration) -> [XcodeGenSpec.TargetOverride] {
+    ///
+    /// The trailing suffixes are what a target adds to the app's identity: the
+    /// app adds nothing, the widget adds `.widget` and ` Widget`. Written once
+    /// so an environment cannot rename the app and leave its extension behind
+    /// under the base identifier.
+    private func makeOverrides(
+        for project: ProjectConfiguration,
+        identifierSuffix: String = "",
+        nameSuffix: String = ""
+    ) -> [XcodeGenSpec.TargetOverride] {
         project.environments.compactMap { environment in
             let bundleSuffix = environment.bundleIdentifierSuffix ?? ""
             let displaySuffix = environment.displayNameSuffix ?? ""
@@ -160,8 +178,8 @@ extension XcodeGenSpecBuilder {
 
             return XcodeGenSpec.TargetOverride(
                 configuration: environment.configuration,
-                bundleIdentifier: project.project.bundleIdentifier + bundleSuffix,
-                displayName: project.project.name + displaySuffix
+                bundleIdentifier: project.project.bundleIdentifier + bundleSuffix + identifierSuffix,
+                displayName: project.project.name + displaySuffix + nameSuffix
             )
         }
     }
@@ -182,6 +200,23 @@ extension XcodeGenSpecBuilder {
         return XcodeGenSpec.UITestTarget(
             name: "\(project.project.name)UITests",
             sources: Self.uiTestSourceDirectories
+        )
+    }
+
+    private func makeWidgetTarget(for project: ProjectConfiguration) -> XcodeGenSpec.WidgetTarget? {
+        guard project.generatesWidget else { return nil }
+
+        return XcodeGenSpec.WidgetTarget(
+            name: "\(project.project.name)Widget",
+            sources: Self.widgetSourceDirectories,
+            infoPlistPath: Self.widgetInfoPlistPath,
+            bundleIdentifier: project.project.bundleIdentifier + Self.widgetIdentifierSuffix,
+            displayName: project.project.name + Self.widgetNameSuffix,
+            overrides: makeOverrides(
+                for: project,
+                identifierSuffix: Self.widgetIdentifierSuffix,
+                nameSuffix: Self.widgetNameSuffix
+            )
         )
     }
 }

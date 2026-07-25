@@ -47,8 +47,23 @@ extension ConfigurationValidator {
                 configuration.testing.unit, of: Supported.testFrameworks,
                 as: "Test framework", code: .testFrameworkNotSupported, at: "testing.unit"
             ),
-            coordinatorInterfaceIssue(configuration)
+            coordinatorInterfaceIssue(configuration),
+            widgetPlatformIssue(configuration)
         ].compactMap(\.self)
+    }
+
+    /// WidgetKit exists on macOS, so a widget there is a reasonable thing to
+    /// ask for; what this version has is the iOS target shape and iOS
+    /// templates. A boundary, then, like the codes around it.
+    func widgetPlatformIssue(_ configuration: ProjectConfiguration) -> ValidationIssue? {
+        guard configuration.generatesWidget, configuration.product.platform != .iOS else { return nil }
+
+        return ValidationIssue(
+            code: .widgetRequiresIOS,
+            message: "Widget extensions are only generated for iOS in this version.",
+            path: "extensions.widget",
+            suggestion: "Remove extensions.widget, or set product.platform to ios."
+        )
     }
 
     /// MVVM-C is supported, but only on UIKit — it is a UIKit navigation
