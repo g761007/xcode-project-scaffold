@@ -259,6 +259,38 @@ verifies the workspace it produced, and drives Build, Test and Open through
 that workspace from then on. `doctor` requires CocoaPods exactly when the
 configuration reads pods.
 
+Teams whose CocoaPods use is tied to internal infrastructure get the three
+things that actually make it enterprise:
+
+```yaml
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    bundler:
+      enabled: true
+      cocoapodsVersion: "1.16.2"    # omit to take whatever resolves
+    sources:                        # declaration order is preserved
+      - https://internal.example.com/specs.git
+      - https://cdn.cocoapods.org/
+    pods:
+      - name: InternalKit
+        git: https://internal.example.com/internalkit.git
+        tag: "2.1.0"
+```
+
+**Bundler** puts a `Gemfile` beside the Podfile and changes the install
+sequence to `bundle install` → `bundle exec pod install`, so every machine and
+every CI run installs pods with the CocoaPods the Gemfile names rather than
+whichever one happens to be on the `PATH`. `doctor` follows: with Bundler it
+requires `bundle` and stops requiring `pod`, because `bundle exec` provides
+that one itself.
+
+**Sources** keep the order you wrote them in, so a private specs repo listed
+before the public CDN resolves internal pods first. A credential embedded in a
+source URL is masked everywhere xscaffold prints it — log output, `--output
+json`, and validation messages alike. It is not masked in the Podfile, which
+needs the real URL to work.
+
 ### Project essentials
 
 - **UI tests** — `testing.ui.enabled` grows a ui-testing target with a launch
@@ -279,6 +311,54 @@ configuration reads pods.
   `yaml-language-server` annotation pointing at
   [`Schemas/scaffold.schema.json`](Schemas/scaffold.schema.json), so editors
   validate while you type.
+
+### Continuous integration
+
+The `ci` section generates GitHub Actions workflows, so a project has CI from
+the first push:
+
+```yaml
+ci:
+  provider: github-actions
+  workflows:
+    build: true
+    test: true
+    lint: true
+```
+
+Omitting the section generates nothing — CI is a choice, not a default —
+while stating it turns every switch on. Each workflow rebuilds the project the
+way a person would: XcodeGen first, then whatever the dependency mode reads
+(SPM resolves packages on a step of its own, so a bad manifest fails there;
+CocoaPods runs `pod install`, or `bundle install` + `bundle exec pod install`
+when Bundler is on), then `xcodebuild` against the project or the workspace —
+the same container rule every other command follows. Lint installs only the
+enabled linters and runs `make lint`, the generated Makefile's own recipe, so
+the workflow and your laptop cannot come to different conclusions.
+
+### App Extensions
+
+```yaml
+extensions:
+  widget: {}
+  notificationService: {}
+```
+
+Naming an extension is what asks for it. Omitting the section — or stating it
+while naming nothing — generates nothing, and `enabled: false` parks a section
+without generating its target. Each extension becomes an `app-extension` target
+the app embeds, bringing its own sources directory:
+
+| | Directory | Ships as |
+|---|---|---|
+| `widget` | `Widget/` | a `WidgetBundle` and a static-configuration widget |
+| `notificationService` | `NotificationService/` | a `UNNotificationServiceExtension` subclass |
+
+Each ships under the app's bundle identifier plus a suffix — `.widget`,
+`.notificationservice` — per environment as well as at the base, because an
+extension whose identifier is not prefixed by its container's cannot be
+installed. A package product may name an extension target exactly as it may
+name the app's. Both extensions are iOS-only in this version.
 
 ### `init` was removed in v0.6
 
