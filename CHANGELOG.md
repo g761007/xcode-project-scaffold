@@ -28,62 +28,7 @@ migration path until `1.0` (see the README).
   completes the day it exists — and a test asserts that, against
   `Variant.all` and `Preset.allowedValues`, in all three scripts.
 
-- **Every failure names itself.** `--output json` failures now carry an `error`
-  object — `code`, `message`, `exitCode`, `recoverySuggestion`, plus `command`
-  when an external command failed and `path` when the failure is about a file —
-  and a `phase` saying which stage the run reached. A caller can tell
-  `POD_INSTALL_FAILED` from `XCODEGEN_FAILED` without parsing English, and tell
-  a failure that wrote nothing from one that left a directory behind. In text
-  mode the same facts arrive as `Error: CODE: message` followed by `Try: …`.
-
-  The codes are the error contract's (§23), minus the six it names that no
-  failure path could emit — an unreachable code is dead the same way an
-  unreachable validation code is — plus the ones that existed with no name:
-  wrong arguments, an unreadable configuration, a malformed one, and the two
-  catch-alls. `phase` follows ADR-0009: the stage that was under way, not the
-  state the run ended in.
-
-  Every code carries its own exit code and its own recovery suggestion, so a
-  new failure mode cannot ship without deciding both.
-
-
-
-- **`config example` takes `--variant` and `--dependency-manager`**, the two
-  flags §4.9 documents beside `--preset`. All three are independent axes, as
-  they are on `new`: the variant states the platform and the interface (and
-  what follows from them — an AppKit example says `lifecycle: app-delegate`),
-  the preset states how much project, and the dependency manager states what
-  reads the packages. An unknown name for any of them is refused with the real
-  ones, and a variant given to `--preset` is now pointed at `--variant` rather
-  than at the document.
-
-  The dependency manager earns a flag rather than being a word to edit because
-  it is not one word in the resolved document: under `production`, choosing
-  pods also pins Bundler and a CocoaPods version during normalization. An
-  example that hid that would be hiding what its reader is about to generate,
-  which is the one thing this command exists not to do.
-
-  All three route through the same document builder `new --variant --preset`
-  uses, so the same two flags cannot come to mean different things depending on
-  which command they follow.
-
-
-
-- **`examples/`.** Four `scaffold.yml` files, each a project someone might
-  actually be starting: the smallest file that generates anything, a UIKit app
-  with a coordinator and two packages, a preset with two fields overridden
-  against it, and the enterprise CocoaPods configuration with private sources,
-  Bundler pinning, extensions and CI. They are deliberately not what
-  `config example` prints — that command shows every field resolved, and these
-  show a file edited down to what was chosen, which is what a `scaffold.yml` in
-  a repository looks like. A test discovers the directory and validates and
-  plans every file in it, so an example cannot go stale unnoticed.
-- **A second terminal demo.** `docs/demo/new-preset.txt` records the one-line
-  flow — `new Bookshelf --variant ios-swiftui --preset standard --yes` — beside
-  the interactive one that was already there. `Scripts/record-demo.sh` produces
-  both, and now replaces the temporary working directory with a stable
-  stand-in, so re-recording an unchanged flow leaves no diff and a real change
-  is visible.
+## [Unreleased]
 
 ### Fixed
 - **A generated project's `make lint` now looks at everything it generated.**
@@ -105,6 +50,34 @@ migration path until `1.0` (see the README).
   tests switched on. Present since v0.5; caught now because the CI job that
   lints generated projects finally generates one with UI tests and both App
   Extensions in it.
+
+- **`make build`, `make test` and `make open` were wrong in every generated
+  project.** Three constants in the shared `Makefile` template, each of which
+  the configuration already knew:
+
+  - the destination named `iPhone 16`, which needs an iOS 18 runtime — a
+    machine with Xcode 26 and its bundled runtime has iPhone 17 and nothing
+    older, so `make build` failed out of the box with "Unable to find a device
+    matching the provided destination specifier";
+  - macOS projects got that same iOS destination, so their `make build` has
+    never worked in any version;
+  - CocoaPods and mixed projects named the `.xcodeproj`, so `make build` built
+    without the pods and `make open` opened the file Xcode tells you not to
+    use — while `ProjectContainer`, which exists to state that rule once, was
+    being consulted by everything except the Makefile.
+
+  All three are rendered values now. Building needs no device on either
+  platform (`generic/platform=iOS Simulator`, `platform=macOS`), the test
+  simulator is resolved when `make test` runs rather than written down at
+  generation time, and the container comes from `ProjectContainer`.
+  `make generate` also reinstalls pods, because regenerating the project file
+  de-integrates them — taken from the same command sequence generation itself
+  performs.
+
+  Nothing caught this because the e2e matrix calls `xcodebuild` directly, with
+  a udid it resolves itself; the recipes a generated project ships had never
+  been executed by CI. Three e2e cases now run `make build` in the generated
+  project — one per platform, and one through a workspace.
 
 ## [0.7.0] — 2026-07-25
 

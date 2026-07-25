@@ -111,6 +111,10 @@ extension GenerationPlanBuilder {
             "PLATFORM_DISPLAY_NAME": spec.platform,
             "INTERFACE_DISPLAY_NAME": configuration.interface.primary.displayName,
             "SCHEME_NAME": spec.defaultSchemeName,
+            "CONTAINER_FILE": ProjectContainer(for: configuration).fileName,
+            "CONTAINER_FLAG": ProjectContainer(for: configuration).xcodebuildFlag,
+            "DESTINATION_BLOCK": destinationBlock(for: configuration.product.platform),
+            "GENERATE_RECIPE": makeRecipe(from: regenerationCommands(for: configuration)),
             "LINT_RECIPE": makeRecipe(from: lintCommands(for: configuration)),
             "FORMAT_RECIPE": makeRecipe(from: formatCommands(for: configuration)),
             "ARCHITECTURE": library.architectureDescription(for: configuration)
@@ -133,6 +137,58 @@ extension GenerationPlanBuilder {
 
     private func formatCommands(for configuration: ProjectConfiguration) -> [String] {
         configuration.quality.swiftformat ? ["swiftformat ."] : []
+    }
+
+    /// What `make generate` has to run to bring the project file — and the
+    /// workspace, when pods are in play — back in step with `project.yml`.
+    ///
+    /// Taken from the same place a run's own commands come from, minus git, so
+    /// the recipe cannot come to describe a different sequence from the one
+    /// generation performed. Regenerating the project file de-integrates the
+    /// pods, which is why the install has to follow it here and not only at
+    /// generation time.
+    private func regenerationCommands(for configuration: ProjectConfiguration) -> [String] {
+        commands(
+            for: configuration,
+            options: GenerationOptions(initializeGit: false, runGenerator: true)
+        ).map(\.displayString)
+    }
+
+    /// Where xcodebuild is told to build and test.
+    ///
+    /// Two facts the templates must not state for themselves. **Building needs
+    /// no device**, on either platform — a generic destination always resolves,
+    /// where a named simulator resolves only on a machine that has it
+    /// installed. **Testing needs one on iOS**, and which simulators exist
+    /// depends on the runtimes installed, so it is resolved when `make test`
+    /// runs rather than written down at generation time. A device name baked
+    /// into a generated project stops existing a year later (§12.2).
+    private func destinationBlock(for platform: ApplePlatform) -> String {
+        switch platform {
+        case .macOS:
+            """
+            # macOS builds and tests run here, so neither needs a device.
+            DESTINATION       ?= platform=macOS
+            BUILD_DESTINATION ?= platform=macOS
+            """
+        case .iOS:
+            // Raw, so that `\(` in the sed expression is a backslash and a
+            // parenthesis rather than the start of an interpolation.
+            #"""
+            # Which simulator `make test` runs on, resolved when you run it:
+            # which devices exist depends on the runtimes installed, and a name
+            # that is not installed fails with "Unable to find a device matching
+            # the provided destination specifier". Pin one when it matters:
+            #   make test DESTINATION='id=<simulator-udid>'  # xcrun simctl list devices
+            SIMULATOR   ?= $(shell xcrun simctl list devices available \
+                             | grep -E '^ +iPhone' | tail -1 \
+                             | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
+            DESTINATION ?= id=$(SIMULATOR)
+
+            # Building needs no device at all.
+            BUILD_DESTINATION ?= generic/platform=iOS Simulator
+            """#
+        }
     }
 
     /// Make recipes are tab-indented, and an empty recipe is a target that
