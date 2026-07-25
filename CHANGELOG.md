@@ -11,7 +11,6 @@ migration path until `1.0` (see the README).
 ## [Unreleased]
 
 ### Added
-
 - **Shell completions for zsh, bash and fish.** Homebrew installs all three;
   `xscaffold --generate-completion-script <shell>` writes one for any other
   installation. Beyond subcommands and flags, the values worth not having to
@@ -39,6 +38,27 @@ migration path until `1.0` (see the README).
 
   Every code carries its own exit code and its own recovery suggestion, so a
   new failure mode cannot ship without deciding both.
+
+### Fixed
+- **A generated project's `make lint` now looks at everything it generated.**
+  Its `.swiftlint.yml` listed `App` and `Tests` under `included:`, so `UITests/`
+  (since v0.5), `Widget/` and `NotificationService/` (both since v0.6) were
+  never read — and `make lint` reported zero violations without having opened
+  them. The list is gone rather than extended: SwiftLint reads the working
+  directory by default, which is exactly the set of directories the project
+  actually has, and cannot fall behind the next one.
+
+  Both linters now leave `Pods/` alone. Dropping the include list would
+  otherwise have pointed SwiftLint at vendored sources, and SwiftFormat has
+  been rewriting them all along — `make format` in a CocoaPods project
+  reformatted third-party code.
+
+- **The UI test templates did not pass the linters they ship with.** Three
+  `func test…() throws` with nothing throwing in them, which `swiftformat
+  --lint` refuses, so `make lint` failed in every generated project with UI
+  tests switched on. Present since v0.5; caught now because the CI job that
+  lints generated projects finally generates one with UI tests and both App
+  Extensions in it.
 
 ## [0.7.0] — 2026-07-25
 
