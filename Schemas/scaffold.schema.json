@@ -449,6 +449,33 @@
           "type": "string"
         }
       }
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github-actions"
+          ]
+        },
+        "workflows": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "build": {
+              "type": "boolean"
+            },
+            "test": {
+              "type": "boolean"
+            },
+            "lint": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   },
   "required": [

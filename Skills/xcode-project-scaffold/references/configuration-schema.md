@@ -193,6 +193,33 @@ framework is chosen, which is why `ui.framework` has one value.
 
 Whether a repository is created at all is `--skip-git`, not a field here.
 
+### `ci`
+
+| Key | Type | Default | Allowed |
+|---|---|---|---|
+| `provider` | enum | `github-actions` | `github-actions` |
+| `workflows.build` | boolean | `true` | |
+| `workflows.test` | boolean | `true` | |
+| `workflows.lint` | boolean | `true` | |
+
+Omitted entirely, no CI files are generated. Stated, each enabled switch adds
+one workflow under `.github/workflows/` — `build.yml`, `test.yml`, `lint.yml`.
+Build and test regenerate the project with XcodeGen, install what the
+dependency mode reads (SPM resolves packages; CocoaPods runs `pod install`,
+or `bundle install` + `bundle exec pod install` when Bundler is enabled), and
+drive xcodebuild against the project or the workspace — the same container
+rule every other command follows. Lint installs the enabled linters and runs
+`make lint`, the generated Makefile's own recipe.
+
+```yaml
+ci:
+  provider: github-actions
+  workflows:
+    build: true
+    test: true
+    lint: true
+```
+
 ### `environments`
 
 A list, empty by default, which gives the project only Xcode's own `Debug` and

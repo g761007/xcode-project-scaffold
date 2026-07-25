@@ -73,6 +73,7 @@ extension GenerationPlanBuilder {
         }
         files.append(contentsOf: environmentFiles(for: configuration))
         files.append(contentsOf: localizationFiles(for: configuration))
+        files.append(contentsOf: GitHubActionsRenderer().files(for: configuration))
 
         return files.sorted { $0.path < $1.path }
     }

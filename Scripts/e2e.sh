@@ -262,8 +262,18 @@ dependencyManagement:
         products:
           - name: Collections
             targets: [SPMApp]
+ci:
+  provider: github-actions
 YML
 check SPMApp --config "$root/spm.yml"
+
+# The ci section lands its workflow files (§21). GitHub CI itself is not run
+# here — the files existing and parsing is the generation-side contract, and
+# the workflow-shape tests pin their contents.
+for workflow in build test lint; do
+    test -f "$root/SPMApp/.github/workflows/$workflow.yml" \
+        || { echo "$workflow.yml missing"; exit 1; }
+done
 
 cat > "$root/pods.yml" <<'YML'
 project:
