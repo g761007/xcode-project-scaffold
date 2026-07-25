@@ -47,7 +47,10 @@ private func commands(in file: URL) -> [SkillCommand] {
     guard let text = try? String(contentsOf: file, encoding: .utf8) else { return [] }
     let name = file.lastPathComponent
 
-    return text.matches(of: /xscaffold((?:\s+[^\s`\n]+)*)/).compactMap { match in
+    // Line-bounded, and on a word boundary: `\s` would run the match past the
+    // end of a line and swallow the next one, and a bare `xscaffold` matches
+    // inside `_xscaffold` in a completions path.
+    return text.matches(of: /\bxscaffold((?:[^\S\n]+[^\s`\n]+)*)/).compactMap { match in
         let arguments = match.output.1
             .split(whereSeparator: \.isWhitespace)
             .map(String.init)
