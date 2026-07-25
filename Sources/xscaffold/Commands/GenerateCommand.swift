@@ -22,10 +22,18 @@ struct GenerateCommand: ParsableCommand {
         """
     )
 
-    @Option(name: .customLong("config"), help: "Path to a scaffold.yml. Defaults to ./scaffold.yml.")
+    @Option(
+        name: .customLong("config"),
+        help: "Path to a scaffold.yml. Defaults to ./scaffold.yml.",
+        completion: .file(extensions: manifestExtensions)
+    )
     var configurationPath: String = "scaffold.yml"
 
-    @Option(name: .customLong("destination"), help: "Where to create the project. Defaults to ./<name>.")
+    @Option(
+        name: .customLong("destination"),
+        help: "Where to create the project. Defaults to ./<name>.",
+        completion: .directory
+    )
     var destination: String?
 
     @OptionGroup var runOptions: RunOptions

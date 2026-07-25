@@ -117,6 +117,23 @@ Release binaries are universal (Apple silicon + Intel), published on
 with a SHA256 alongside, and smoke-tested — the published archive itself, not
 the checkout — before the release goes out.
 
+### Shell completions
+
+Homebrew installs them for zsh, bash and fish; nothing else to do. For any
+other installation, xscaffold writes its own:
+
+```bash
+xscaffold --generate-completion-script zsh  > ~/.zsh/completions/_xscaffold
+xscaffold --generate-completion-script bash > ~/.bash_completion.d/xscaffold
+xscaffold --generate-completion-script fish > ~/.config/fish/completions/xscaffold.fish
+```
+
+Subcommands and flags complete, and so do the values that are otherwise worth
+remembering: `--variant` offers the four variants, `--preset` the three
+presets, `--config` and `validate` offer `.yml` and `.yaml` files, and
+`--destination` offers directories. The lists come from the binary, so they are
+whatever that binary can actually generate.
+
 ## Usage
 
 ```bash

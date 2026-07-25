@@ -18,7 +18,8 @@ struct DoctorCommand: ParsableCommand {
 
     @Option(
         name: .customLong("config"),
-        help: "A scaffold.yml to judge requirements against. Defaults to ./scaffold.yml when present."
+        help: "A scaffold.yml to judge requirements against. Defaults to ./scaffold.yml when present.",
+        completion: .file(extensions: manifestExtensions)
     )
     var configurationPath: String?
 

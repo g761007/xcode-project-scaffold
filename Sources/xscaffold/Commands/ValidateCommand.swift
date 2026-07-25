@@ -13,7 +13,7 @@ struct ValidateCommand: ParsableCommand {
         abstract: "Check a scaffold.yml. Writes nothing."
     )
 
-    @Argument(help: "Path to a scaffold.yml.")
+    @Argument(help: "Path to a scaffold.yml.", completion: .file(extensions: manifestExtensions))
     var path: String
 
     @OptionGroup var output: OutputOptions

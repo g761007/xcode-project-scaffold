@@ -8,6 +8,20 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [Unreleased]
+
+### Added
+
+- **Shell completions for zsh, bash and fish.** Homebrew installs all three;
+  `xscaffold --generate-completion-script <shell>` writes one for any other
+  installation. Beyond subcommands and flags, the values worth not having to
+  remember complete too: `--variant` offers the four variants, `--preset` the
+  three presets, `--config` and `validate` offer `.yml` and `.yaml` files, and
+  `--destination` offers directories. The value lists are read out of the
+  binary's own types rather than written into a script, so a fifth variant
+  completes the day it exists — and a test asserts that, against
+  `Variant.all` and `Preset.allowedValues`, in all three scripts.
+
 ## [0.7.0] — 2026-07-25
 
 ### Added
