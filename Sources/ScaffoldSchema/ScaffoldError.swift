@@ -44,8 +44,7 @@ public enum ScaffoldPhase: String, Codable, Sendable, CaseIterable {
 /// same place), `PODFILE_GENERATION_FAILED` (rendering a Podfile cannot fail —
 /// it is string assembly over a validated configuration),
 /// `PACKAGE_RESOLUTION_FAILED` (xscaffold never resolves packages; Xcode does,
-/// after generation), `SCHEMA_VERSION_UNSUPPORTED` (nothing checks the
-/// version yet — issue #115) and `GENERATION_ROLLBACK_FAILED` (a
+/// after generation) and `GENERATION_ROLLBACK_FAILED` (a
 /// failed rollback keeps the underlying failure's code, so that what a caller
 /// branches on stays "why it failed"; the leftover directory is in `path`).
 /// A code nothing can emit is dead the same way an unreachable `ValidationCode`
@@ -58,6 +57,7 @@ public enum ScaffoldErrorCode: String, Codable, Sendable, CaseIterable {
     case invalidArguments = "INVALID_ARGUMENTS"
     case configurationUnreadable = "CONFIGURATION_UNREADABLE"
     case configurationMalformed = "CONFIGURATION_MALFORMED"
+    case schemaVersionUnsupported = "SCHEMA_VERSION_UNSUPPORTED"
     case configurationInvalid = "CONFIGURATION_INVALID"
     case templateConflict = "TEMPLATE_CONFLICT"
     case templateResolutionFailed = "TEMPLATE_RESOLUTION_FAILED"
@@ -89,7 +89,8 @@ extension ScaffoldErrorCode {
     public var exitCode: ScaffoldExitCode {
         switch self {
         case .invalidArguments: .invalidArguments
-        case .configurationUnreadable, .configurationMalformed: .configurationParsingFailure
+        case .configurationUnreadable, .configurationMalformed,
+             .schemaVersionUnsupported: .configurationParsingFailure
         case .configurationInvalid: .validationFailure
         case .templateConflict, .templateResolutionFailed: .templateResolutionFailure
         case .outputDirectoryNotEmpty, .outputDirectoryHasProject,
@@ -114,7 +115,8 @@ extension ScaffoldErrorCode {
     public var phase: ScaffoldPhase? {
         switch self {
         case .invalidArguments: .invocation
-        case .configurationUnreadable, .configurationMalformed: .configuration
+        case .configurationUnreadable, .configurationMalformed,
+             .schemaVersionUnsupported: .configuration
         case .configurationInvalid: .validation
         case .templateConflict, .templateResolutionFailed: .planning
         case .generationCancelled: .confirmation
@@ -146,6 +148,9 @@ extension ScaffoldErrorCode {
             "Check the path. `xscaffold config example > scaffold.yml` writes one to start from."
         case .configurationMalformed:
             "Fix the field named above. `xscaffold config example` prints a document with the right shape."
+        case .schemaVersionUnsupported:
+            "Upgrade xscaffold, or generate this project with the version that wrote the document. "
+                + "`xscaffold capabilities` lists the versions this one reads."
         case .configurationInvalid:
             "Fix the issues listed above; each names the field and what it expects."
         case .templateConflict:

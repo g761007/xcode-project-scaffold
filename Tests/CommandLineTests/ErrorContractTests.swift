@@ -81,6 +81,49 @@ struct CommandLineErrorContractTests {
         }
     }
 
+    /// A document from a later version is refused before anything reads it,
+    /// with its own code — not as a malformed document, because nothing about
+    /// its shape is wrong, and not as a validation issue, because field-level
+    /// advice about a dialect this binary cannot read is advice about the
+    /// wrong problem.
+    @Test("a schema version this binary does not understand is refused")
+    func unsupportedSchemaVersion() throws {
+        try withTemporaryDirectory { root in
+            let path = root.appendingPathComponent("scaffold.yml")
+            try "schemaVersion: 2\n\(validConfiguration)"
+                .write(to: path, atomically: true, encoding: .utf8)
+
+            let result = try xscaffold("validate", path.path, "--output", "json")
+            let output = try decoded(result)
+
+            #expect(result.exitStatus == ScaffoldExitCode.configurationParsingFailure.rawValue)
+            #expect(output.phase == .configuration)
+            #expect(output.error?.code == .schemaVersionUnsupported)
+            #expect(output.issues == nil, "a document it cannot read produces no field-level advice")
+            #expect(output.error?.message.contains("schemaVersion 2") == true)
+        }
+    }
+
+    /// The version it refuses and the version `capabilities` advertises have to
+    /// be the same set, or an agent that consults one and obeys the other is
+    /// wrong in a way it cannot detect.
+    @Test("what capabilities advertises is what a document may state")
+    func capabilitiesMatchesWhatIsAccepted() throws {
+        try withTemporaryDirectory { root in
+            let advertised = try #require(
+                try decoded(run(["capabilities", "--output", "json"])).capabilities
+            ).schemaVersions
+
+            for version in advertised {
+                let path = root.appendingPathComponent("scaffold.yml")
+                try "schemaVersion: \(version)\n\(validConfiguration)"
+                    .write(to: path, atomically: true, encoding: .utf8)
+
+                #expect(try run(["validate", path.path]).exitStatus == 0, "schemaVersion \(version)")
+            }
+        }
+    }
+
     /// §11.3's promise has to hold before any command exists to keep it: the
     /// arguments were wrong, so nothing parsed, and stdout is still JSON.
     @Test("arguments that do not parse are still reported as a document")
