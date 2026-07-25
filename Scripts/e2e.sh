@@ -348,6 +348,36 @@ dependencyManagement:
 YML
 check_pods MixedApp "$root/mixed.yml" -destination "id=$udid"
 
+# Bundler and version pinning (§11.4) — the reason enterprise teams reach for
+# CocoaPods in the first place. Generation runs `bundle install` and then
+# `bundle exec pod install`, so the pods are installed by the CocoaPods the
+# Gemfile names rather than by whatever happens to be on the machine. The plan
+# tests assert that sequence; only a run proves it succeeds.
+cat > "$root/bundler.yml" <<'YML'
+project:
+  name: BundlerApp
+  bundleIdentifier: com.example.bundlerapp
+interface:
+  primary: swiftui
+dependencyManagement:
+  mode: cocoapods
+  cocoapods:
+    bundler:
+      enabled: true
+      cocoapodsVersion: "1.16.2"
+    pods:
+      - name: SnapKit
+        version: "5.7.1"
+YML
+check_pods BundlerApp "$root/bundler.yml" -destination "id=$udid"
+
+# The Gemfile carries the pin xscaffold wrote, and `bundle install` left its
+# lock beside it — which together are what make the version reproducible.
+test -f "$root/BundlerApp/Gemfile" || { echo "Gemfile missing"; exit 1; }
+grep -q "cocoapods', '1.16.2'" "$root/BundlerApp/Gemfile" \
+    || { echo "Gemfile does not pin the requested CocoaPods"; exit 1; }
+test -f "$root/BundlerApp/Gemfile.lock" || { echo "Gemfile.lock missing"; exit 1; }
+
 cat > "$root/pods-macos.yml" <<'YML'
 project:
   name: MacPodsApp
