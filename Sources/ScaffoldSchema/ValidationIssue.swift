@@ -38,6 +38,11 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     /// impossibility.
     case widgetRequiresIOS = "XS0012"
 
+    /// The SwiftUI MVVM example is written with `@Observable`, which arrived in
+    /// iOS 17 and macOS 14. A version that shipped a pre-Observation example
+    /// would lift this, so it is a boundary rather than an impossibility.
+    case swiftUIExampleRequiresObservation = "XS0014"
+
     /// `UNNotificationServiceExtension` exists on macOS as well; the target
     /// shape and the template for it are iOS-only so far.
     case notificationServiceRequiresIOS = "XS0013"
@@ -101,7 +106,8 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .testFrameworkNotSupported,
              .coordinatorRequiresUIKit,
              .widgetRequiresIOS,
-             .notificationServiceRequiresIOS:
+             .notificationServiceRequiresIOS,
+             .swiftUIExampleRequiresObservation:
             .capabilityBoundary
 
         case .uiKitRequiresIOS,

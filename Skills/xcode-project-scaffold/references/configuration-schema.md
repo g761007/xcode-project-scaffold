@@ -151,6 +151,13 @@ choosing `mvvm` gets the example without stating anything. Set it to `false` to
 get the pattern's structure and README notes without the example code, or omit
 it. Setting it `true` on `minimal`, which has no example, is `XS1201`.
 
+The **SwiftUI** example observes its view model with `@Observable`, which needs
+iOS 17 / macOS 14 — above the floor the rest of a project may target. Below
+that, `includeExample` is `XS0014`: raise `product.deploymentTarget`, or set
+`includeExample: false` to keep the pattern's structure and README notes without
+the example code. The UIKit and AppKit examples observe through a closure and
+work at the floor.
+
 ### `generator`
 
 | Key | Type | Default | Allowed |
@@ -432,6 +439,7 @@ release may help.
 | `XS0009` | MVVM-C requires UIKit; not supported for SwiftUI or AppKit |
 | `XS0012` | Widget extensions are only generated for iOS |
 | `XS0013` | Notification Service extensions are only generated for iOS |
+| `XS0014` | The SwiftUI architecture example needs iOS 17 / macOS 14 |
 
 `XS1xxx` — invalid in every version. Waiting will not help.
 

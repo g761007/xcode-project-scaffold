@@ -27,6 +27,15 @@ extension ConfigurationValidator {
             .iOS: VersionNumber([15, 0]),
             .macOS: VersionNumber([11, 0])
         ]
+
+        /// Where the Observation framework arrived. Higher than the floor
+        /// above, which is the whole problem: the SwiftUI MVVM example is
+        /// written with `@Observable`, so it needs this even though the
+        /// project around it does not.
+        static let observationTargets: [ApplePlatform: VersionNumber] = [
+            .iOS: VersionNumber([17, 0]),
+            .macOS: VersionNumber([14, 0])
+        ]
     }
 
     func capabilityIssues(_ configuration: ProjectConfiguration) -> [ValidationIssue] {
@@ -47,9 +56,38 @@ extension ConfigurationValidator {
                 configuration.testing.unit, of: Supported.testFrameworks,
                 as: "Test framework", code: .testFrameworkNotSupported, at: "testing.unit"
             ),
-            coordinatorInterfaceIssue(configuration)
+            coordinatorInterfaceIssue(configuration),
+            swiftUIExampleObservationIssue(configuration)
         ].compactMap(\.self)
             + extensionPlatformIssues(configuration)
+    }
+
+    /// The SwiftUI MVVM example observes its view model with `@Observable`,
+    /// which arrived in iOS 17 and macOS 14 — above the floor the rest of the
+    /// project may target. Without this rule such a project validates,
+    /// generates, and then fails to compile on a macro the template chose;
+    /// the UIKit and AppKit examples observe through a closure and are fine at
+    /// the floor.
+    ///
+    /// It faults `includeExample` rather than the deployment target, because
+    /// switching the example off is the fix that keeps the project as asked.
+    func swiftUIExampleObservationIssue(_ configuration: ProjectConfiguration) -> ValidationIssue? {
+        guard configuration.interface.primary == .swiftUI,
+              configuration.architecture.generatesExample,
+              let required = Supported.observationTargets[configuration.product.platform],
+              let stated = VersionNumber(configuration.product.deploymentTarget),
+              stated < required
+        else { return nil }
+
+        let platform = configuration.product.platform.displayName
+        return ValidationIssue(
+            code: .swiftUIExampleRequiresObservation,
+            message: "The SwiftUI architecture example needs \(platform) \(display(required)), "
+                + "which is above this project's deployment target, in this version.",
+            path: "architecture.includeExample",
+            suggestion: "Raise product.deploymentTarget to \(display(required)), or set "
+                + "architecture.includeExample to false to keep the pattern without its example."
+        )
     }
 
     /// Both extension kinds exist on macOS in Apple's frameworks, so asking

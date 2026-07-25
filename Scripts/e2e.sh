@@ -150,6 +150,41 @@ architecture:
 YML
 check MVVMSwiftUIApp --config "$root/mvvm-swiftui.yml"
 
+# The same example at the exact version its `@Observable` view model needs
+# (XS0014). The case above runs at the default target, where the macro has been
+# available for releases — so it says nothing about where the boundary is. If
+# Observation ever turns out to need more than iOS 17.0, this fails and the
+# validator's floor is wrong.
+cat > "$root/mvvm-swiftui-floor.yml" <<'YML'
+project:
+  name: MVVMFloorApp
+  bundleIdentifier: com.example.mvvmfloorapp
+product:
+  deploymentTarget: "17.0"
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: true
+YML
+check MVVMFloorApp --config "$root/mvvm-swiftui-floor.yml"
+
+# And the fix XS0014 suggests: the pattern without its example really does build
+# at the project floor, so the suggestion is not a dead end.
+cat > "$root/mvvm-swiftui-no-example.yml" <<'YML'
+project:
+  name: MVVMNoExampleApp
+  bundleIdentifier: com.example.mvvmnoexampleapp
+product:
+  deploymentTarget: "15.0"
+interface:
+  primary: swiftui
+architecture:
+  pattern: mvvm
+  includeExample: false
+YML
+check MVVMNoExampleApp --config "$root/mvvm-swiftui-no-example.yml"
+
 # MVVM-C on UIKit: a coordinator driving a list and a detail screen. It restructures
 # the app more than MVVM does — the plain root screen is gone — so a build and a run
 # of its two screens' view-model tests is the only thing that proves it holds together.
