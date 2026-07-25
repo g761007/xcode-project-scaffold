@@ -10,6 +10,27 @@ migration path until `1.0` (see the README).
 
 ## [Unreleased]
 
+### Added
+
+- **A deprecation policy and a compatibility policy**, both linked from the
+  README. The first says what counts as a breaking change in each of the three
+  contracts, what is deliberately *not* contract — message wording, prompt
+  order, the generated project's own files — and how much warning a removal
+  gets, measured in minor versions rather than in time. It also judges the two
+  removals that have already happened: `init`'s retirement is what the policy
+  asks for, and `--preset` changing meaning between v0.4 and v0.7 is a move
+  that would need a new flag name after 1.0.
+
+  The second states which macOS, Xcode and toolchain versions are supported and
+  what "supported" means — verified by CI, expected to work, or neither. Every
+  version in it is a fact about the repository rather than an impression, and
+  the tiers make the difference between "CI runs macOS 26" and "macOS 14 is the
+  manifest's floor" explicit rather than implied.
+
+  Both are preconditions for freezing the three contracts: the spec requires a
+  change after the freeze to go through the policy, and a process cannot be
+  written after it is first needed.
+
 ### Fixed
 
 - **`schemaVersion` is read back.** It was written into every generated

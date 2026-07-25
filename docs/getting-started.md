@@ -152,3 +152,5 @@ and [ADR-0001](adr/0001-scaffold-yml-as-birth-certificate.md).
 | What each variant generates | [templates.md](templates.md) |
 | MVVM and MVVM-C | [architecture.md](architecture.md) |
 | Driving it from an AI agent | [agent-workflow.md](agent-workflow.md) |
+| What may change, and when | [deprecation-policy.md](deprecation-policy.md) |
+| Which macOS and Xcode versions work | [compatibility-policy.md](compatibility-policy.md) |

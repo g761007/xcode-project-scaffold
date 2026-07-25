@@ -31,8 +31,14 @@ Skill an agent drives all of this with is in
 
 The `scaffold.yml` schema, the CLI contract, the JSON output format and the
 error codes **may change without notice, and without a migration path, for the
-entire 0.x series.** Do not build automation against them yet. Stability
-guarantees and a template compatibility policy arrive with 1.0.
+entire 0.x series.** Do not build automation against them yet.
+
+What those guarantees will be is already written down —
+[the deprecation policy](docs/deprecation-policy.md) says what counts as a
+breaking change and how much warning it gets, and
+[the compatibility policy](docs/compatibility-policy.md) says which macOS,
+Xcode and toolchain versions are supported. Both describe intent until 1.0
+makes them a promise.
 
 ---
 
@@ -178,6 +184,8 @@ shows what an omitted field will actually be. Every field is documented in
 | [docs/agent-workflow.md](docs/agent-workflow.md) | Driving it from an AI agent |
 | [docs/development.md](docs/development.md) | Working on xscaffold itself |
 | [docs/release.md](docs/release.md) | Cutting a release |
+| [docs/deprecation-policy.md](docs/deprecation-policy.md) | What counts as a breaking change, and how much warning it gets |
+| [docs/compatibility-policy.md](docs/compatibility-policy.md) | Which macOS, Xcode and toolchain versions are supported |
 | [CONTEXT.md](CONTEXT.md) | Project glossary. Read before introducing new terminology |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/plans/](docs/plans/) | Scope, schema, roadmap, and what is explicitly excluded |
