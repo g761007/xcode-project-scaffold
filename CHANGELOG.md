@@ -8,6 +8,65 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [0.6.0] — 2026-07-25
+
+### Added
+
+- **Bundler and CocoaPods version pinning.** `dependencyManagement.cocoapods.bundler`
+  writes a `Gemfile` beside the Podfile and changes the install sequence to
+  `bundle install` → `bundle exec pod install`, so every machine and every CI
+  run installs pods with the CocoaPods the Gemfile names rather than whichever
+  one is on the `PATH`. `cocoapodsVersion` pins it; omitted, the Gemfile takes
+  whatever resolves. `doctor` follows: with Bundler it requires `bundle` and
+  stops requiring `pod`, because `bundle exec` provides that one itself.
+  `BUNDLER_NOT_INSTALLED` joins the error contract.
+- **Ordered pod sources, with credentials masked.** `cocoapods.sources` keeps
+  declaration order, so a private specs repo listed before the public CDN
+  resolves internal pods first. A credential embedded in a source URL is masked
+  everywhere xscaffold prints it — log output, `--output json`, and validation
+  messages alike — and is not masked in the Podfile, which needs the real URL
+  to work.
+- **GitHub Actions workflows.** The `ci` section generates `build.yml`,
+  `test.yml` and `lint.yml` under `.github/workflows/`. Omitting it generates
+  nothing — CI is a choice, not a default — while stating it turns every switch
+  on. Each workflow rebuilds the project the way a person would: XcodeGen, then
+  whatever the dependency mode reads, then `xcodebuild` against the project or
+  the workspace, following the same container rule every other command does.
+  Lint runs `make lint`, the generated Makefile's own recipe, so the workflow
+  and a laptop cannot come to different conclusions.
+- **App Extensions.** The `extensions` section generates `widget` (a
+  `WidgetBundle` and a static-configuration widget) and `notificationService`
+  (a `UNNotificationServiceExtension` subclass). Naming an extension is what
+  asks for it; omitting the section, or stating it while naming nothing,
+  generates nothing. Each becomes an `app-extension` target the app embeds,
+  with its own sources directory, and ships under the app's bundle identifier
+  plus a suffix — per environment as well as at the base, because an extension
+  whose identifier is not prefixed by its container's cannot be installed. A
+  package product may name an extension target exactly as it may name the
+  app's. Both are iOS-only in this version (`XS0012`, `XS0013`).
+- **A fourth template layer.** `Features/<feature>` holds the sources of one
+  optional part of a generated project. A feature contributes its own files and
+  patches no other template, so it lands beside the Shared, Variant and
+  Architecture layers rather than overlaying them.
+
+### Changed
+
+- The e2e matrix gains the Bundler combination — `bundle install` →
+  `bundle exec pod install` → workspace build and test, asserting that the
+  Gemfile carries the pin and that `bundle install` left its lock beside it —
+  and an extensions combination carrying both extensions at the **supported
+  deployment floor** rather than the default, which is the value that actually
+  exercises availability.
+- README documents the enterprise path: Bundler, pod sources, `ci`, and the two
+  App Extensions.
+
+### Removed
+
+- **`init`.** Its deprecation period ended as scheduled. Typing it gets a clear
+  pointer to `generate` or `new --variant --yes` rather than an unknown-command
+  error, and the contract tests assert that error and its exit code. The
+  reasoning is recorded in ADR-0007.
+
 ## [0.5.0] — 2026-07-25
 
 ### Added
