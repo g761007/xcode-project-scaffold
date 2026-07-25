@@ -1,4 +1,5 @@
 import Foundation
+import ScaffoldSchema
 
 /// A `scaffold.yml` that could not be turned into a `ProjectConfiguration`.
 ///
@@ -17,6 +18,35 @@ public struct ConfigurationParsingError: Error, Equatable, Sendable {
     public init(message: String, path: String? = nil) {
         self.message = message
         self.path = path
+    }
+}
+
+/// A document that states a schema version this binary does not understand.
+///
+/// Refused before decoding rather than reported as a validation issue, because
+/// once the version is unknown nothing else the document says can be trusted:
+/// the decoder ignores keys it does not recognise, so field-level advice about
+/// a newer document would be advice about the part of it that survived.
+public struct UnsupportedSchemaVersionError: Error, Equatable, Sendable {
+    public let stated: Int
+    public let supported: [Int]
+
+    public init(stated: Int, supported: [Int]) {
+        self.stated = stated
+        self.supported = supported
+    }
+}
+
+extension UnsupportedSchemaVersionError: ReportableError {
+    public var errorCode: ScaffoldErrorCode {
+        .schemaVersionUnsupported
+    }
+}
+
+extension UnsupportedSchemaVersionError: CustomStringConvertible {
+    public var description: String {
+        "This scaffold.yml states schemaVersion \(stated), and this version of xscaffold "
+            + "understands \(supported.map(String.init).joined(separator: ", "))."
     }
 }
 

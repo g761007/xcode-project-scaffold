@@ -8,6 +8,27 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [Unreleased]
+
+### Fixed
+
+- **`schemaVersion` is read back.** It was written into every generated
+  `scaffold.yml` and never checked, so a document stating a version this binary
+  does not understand decoded as though it were version 1 — and the decoder
+  ignores keys it does not recognise, so it generated a project quietly missing
+  whatever those keys asked for. For a tool whose premise is that one document
+  means one project, that is the one failure it cannot have.
+
+  A version outside `capabilities.schemaVersions` is now refused before
+  anything reads the document, as `SCHEMA_VERSION_UNSUPPORTED` — a code the
+  error contract (§23) has always named and that nothing could emit until now.
+  Not a validation issue: once the version is unknown, field-level advice would
+  be advice about the part of the document that survived. An unstated version
+  is not a claim and still takes the default.
+
+  This is the precondition for freezing the schema in v0.9: "schema v1" means
+  nothing while nothing checks which version a document claims to be.
+
 ## [0.8.0] — 2026-07-26
 
 ### Added

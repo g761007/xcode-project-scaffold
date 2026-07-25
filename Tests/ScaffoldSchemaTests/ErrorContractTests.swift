@@ -47,6 +47,7 @@ struct ErrorCodeContractTests {
         (ScaffoldErrorCode.invalidArguments, ScaffoldExitCode.invalidArguments),
         (.configurationUnreadable, .configurationParsingFailure),
         (.configurationMalformed, .configurationParsingFailure),
+        (.schemaVersionUnsupported, .configurationParsingFailure),
         (.configurationInvalid, .validationFailure),
         (.templateConflict, .templateResolutionFailure),
         (.templateResolutionFailed, .templateResolutionFailure),
@@ -77,7 +78,7 @@ struct ErrorCodeContractTests {
     /// added and go unpinned while every other test still passes.
     @Test("the table above covers every code")
     func exitCodeTableIsComplete() {
-        #expect(ScaffoldErrorCode.allCases.count == 24)
+        #expect(ScaffoldErrorCode.allCases.count == 25)
     }
 
     /// Which stage was under way decides whether anything reached the disk,

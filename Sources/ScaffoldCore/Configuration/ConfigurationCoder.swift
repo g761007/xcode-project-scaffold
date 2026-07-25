@@ -22,15 +22,31 @@ public struct ConfigurationCoder: Sendable {
             guard let node = try Yams.compose(yaml: yaml) else {
                 throw ConfigurationParsingError(message: "The document is empty.")
             }
-            return try YAMLDecoder().decode(
-                ProjectConfiguration.self,
-                from: PresetResolution.resolved(node)
-            )
+            let resolved = try PresetResolution.resolved(node)
+            try checkSchemaVersion(of: resolved)
+            return try YAMLDecoder().decode(ProjectConfiguration.self, from: resolved)
         } catch let error as DecodingError {
             throw ConfigurationParsingError.from(error)
         } catch let error as YamlError {
             throw ConfigurationParsingError(message: "The document is not valid YAML. \(error)")
         }
+    }
+
+    /// Read off the document rather than off the decoded value, because by
+    /// then an unstated version and a stated `1` are the same thing — and only
+    /// one of them is a claim.
+    ///
+    /// A version this binary does not understand ends the read here. Anything
+    /// the document says beyond it is written in a dialect this binary cannot
+    /// be sure it is reading.
+    private func checkSchemaVersion(of node: Node) throws {
+        guard let stated = node.mapping?["schemaVersion"]?.int else { return }
+        guard !ConfigurationDefaults.supportedSchemaVersions.contains(stated) else { return }
+
+        throw UnsupportedSchemaVersionError(
+            stated: stated,
+            supported: ConfigurationDefaults.supportedSchemaVersions
+        )
     }
 
     public func encode(_ configuration: ProjectConfiguration) throws -> String {

@@ -21,6 +21,11 @@ func readConfiguration(at path: String, reportingTo reporter: Reporter) throws -
 
     do {
         return try ConfigurationCoder().decode(text)
+    } catch let error as UnsupportedSchemaVersionError {
+        // Its own code, and its own message: a document from a later version is
+        // not a malformed one, and telling the reader to fix a field would be
+        // advice about the wrong problem.
+        throw reporter.failure(error)
     } catch {
         // The file, not the field: the field is named in the message, and the
         // file is the thing to open. A `ConfigurationParsingError` says which

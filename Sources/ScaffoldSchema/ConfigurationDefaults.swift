@@ -4,6 +4,18 @@
 /// and the decoder cannot drift apart.
 public enum ConfigurationDefaults {
     public static let schemaVersion = 1
+
+    /// Every version of the document format this binary understands.
+    ///
+    /// Reported by `capabilities` as `schemaVersions`, and checked before a
+    /// document is decoded: a version not in here is refused rather than read
+    /// as though it were `1`. The decoder ignores keys it does not know, so a
+    /// newer document would otherwise generate a project quietly missing
+    /// whatever those keys asked for — which is the one failure a tool whose
+    /// premise is reproducibility cannot have.
+    ///
+    /// A version leaves this list only through the deprecation policy.
+    public static let supportedSchemaVersions = [1]
     public static let organizationName = ""
 
     public static let platform = ApplePlatform.iOS
