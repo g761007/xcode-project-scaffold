@@ -44,6 +44,15 @@ Templates under `Templates/` are compiled into the binary; after editing them
 run `make templates` and commit the regenerated Swift file, or CI will fail the
 sync check.
 
+**Two templates may not produce the same file.** A run assembles its whole file
+list first — the File Manifest, where every path carries the origin that claimed
+it — so a path claimed twice fails with `TEMPLATE_CONFLICT`, exit code 5, naming
+the path and both claimants. Nothing is written. The architecture overlay is not
+a conflict: replacing the variant's screen at the same path is declared, and
+resolved before the manifest ([ADR-0004](docs/adr/0004-architecture-overlay-generates-a-concrete-example.md)).
+The check is a guardrail for template authors rather than something a user can
+trigger, since the shipped template set is the only one there is.
+
 ## Tests
 
 `swift test` must pass, and `make lint` must be clean, before a PR is opened.
