@@ -11,6 +11,14 @@ migration path until `1.0` (see the README).
 ## [Unreleased]
 
 ### Added
+
+- **`make benchmark`.** Reports p50 and p95 for the three things an interactive
+  session waits on: process start, which every tab completion pays for;
+  `capabilities`, which an agent asks first every session; and `plan` against
+  the heaviest configuration this version can describe. Not a CI gate — a
+  threshold on a shared runner measures the runner — it exists so a change
+  suspected of costing time can be answered with a number. Nothing was
+  optimised: on an M-series Mac those are 10.5ms, 11.3ms and 18.2ms at p50.
 - **Shell completions for zsh, bash and fish.** Homebrew installs all three;
   `xscaffold --generate-completion-script <shell>` writes one for any other
   installation. Beyond subcommands and flags, the values worth not having to

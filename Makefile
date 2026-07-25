@@ -33,6 +33,10 @@ lint: ## Check formatting and lint rules (requires swiftformat and swiftlint)
 format: ## Apply formatting in place
 	swiftformat .
 
+.PHONY: benchmark
+benchmark: ## Measure CLI startup and plan time (release build)
+	python3 Scripts/benchmark.py
+
 .PHONY: release
 release: ## Build in release
 	swift build -c release
