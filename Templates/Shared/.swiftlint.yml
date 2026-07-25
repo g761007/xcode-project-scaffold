@@ -1,10 +1,12 @@
-included:
-  - App
-  - Tests
-
+# No `included:`. SwiftLint lints this directory by default, which is every
+# source directory the project has — App, Tests, UITests and each App Extension
+# — without a list that has to be extended every time the project grows one.
 excluded:
   - .build
   - DerivedData
+  # Vendored by `pod install`. Third-party sources are not this project's to
+  # lint, and `make lint` failing on them would say nothing about its code.
+  - Pods
 
 line_length:
   warning: 120

@@ -4,7 +4,7 @@ import XCTest
 /// something that runs?", and the first test to fail when it did not.
 final class LaunchTests: XCTestCase {
     @MainActor
-    func testAppLaunches() throws {
+    func testAppLaunches() {
         let app = XCUIApplication()
         app.launch()
 

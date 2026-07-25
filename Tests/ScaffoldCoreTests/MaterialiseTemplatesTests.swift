@@ -28,6 +28,12 @@ struct MaterialiseTemplatesTests {
         let interface: UIFramework
         let architecture: ArchitecturePattern
 
+        /// UI tests and both App Extensions. Every other case here is a plain
+        /// app, so `UITests/`, `Widget/` and `NotificationService/` never
+        /// reached a linter — which is how their templates went three versions
+        /// without one reading them.
+        var withEveryTarget = false
+
         var description: String {
             name
         }
@@ -42,7 +48,14 @@ struct MaterialiseTemplatesTests {
         Variant(name: "MacSwiftUIApp", platform: .macOS, interface: .swiftUI, architecture: .minimal),
         Variant(name: "MacAppKitApp", platform: .macOS, interface: .appKit, architecture: .minimal),
         Variant(name: "MacSwiftUIMVVMApp", platform: .macOS, interface: .swiftUI, architecture: .mvvm),
-        Variant(name: "MacAppKitMVVMApp", platform: .macOS, interface: .appKit, architecture: .mvvm)
+        Variant(name: "MacAppKitMVVMApp", platform: .macOS, interface: .appKit, architecture: .mvvm),
+        Variant(
+            name: "EveryTargetApp",
+            platform: .iOS,
+            interface: .swiftUI,
+            architecture: .minimal,
+            withEveryTarget: true
+        )
     ]
 
     @Test(
@@ -61,6 +74,9 @@ struct MaterialiseTemplatesTests {
                 $0.product.platform = variant.platform
                 $0.interface = .init(primary: variant.interface)
                 $0.architecture = .init(pattern: variant.architecture)
+                guard variant.withEveryTarget else { return }
+                $0.testing = .init(ui: .init(enabled: true, launchPerformanceTest: true))
+                $0.extensions = AppExtensions(widget: .init(), notificationService: .init())
             },
             // No commands, so nothing here needs git or XcodeGen: this exists to
             // put files where a linter can read them.

@@ -5,7 +5,7 @@ import XCTest
 /// that intend to watch it.
 final class LaunchPerformanceTests: XCTestCase {
     @MainActor
-    func testLaunchPerformance() throws {
+    func testLaunchPerformance() {
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()
         }

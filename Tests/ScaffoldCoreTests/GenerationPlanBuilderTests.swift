@@ -214,6 +214,51 @@ struct GenerationPlanSwitchTests {
         #expect(plan.files.contains { $0.path == ".swiftformat" })
     }
 
+    /// A linter configuration that lists the directories to look at is a list
+    /// that has to be extended every time the project grows one — and was not:
+    /// `UITests/` went unlinted from v0.5 and both App Extensions from v0.6,
+    /// while `make lint` reported zero violations. Neither config names a
+    /// source directory now, so neither can fall behind one.
+    @Test("no linter configuration names a source directory")
+    func lintersNameNoSourceDirectory() throws {
+        let plan = try planner.makePlan(for: .validBaseline.with {
+            $0.testing = .init(ui: .init(enabled: true))
+            $0.extensions = AppExtensions(widget: .init(), notificationService: .init())
+        })
+        let directories = plan.files
+            .map { $0.path.split(separator: "/").first.map(String.init) ?? $0.path }
+            .filter { $0.first?.isUppercase == true }
+
+        #expect(Set(directories).isSuperset(of: ["App", "Tests", "UITests", "Widget", "NotificationService"]))
+
+        for path in [".swiftlint.yml", ".swiftformat"] {
+            // Comments are read by people, not by the linter, and both files
+            // use theirs to say why there is no list. What must not name a
+            // directory is the configuration itself.
+            let settings = try #require(plan.files.first { $0.path == path }).contents
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+                .joined(separator: "\n")
+
+            for directory in Set(directories) {
+                #expect(!settings.contains(directory), "\(path) names \(directory)")
+            }
+        }
+    }
+
+    /// `pod install` vendors third-party sources into the project. Linting
+    /// them says nothing about this project's code, and formatting them
+    /// rewrites someone else's.
+    @Test("the linters leave vendored pods alone")
+    func lintersExcludePods() throws {
+        let plan = try planner.makePlan(for: .validBaseline)
+
+        for path in [".swiftlint.yml", ".swiftformat"] {
+            let contents = try #require(plan.files.first { $0.path == path }).contents
+            #expect(contents.contains("Pods"), "\(path)")
+        }
+    }
+
     /// The Makefile always has a `lint` target; what it runs is decided in
     /// Swift and arrives as a value, because §7.3 keeps conditionals out of
     /// templates.

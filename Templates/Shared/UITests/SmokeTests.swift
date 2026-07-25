@@ -5,7 +5,7 @@ import XCTest
 /// launch. Deeper flows belong in tests written against them.
 final class SmokeTests: XCTestCase {
     @MainActor
-    func testFirstScreenAppears() throws {
+    func testFirstScreenAppears() {
         let app = XCUIApplication()
         app.launch()
 

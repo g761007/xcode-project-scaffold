@@ -9,4 +9,7 @@
 # no test file can be written to satisfy in advance.
 --import-grouping testable-last
 
---exclude .build,DerivedData
+# Pods is vendored by `pod install`: `make format` rewriting third-party
+# sources would be a surprise, and `make lint` failing on them would say
+# nothing about this project's code.
+--exclude .build,DerivedData,Pods

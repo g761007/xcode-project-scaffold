@@ -939,17 +939,22 @@ Pods/
 # no test file can be written to satisfy in advance.
 --import-grouping testable-last
 
---exclude .build,DerivedData
+# Pods is vendored by `pod install`: `make format` rewriting third-party
+# sources would be a surprise, and `make lint` failing on them would say
+# nothing about this project's code.
+--exclude .build,DerivedData,Pods
 
 """#,
         "Shared/.swiftlint.yml": #"""
-included:
-  - App
-  - Tests
-
+# No `included:`. SwiftLint lints this directory by default, which is every
+# source directory the project has — App, Tests, UITests and each App Extension
+# — without a list that has to be extended every time the project grows one.
 excluded:
   - .build
   - DerivedData
+  # Vendored by `pod install`. Third-party sources are not this project's to
+  # lint, and `make lint` failing on them would say nothing about its code.
+  - Pods
 
 line_length:
   warning: 120
@@ -1109,7 +1114,7 @@ import XCTest
 /// that intend to watch it.
 final class LaunchPerformanceTests: XCTestCase {
     @MainActor
-    func testLaunchPerformance() throws {
+    func testLaunchPerformance() {
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()
         }
@@ -1124,7 +1129,7 @@ import XCTest
 /// something that runs?", and the first test to fail when it did not.
 final class LaunchTests: XCTestCase {
     @MainActor
-    func testAppLaunches() throws {
+    func testAppLaunches() {
         let app = XCUIApplication()
         app.launch()
 
@@ -1141,7 +1146,7 @@ import XCTest
 /// launch. Deeper flows belong in tests written against them.
 final class SmokeTests: XCTestCase {
     @MainActor
-    func testFirstScreenAppears() throws {
+    func testFirstScreenAppears() {
         let app = XCUIApplication()
         app.launch()
 
