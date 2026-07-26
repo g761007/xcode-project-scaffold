@@ -8,7 +8,18 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
-## [Unreleased]
+## [0.9.0-rc.1] — 2026-07-26
+
+**A release candidate, not a release.** The three contracts — the `scaffold.yml`
+schema, the CLI and the JSON output — freeze at 1.0, and this is the last
+version in which any of them can still change cheaply. What would help most is
+a field you needed and could not state, or a decision you had to make by
+reading prose instead of a code. Report it on
+[#146](https://github.com/g761007/xcode-project-scaffold/issues/146).
+
+The binary is not yet signed or notarized, so Gatekeeper will ask. That is
+coming before 1.0 and touches none of the contracts below. `brew install` still
+gives you 0.8.0.
 
 ### Added
 
