@@ -16,13 +16,13 @@ struct PodfileRenderer: Sendable {
         // Spec repositories head the file in declaration order (§11.4) — the
         // order CocoaPods searches them in. None declared writes no line: the
         // CDN default is CocoaPods' own, not something to restate.
-        let sources = (cocoapods?.sources ?? []).map { "source '\($0)'" }
+        let sources = (cocoapods?.sources ?? []).map { "source '\(ruby: $0)'" }
         let sourceBlock = sources.isEmpty ? "" : sources.joined(separator: "\n") + "\n\n"
 
         return sourceBlock + """
-        platform :\(platformName(configuration.product.platform)), '\(configuration.product.deploymentTarget)'
+        platform :\(platformName(configuration.product.platform)), '\(ruby: configuration.product.deploymentTarget)'
 
-        target '\(configuration.project.name)' do
+        target '\(ruby: configuration.project.name)' do
           use_frameworks!
 
         \(podLines.joined(separator: "\n"))
@@ -36,21 +36,21 @@ struct PodfileRenderer: Sendable {
     /// subspec cannot pin differently from its siblings.
     private func lines(for pod: Pod) -> [String] {
         let names = pod.subspecs.isEmpty ? [pod.name] : pod.subspecs.map { "\(pod.name)/\($0)" }
-        return names.map { name in "pod '\(name)'\(sourceSuffix(for: pod.source))" }
+        return names.map { name in "pod '\(ruby: name)'\(sourceSuffix(for: pod.source))" }
     }
 
     private func sourceSuffix(for source: PodSource) -> String {
         switch source {
         case let .version(version):
-            ", '\(version)'"
+            ", '\(ruby: version)'"
         case let .gitTag(url, tag):
-            ", :git => '\(url)', :tag => '\(tag)'"
+            ", :git => '\(ruby: url)', :tag => '\(ruby: tag)'"
         case let .gitBranch(url, branch):
-            ", :git => '\(url)', :branch => '\(branch)'"
+            ", :git => '\(ruby: url)', :branch => '\(ruby: branch)'"
         case let .gitCommit(url, commit):
-            ", :git => '\(url)', :commit => '\(commit)'"
+            ", :git => '\(ruby: url)', :commit => '\(ruby: commit)'"
         case let .path(path):
-            ", :path => '\(path)'"
+            ", :path => '\(ruby: path)'"
         }
     }
 
@@ -69,7 +69,7 @@ struct PodfileRenderer: Sendable {
 struct GemfileRenderer: Sendable {
     func render(_ configuration: ProjectConfiguration) -> String {
         let pin = configuration.dependencyManagement.cocoapods?.bundler?.cocoapodsVersion
-        let gemLine = pin.map { "gem 'cocoapods', '\($0)'" } ?? "gem 'cocoapods'"
+        let gemLine = pin.map { "gem 'cocoapods', '\(ruby: $0)'" } ?? "gem 'cocoapods'"
 
         return """
         source 'https://rubygems.org'
@@ -77,5 +77,26 @@ struct GemfileRenderer: Sendable {
         \(gemLine)
 
         """
+    }
+}
+
+extension DefaultStringInterpolation {
+    /// A value going inside a Ruby single-quoted literal.
+    ///
+    /// A Podfile is Ruby, and `pod install` runs it — which xscaffold does
+    /// itself, right after generation. An unescaped value therefore turns a
+    /// `scaffold.yml` into arbitrary code execution on whoever generates from
+    /// it: `name: "a' + system('id') + '"` needs no newline and no quoting
+    /// trick beyond the one Ruby gives for free.
+    ///
+    /// Inside a single-quoted literal Ruby treats exactly two characters
+    /// specially, so escaping exactly those two is complete rather than a
+    /// blocklist that will be missing one.
+    mutating func appendInterpolation(ruby value: String) {
+        appendLiteral(
+            value
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+        )
     }
 }

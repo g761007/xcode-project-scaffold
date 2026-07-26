@@ -72,7 +72,37 @@ migration path until `1.0` (see the README).
   preference — one line, keys sorted, slashes unescaped — are now asserted
   rather than described.
 
+- **`docs/security-review.md`** records the v0.9 review over all four surfaces
+  the spec names — secrets, command execution, template rendering, credential
+  masking — including what was examined and deliberately left alone.
+
 ### Fixed
+
+- **A `scaffold.yml` could run arbitrary code on whoever generated from it.**
+  A Podfile is Ruby, `pod install` executes it, and xscaffold runs `pod
+  install` itself right after writing the file — so an unescaped value in a pod
+  name, a source URL or the pinned CocoaPods version was remote code execution
+  against anyone who generated from a document they had not written. It needed
+  no newline: `name: "a' + system('id') + '"` is enough, because Ruby reads it
+  inside the single-quoted literal it was interpolated into.
+
+  Every value interpolated into a Ruby literal now escapes `\` and `'`, which
+  are the only two characters Ruby reads there — complete, where a blocklist
+  would be one character short. Verified by loading a generated Podfile in Ruby
+  with the CocoaPods DSL stubbed out and watching the payload arrive as an
+  inert string.
+
+- **A newline turned one reviewed line into two build settings.** An xcconfig
+  is `KEY = value` per line, so
+  `API_BASE_URL: "https://x\nOTHER_LDFLAGS = -whatever"` generated a setting
+  nobody wrote — and the same worked through a secret's example, and through
+  `organizationName`, which had never been constrained at all. The document is
+  meant to be reviewable; a value that renders as more than itself defeats
+  exactly that.
+
+  `XS1305` refuses a control character anywhere in the document. Checked over
+  the whole document rather than field by field: a list of fields is a list
+  that goes stale, and no field of this schema has a meaning for one.
 
 - **`cocoapodsVersion` was missing from the published JSON Schema.** The type
   has carried it since v0.6, so an editor validating `scaffold.yml` against the

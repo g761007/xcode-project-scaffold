@@ -186,6 +186,7 @@ shows what an omitted field will actually be. Every field is documented in
 | [docs/release.md](docs/release.md) | Cutting a release |
 | [docs/deprecation-policy.md](docs/deprecation-policy.md) | What counts as a breaking change, and how much warning it gets |
 | [docs/compatibility-policy.md](docs/compatibility-policy.md) | Which macOS, Xcode and toolchain versions are supported |
+| [docs/security-review.md](docs/security-review.md) | What a hostile scaffold.yml can and cannot do |
 | [CONTEXT.md](CONTEXT.md) | Project glossary. Read before introducing new terminology |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/plans/](docs/plans/) | Scope, schema, roadmap, and what is explicitly excluded |

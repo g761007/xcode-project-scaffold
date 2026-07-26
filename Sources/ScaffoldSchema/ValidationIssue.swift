@@ -68,6 +68,11 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
     case malformedDeploymentTarget = "XS1302"
     case invalidProjectName = "XS1304"
 
+    /// Permanent, and deliberately blanket: no field of this document has a
+    /// meaning for a control character, and every file one is written into is
+    /// line-oriented.
+    case controlCharacterInValue = "XS1305"
+
     // XS14xx — environments.
     case duplicateEnvironmentName = "XS1401"
     case duplicateBuildConfiguration = "XS1402"
@@ -119,6 +124,7 @@ public enum ValidationCode: String, Codable, Sendable, CaseIterable {
              .invalidBundleIdentifier,
              .malformedDeploymentTarget,
              .invalidProjectName,
+             .controlCharacterInValue,
              .duplicateEnvironmentName,
              .duplicateBuildConfiguration,
              .invalidValueKey,

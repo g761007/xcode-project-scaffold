@@ -142,6 +142,11 @@ private let validationTriggers: [ValidationTrigger] = [
         configuration: .validBaseline.with { $0.project.name = "" }
     ),
     ValidationTrigger(
+        code: .controlCharacterInValue,
+        message: "'Acme\\nEvil' contains a control character.",
+        configuration: .validBaseline.with { $0.project.organizationName = "Acme\nEvil" }
+    ),
+    ValidationTrigger(
         code: .duplicateEnvironmentName,
         message: "Environment name 'staging' is used more than once.",
         configuration: .validBaseline.with {

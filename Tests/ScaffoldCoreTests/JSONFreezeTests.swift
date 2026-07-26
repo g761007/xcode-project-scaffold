@@ -248,7 +248,7 @@ struct JSONFreezeTests {
         #expect(ScaffoldExitCode.allCases.count == 12)
         #expect(ScaffoldErrorCode.allCases.count == 25)
         #expect(ScaffoldPhase.allCases.count == 10)
-        #expect(ValidationCode.allCases.count == 31)
+        #expect(ValidationCode.allCases.count == 32)
         #expect(ValidationSeverity.allCases.count == 2)
     }
 

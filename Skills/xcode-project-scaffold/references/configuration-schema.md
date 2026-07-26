@@ -486,6 +486,7 @@ release may help.
 | `XS1301` | Bundle identifier is not reverse-DNS |
 | `XS1302` | Deployment target is not a version number |
 | `XS1304` | Project or environment name cannot be used as a target or scheme name |
+| `XS1305` | A value contains a control character |
 | `XS1401` | Two environments share a name |
 | `XS1402` | Two environments share a build configuration |
 | `XS1403` | An environment value or secret key cannot be a build setting |
