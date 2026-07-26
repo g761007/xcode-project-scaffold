@@ -57,6 +57,21 @@ migration path until `1.0` (see the README).
   command's `SUBCOMMANDS` block, so a new command cannot be added without
   appearing in the golden.
 
+- **The JSON output is frozen.** Every key a caller can meet — in
+  `CommandOutput` and in everything reachable from it — is pinned as a path
+  set, and every vocabulary it carries is pinned as a count: exit codes, error
+  codes, phases, validation codes, severities.
+
+  Two assertions, because one is not enough. Walking the *encoded* output
+  cannot see a key that is `nil` in every fixture, which is exactly how a new
+  optional key would slip past a freeze; `Mirror` reads the declaration
+  instead, so a property added and left unset still fails. Checked by adding
+  one.
+
+  The encoding rules `CommandOutputEncoder` documents as contract rather than
+  preference — one line, keys sorted, slashes unescaped — are now asserted
+  rather than described.
+
 ### Fixed
 
 - **`cocoapodsVersion` was missing from the published JSON Schema.** The type
