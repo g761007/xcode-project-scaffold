@@ -8,7 +8,7 @@ Changing a frozen contract means changing a test written to fail on that
 change. That is the point — see
 [the deprecation policy](deprecation-policy.md) for what a change costs.
 
-> **Status:** all three frozen as of v0.9.0-rc.1. What each one *should* say —
+> **Status:** all three frozen as of v0.9.0. What each one *should* say —
 > as opposed to whether a test holds it — was settled by
 > [the pre-freeze review](contract-review.md), which is where the answers to
 > "why is this key still here" live.

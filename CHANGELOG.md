@@ -8,21 +8,27 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
-## [0.9.0-rc.1] — 2026-07-26
+## [0.9.0] — 2026-07-26
 
-**A release candidate, not a release.** The three contracts — the `scaffold.yml`
-schema, the CLI and the JSON output — freeze at 1.0, and this is the last
-version in which any of them can still change cheaply. What would help most is
-a field you needed and could not state, or a decision you had to make by
-reading prose instead of a code. Report it on
-[#146](https://github.com/g761007/xcode-project-scaffold/issues/146).
+**The three contracts freeze here.** The `scaffold.yml` schema, the CLI and the
+JSON output are each pinned by tests written to fail when they change. After
+1.0, changing one of them costs a major version — so what they *should* say was
+settled first, deliberately rather than by discovering the answer later.
+[docs/contracts.md](https://github.com/g761007/xcode-project-scaffold/blob/main/docs/contracts.md)
+says what is in each contract and what is deliberately outside it;
+[docs/contract-review.md](https://github.com/g761007/xcode-project-scaffold/blob/main/docs/contract-review.md)
+records the eleven decisions taken before the door closed, including the ones
+that look wrong and were kept on purpose.
+
+Shipped as `v0.9.0-rc.1` first, which is where the release pipeline's own
+missing pre-release handling turned up.
 
 The binary is not signed with a Developer ID. That only matters if you download
 the archive in a browser, in which case macOS quarantines it and refuses it
 once — `xattr -d com.apple.quarantine ./xscaffold` clears it. Homebrew and a
-source build are unaffected, and `brew install` still gives you 0.8.0.
+source build are unaffected.
 [The compatibility policy](https://github.com/g761007/xcode-project-scaffold/blob/main/docs/compatibility-policy.md#distribution-and-code-signing)
-says why signing is deferred.
+says why signing is deferred rather than pending.
 
 ### Added
 
