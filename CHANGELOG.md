@@ -17,9 +17,12 @@ a field you needed and could not state, or a decision you had to make by
 reading prose instead of a code. Report it on
 [#146](https://github.com/g761007/xcode-project-scaffold/issues/146).
 
-The binary is not yet signed or notarized, so Gatekeeper will ask. That is
-coming before 1.0 and touches none of the contracts below. `brew install` still
-gives you 0.8.0.
+The binary is not signed with a Developer ID. That only matters if you download
+the archive in a browser, in which case macOS quarantines it and refuses it
+once — `xattr -d com.apple.quarantine ./xscaffold` clears it. Homebrew and a
+source build are unaffected, and `brew install` still gives you 0.8.0.
+[The compatibility policy](https://github.com/g761007/xcode-project-scaffold/blob/main/docs/compatibility-policy.md#distribution-and-code-signing)
+says why signing is deferred.
 
 ### Added
 

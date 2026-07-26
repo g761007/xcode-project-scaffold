@@ -34,6 +34,46 @@ Xcode is required because `xscaffold` generates Xcode projects and
 `--validate-build` drives `xcodebuild`. Only `doctor` and the read-only
 commands work without it.
 
+## Distribution and code signing
+
+The released binary is **not signed with a Developer ID and not notarized**.
+What that means depends entirely on how it reached the machine, and the
+difference is not obvious, so it is stated here rather than left to be
+discovered:
+
+| How you installed it | Gatekeeper |
+|---|---|
+| `brew install g761007/tap/xscaffold` | **Nothing to do.** Homebrew fetches over `curl`, which does not mark the download, so nothing is quarantined. |
+| `make install` from a clone | **Nothing to do.** Nothing was downloaded. |
+| The `.tar.gz` from the releases page, in a browser | **Blocked on first run**, with "cannot be opened because the developer cannot be verified". |
+
+The third row applies however the archive is unpacked: macOS `tar` copies the
+quarantine flag from the archive onto the files it extracts. Fetching the
+archive with `curl` instead of a browser avoids it, because the flag is set by
+the downloader.
+
+To clear it on a binary you have already extracted:
+
+```bash
+xattr -d com.apple.quarantine ./xscaffold
+```
+
+**Homebrew is the supported path**, and it is the one the README leads with.
+
+Signing this binary would help less than it sounds. A notarization ticket
+cannot be *stapled* to a bare Mach-O executable — `stapler` handles disk
+images, signed flat packages and bundles, and a command-line tool is none of
+those — so even a notarized `xscaffold` in a `.tar.gz` would be verified
+online at first launch and still blocked on a machine with no network.
+Offline verification would mean shipping a `.pkg` or `.dmg` instead of a
+tarball, which is a change to the artifact rather than to how it is signed.
+
+Signing is tracked in
+[#136](https://github.com/g761007/xcode-project-scaffold/issues/136), which
+records what it would take. It is deferred rather than rejected: the argument
+for it is procurement — an enterprise review that wants a Developer ID
+signature as such — not Gatekeeper.
+
 ## Building from source
 
 | | Version | Tier |

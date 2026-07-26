@@ -123,6 +123,13 @@ release tag, so only tagged builds carry one. Release binaries are universal
 with a SHA256 alongside, and smoke-tested — the published archive itself, not
 the checkout — before the release goes out.
 
+Homebrew is the supported path, and neither of the two above needs anything
+done about Gatekeeper. Downloading that archive in a browser does: the binary
+is not signed with a Developer ID, so macOS refuses it once until
+`xattr -d com.apple.quarantine ./xscaffold`. The
+[compatibility policy](docs/compatibility-policy.md#distribution-and-code-signing)
+explains the difference and why signing is deferred.
+
 Completions for any other installation, and the rest of the CLI surface, are in
 [the CLI reference](docs/cli-reference.md).
 
