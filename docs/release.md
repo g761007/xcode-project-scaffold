@@ -43,23 +43,27 @@ archive is a release that passed every other check.
 
 ## After the release
 
-Update the Homebrew formula in
-[`g761007/homebrew-tap`](https://github.com/g761007/homebrew-tap):
+Nothing. The Homebrew formula bumps itself: a workflow in
+[`g761007/homebrew-tap`](https://github.com/g761007/homebrew-tap) checks hourly
+for a new release, rewrites `url` and `sha256`, installs the result and runs
+`brew test` before committing it.
 
-```ruby
-url "https://github.com/g761007/xcode-project-scaffold/releases/download/vx.y.z/xscaffold-vx.y.z-macos-universal.tar.gz"
-sha256 "<the published .sha256>"
-```
+It lives there rather than here because a workflow's built-in token can only
+write to its own repository, so pushing the formula from this side would need a
+cross-repository token to create and rotate. Polling from the tap needs no
+secret.
 
-Then verify the tap end to end, because the formula is the path most users
-take:
+Updating the formula used to be this section, and it was the one step of
+releasing that could be forgotten — silently, because nothing breaks when it is:
+`brew install` simply keeps handing out the previous version, which is the
+install path the README leads with.
 
-```bash
-brew uninstall xscaffold; brew untap g761007/tap
-brew install g761007/tap/xscaffold
-xscaffold --version                        # matches the tag
-ls "$(brew --prefix)/share/zsh/site-functions/_xscaffold"
-```
+To bump without waiting for the hour, run **Bump xscaffold** from the tap's
+Actions tab. That is also the fix for the one way this can go quiet: GitHub
+disables a scheduled workflow in a public repository after 60 days with no
+activity, and each bump is a commit, so only a gap longer than that between
+releases can switch it off. If a release has shipped and `brew install` has not
+moved, look at the tap's Actions tab before anything else.
 
 The formula asks the binary for its own completion scripts at install time, so
 completions match whatever version was installed and never need bumping
@@ -76,7 +80,9 @@ same pipeline, with two differences the hyphen decides on its own:
   claimed the slot would reach everyone who never asked for one.
 - **The Homebrew formula is not updated.** `brew install` is the path most
   users take and it should stay on the last real release. Someone trying a
-  candidate downloads the archive from the release page.
+  candidate downloads the archive from the release page. This needs no
+  remembering either: the tap reads GitHub's `releases/latest`, which is
+  defined to skip pre-releases.
 
 Otherwise nothing changes: the tag is still the whole trigger, the CHANGELOG
 section named for it is still the release notes, and the smoke test still runs
