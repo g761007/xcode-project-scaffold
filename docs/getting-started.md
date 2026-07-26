@@ -20,6 +20,18 @@ make install          # release build, copied to ~/.local/bin
 A source build reports its version as `0.0.0-dev`; only tagged builds carry a
 release number.
 
+Both paths are ready to run. If you download the `.tar.gz` from the releases
+page in a browser instead, macOS quarantines it and refuses the binary the
+first time — the released build is not signed with a Developer ID. Clear it
+with:
+
+```bash
+xattr -d com.apple.quarantine ./xscaffold
+```
+
+[The compatibility policy](compatibility-policy.md#distribution-and-code-signing)
+says why, and why signing would not remove that step for an offline machine.
+
 ## Check the machine
 
 ```bash
