@@ -44,6 +44,19 @@ migration path until `1.0` (see the README).
   `docs/contracts.md` records what each of the three contracts contains, what
   is deliberately outside it, and which test holds it.
 
+- **The CLI surface is frozen.** Every command, every flag, which arguments are
+  positional, which flags have short forms, and what an omitted flag defaults
+  to — read back off the binary's own `--help` and compared against a golden.
+  A renamed flag, a command that stopped taking an argument, or a changed
+  default fails the suite.
+
+  Help *prose* is deliberately not part of it. The deprecation policy says
+  message wording is not contract, and a freeze that pinned the help text would
+  make the help unimprovable; what is pinned is the `USAGE` line and the option
+  declarations, not the sentences beside them. A second assertion walks each
+  command's `SUBCOMMANDS` block, so a new command cannot be added without
+  appearing in the golden.
+
 ### Fixed
 
 - **`cocoapodsVersion` was missing from the published JSON Schema.** The type
