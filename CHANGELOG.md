@@ -76,7 +76,41 @@ migration path until `1.0` (see the README).
   the spec names — secrets, command execution, template rendering, credential
   masking — including what was examined and deliberately left alone.
 
+- **`docs/contract-review.md`** records the last review before the freeze. The
+  three freeze tickets each ask whether a contract is *pinned*; this one asks
+  whether it is *right*, which is the question with a deadline — after 1.0 the
+  answers cost a major version. Eleven conclusions, three of them changes and
+  eight of them reasons for leaving something alone, including why the
+  top-level `message` was kept rather than dropped at the last opportunity.
+
+### Changed
+
+- **`capabilities.features` calls the first one `environments`**, not
+  `environment-values`. §19 names it after the section that turns it on, and
+  every other feature in the list already was. This is a breaking change to
+  `--output json`, made now because the JSON contract freezes at 1.0.
+
+  `features` was the one list in `capabilities` that was hand-written rather
+  than sourced from the type enforcing it, and it had already drifted from the
+  spec in three ways with nothing able to notice. The extension names now come
+  from `AppExtensionKind` and the CI name from `CIProvider`, so a third App
+  Extension is advertised the day it is added rather than generated in silence;
+  the rest are pinned, along with the rule that decides what belongs in the
+  list at all.
+
 ### Fixed
+
+- **`capabilities.schemaVersions` reported the version xscaffold writes**, not
+  the versions it reads. Both are `1`, so the test asserting the two agree was
+  comparing a value against itself; the first release that reads two versions
+  and writes one would have advertised the wrong set — to an agent that was
+  told, by `SCHEMA_VERSION_UNSUPPORTED`'s own recovery suggestion, to look
+  there.
+
+- **`message` could disagree with `error.message`.** The document said the two
+  are always the same sentence; nothing made it true, because the success form
+  took a `message` of its own. It no longer does, so the only way to set either
+  is to pass an error — the property that made keeping both worthwhile.
 
 - **A `scaffold.yml` could run arbitrary code on whoever generated from it.**
   A Podfile is Ruby, `pod install` executes it, and xscaffold runs `pod

@@ -184,6 +184,8 @@ shows what an omitted field will actually be. Every field is documented in
 | [docs/agent-workflow.md](docs/agent-workflow.md) | Driving it from an AI agent |
 | [docs/development.md](docs/development.md) | Working on xscaffold itself |
 | [docs/release.md](docs/release.md) | Cutting a release |
+| [docs/contracts.md](docs/contracts.md) | What each frozen contract contains, and which test holds it |
+| [docs/contract-review.md](docs/contract-review.md) | Why each contract says what it says, decided before the freeze |
 | [docs/deprecation-policy.md](docs/deprecation-policy.md) | What counts as a breaking change, and how much warning it gets |
 | [docs/compatibility-policy.md](docs/compatibility-policy.md) | Which macOS, Xcode and toolchain versions are supported |
 | [docs/security-review.md](docs/security-review.md) | What a hostile scaffold.yml can and cannot do |

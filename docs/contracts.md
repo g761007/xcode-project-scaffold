@@ -8,8 +8,10 @@ Changing a frozen contract means changing a test written to fail on that
 change. That is the point — see
 [the deprecation policy](deprecation-policy.md) for what a change costs.
 
-> **Status:** schema frozen. CLI and JSON are freeze candidates; their sections
-> below say so.
+> **Status:** all three frozen as of v0.9.0-rc.1. What each one *should* say —
+> as opposed to whether a test holds it — was settled by
+> [the pre-freeze review](contract-review.md), which is where the answers to
+> "why is this key still here" live.
 
 ## Schema — frozen
 
@@ -73,10 +75,11 @@ Commands, flags, arguments and exit codes. Documented in
 
 ### What holds it
 
-`Tests/CommandLineTests/` — the suites that run the built binary — plus
-`ExitCodeTests`. The audit that turns this into a freeze is #133.
+`CLIFreezeTests` — every command's `USAGE` line, option declarations and
+defaults, read back off the built binary and compared against a golden — plus
+the rest of `Tests/CommandLineTests/` and `ExitCodeTests`.
 
-## JSON output — freeze candidate
+## JSON output — frozen
 
 `CommandOutput` and everything reachable from it. Documented in
 [cli-reference.md](cli-reference.md#machine-readable-output).
@@ -87,16 +90,26 @@ Commands, flags, arguments and exit codes. Documented in
   absent is never `null`.
 - Every `ScaffoldExitCode` number, `ScaffoldErrorCode` string, `ValidationCode`
   string and `ScaffoldPhase` string.
+- Every name `capabilities.features` reports. The other eight lists in that
+  document are the schema's own vocabularies, frozen with the schema.
 - The encoding: one line, keys sorted, slashes unescaped.
 
 ### What is not
 
 - `message`, and `error.message`. Both are prose.
 
+`message` and `exitCode` repeat what `error` already says, and both are
+derived — the success form can state neither. The duplication is deliberate:
+a `ScaffoldError` has to be worth detaching from its envelope, and a caller
+written before `error` existed reads the top-level keys.
+[The contract review](contract-review.md) records why they were kept.
+
 ### What holds it
 
-`CommandOutputContractTests`, `ErrorContractTests` (both the schema-level and
-the binary-level suites), and `ExitCodeTests`. The audit is #134.
+`JSONFreezeTests` — the key set, the declared properties, the vocabularies and
+the encoding rules — plus `CommandOutputContractTests`, `ErrorContractTests`
+(both the schema-level and the binary-level suites), `CapabilitiesTests` and
+`ExitCodeTests`.
 
 ## Adding to a frozen contract
 

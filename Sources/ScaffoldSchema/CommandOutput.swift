@@ -20,10 +20,14 @@ public struct CommandOutput: Codable, Equatable, Sendable {
 
     /// One sentence, on failure. Absent on success.
     ///
-    /// The same sentence as `error.message`. Kept beside it because it is what
-    /// a person reads and what a log line quotes, and because it predates the
-    /// error object.
-    public var message: String?
+    /// Always the same sentence as `error.message`, and structurally so: the
+    /// only initialiser that sets it is the failure one, which takes it from
+    /// the error. Kept beside `error` rather than removed at 1.0 because it is
+    /// the key a caller that does not model errors reads, and it has been in
+    /// every `--output json` document since v0.2 — `error` arrived in v0.8.
+    /// Removing the older and more widely read of two keys carrying the same
+    /// string costs those callers and buys tidiness.
+    public private(set) var message: String?
 
     /// Where the run was when it failed (§23). Absent on success, and absent
     /// on the one failure that cannot know — see `ScaffoldErrorCode.phase`.
@@ -57,10 +61,12 @@ public struct CommandOutput: Codable, Equatable, Sendable {
     /// here rather than in core, because the schema owns the wire.
     public var capabilities: CapabilitiesDocument?
 
+    /// The success form. It takes no `message`: a sentence with no error behind
+    /// it would be a `message` that `error.message` does not match, and that
+    /// pair is the whole reason both keys can exist.
     public init(
         command: String,
         exitCode: ScaffoldExitCode,
-        message: String? = nil,
         issues: [ValidationIssue]? = nil,
         destination: String? = nil,
         plan: PlanSummary? = nil,
@@ -71,7 +77,6 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         ok = exitCode == .success
         self.command = command
         self.exitCode = exitCode
-        self.message = message
         self.issues = issues
         self.destination = destination
         self.plan = plan
@@ -96,10 +101,10 @@ public struct CommandOutput: Codable, Equatable, Sendable {
         self.init(
             command: command,
             exitCode: error.exitCode,
-            message: error.message,
             issues: issues,
             checks: checks
         )
+        message = error.message
         self.phase = phase ?? error.code.phase
         self.error = error
     }

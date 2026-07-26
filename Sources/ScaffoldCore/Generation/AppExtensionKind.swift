@@ -35,6 +35,12 @@ struct AppExtensionKind: Sendable {
     /// The section that asks for it, for validation paths.
     let configurationPath: String
 
+    /// How `capabilities` names this kind (§19). Carried here so that a third
+    /// extension is advertised the day it is added: the list was hand-written
+    /// once, and a kind added without an entry in it would be generated and
+    /// never announced.
+    let featureName: String
+
     /// Whether a configuration asks for this kind. Carried by the kind rather
     /// than decided in a switch elsewhere, so the schema property that already
     /// answers the question is the only thing that answers it.
@@ -56,6 +62,7 @@ struct AppExtensionKind: Sendable {
         extensionPointIdentifier: "com.apple.widgetkit-extension",
         principalClass: nil,
         configurationPath: "extensions.widget",
+        featureName: "widget",
         isEnabled: { $0.generatesWidget },
         noun: "Widget extensions",
         platformCode: .widgetRequiresIOS
@@ -70,6 +77,7 @@ struct AppExtensionKind: Sendable {
         // is where the template puts the class.
         principalClass: "$(PRODUCT_MODULE_NAME).NotificationService",
         configurationPath: "extensions.notificationService",
+        featureName: "notification-service",
         isEnabled: { $0.generatesNotificationService },
         noun: "Notification Service extensions",
         platformCode: .notificationServiceRequiresIOS

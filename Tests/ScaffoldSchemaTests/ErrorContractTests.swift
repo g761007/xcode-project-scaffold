@@ -98,6 +98,17 @@ struct ErrorCodeContractTests {
     func phases(code: ScaffoldErrorCode, expected: ScaffoldPhase) {
         #expect(code.phase == expected)
     }
+
+    /// The other direction, and the one the vocabulary depends on: a phase no
+    /// code reports is a string in the contract that no run can produce. A
+    /// caller branching on it writes a branch that never fires, and after the
+    /// freeze it cannot be taken out again without a major version.
+    @Test("every phase is one some failure can report")
+    func everyPhaseIsReachable() {
+        let reported = Set(ScaffoldErrorCode.allCases.compactMap(\.phase))
+
+        #expect(Set(ScaffoldPhase.allCases).subtracting(reported).isEmpty)
+    }
 }
 
 @Suite("Error wire format")
@@ -156,6 +167,21 @@ struct ScaffoldErrorWireFormatTests {
         #expect(output.phase == .projectGeneration)
         #expect(output.message == "`xcodegen generate` failed.")
         #expect(output.error?.code == .xcodegenFailed)
+    }
+
+    /// The envelope repeats exactly two things the error already says, so that
+    /// `error` is worth passing around on its own and a caller that never
+    /// learned about it still finds what it needs at the top level. Both are
+    /// derived, and the success form can state neither: two keys carrying one
+    /// value are worth keeping only while they cannot disagree.
+    @Test("the envelope's message and exit code are the error's own")
+    func envelopeRepeatsOnlyDerivedFacts() {
+        let error = ScaffoldError(code: .podInstallFailed, message: "`pod install` failed.")
+        let failure = CommandOutput(command: "generate", error: error)
+
+        #expect(failure.message == error.message)
+        #expect(failure.exitCode == error.exitCode)
+        #expect(CommandOutput(command: "plan", exitCode: .success).message == nil)
     }
 
     /// The one code that can arrive from more than one stage says so, rather
