@@ -70,18 +70,29 @@ jobs:
       # The CHANGELOG section written for this version is the release notes;
       # a tag that has none falls back to GitHub's generated notes rather
       # than shipping an empty body.
+      #
+      # A SemVer pre-release identifier — the hyphen in v0.9.0-rc.1 — makes it
+      # a pre-release on GitHub too. Without that, a release candidate becomes
+      # the repository's "Latest release", which is what the README's install
+      # link and a bare `gh release download` resolve to: everyone who never
+      # asked for a candidate gets one.
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           archive="xscaffold-${GITHUB_REF_NAME}-macos-universal.tar.gz"
-          Scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+          version="${GITHUB_REF_NAME#v}"
+          case "$version" in
+            *-*) prerelease="--prerelease" ;;
+            *) prerelease="" ;;
+          esac
+          Scripts/release-notes.sh "$version" > release-notes.md
           if [ -s release-notes.md ]; then
             gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" \
-              --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+              --title "$GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
           else
             gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" \
-              --title "$GITHUB_REF_NAME" --generate-notes
+              --title "$GITHUB_REF_NAME" --generate-notes $prerelease
           fi
 
   # Everything below runs against the published artifact, not the checkout:

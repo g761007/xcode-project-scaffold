@@ -65,6 +65,27 @@ The formula asks the binary for its own completion scripts at install time, so
 completions match whatever version was installed and never need bumping
 separately.
 
+## Release candidates
+
+A tag with a SemVer pre-release identifier — `v0.9.0-rc.1` — goes through the
+same pipeline, with two differences the hyphen decides on its own:
+
+- The GitHub Release is marked **pre-release**, so it does not become "Latest
+  release". That matters because the README's install link and a bare
+  `gh release download` both resolve to whatever is latest: a candidate that
+  claimed the slot would reach everyone who never asked for one.
+- **The Homebrew formula is not updated.** `brew install` is the path most
+  users take and it should stay on the last real release. Someone trying a
+  candidate downloads the archive from the release page.
+
+Otherwise nothing changes: the tag is still the whole trigger, the CHANGELOG
+section named for it is still the release notes, and the smoke test still runs
+against the published artifact.
+
+The CHANGELOG section is named for the candidate — `## [0.9.0-rc.1]` — and
+renamed to the final version when that ships, which is the same one-line edit
+step 2 above already asks for.
+
 ## Versioning during 0.x
 
 `xscaffold` follows Semantic Versioning, but the `0.x` series makes **no
