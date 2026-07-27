@@ -1,3 +1,10 @@
+// Both rules below object to `case invocation = "invocation"`. Spelling the
+// value out anyway is deliberate, and the reason is on `ScaffoldPhase` itself.
+// They sit above the doc comment rather than between it and the declaration,
+// which would detach it.
+// swiftformat:disable redundantRawValues
+// swiftlint:disable redundant_string_enum_value
+
 /// Where a run was when it failed (§23).
 ///
 /// §7.1 also lists a set of names, but those are the states an interactive
@@ -10,28 +17,39 @@
 /// the destination now has files in it, whether a tool needs installing, and
 /// whether the configuration or the machine is at fault are all answered by
 /// this field before the message is read.
+///
+/// Every raw value is spelled out even though each equals its case name, which
+/// is what the linter exception below is for. Left implicit, the strings on the
+/// wire are Swift identifiers, and renaming one — an ordinary refactor, in a
+/// file where nothing else is contract — changes the JSON without changing a
+/// line that looks like it says anything about the JSON. `ScaffoldErrorCode`
+/// spells its values out for the same reason; this enum was the one that did
+/// not, and the difference was invisible.
 public enum ScaffoldPhase: String, Codable, Sendable, CaseIterable {
     /// Before any command ran: the arguments themselves were wrong.
-    case invocation
+    case invocation = "invocation"
     /// Reading `scaffold.yml` and turning it into a configuration.
-    case configuration
+    case configuration = "configuration"
     /// Checking that configuration.
-    case validation
+    case validation = "validation"
     /// Working out the files and commands. Still nothing on disk.
-    case planning
+    case planning = "planning"
     /// Waiting for the user to approve the plan.
-    case confirmation
+    case confirmation = "confirmation"
     /// Writing the planned files, and the git commands over them.
-    case generation
+    case generation = "generation"
     /// Running the generator over `project.yml`.
-    case projectGeneration
+    case projectGeneration = "projectGeneration"
     /// Running Bundler and CocoaPods.
-    case dependencyInstallation
+    case dependencyInstallation = "dependencyInstallation"
     /// Building the generated project, for `--validate-build`.
-    case buildValidation
+    case buildValidation = "buildValidation"
     /// `doctor` looking for the tools a run needs.
-    case environmentCheck
+    case environmentCheck = "environmentCheck"
 }
+
+// swiftlint:enable redundant_string_enum_value
+// swiftformat:enable redundantRawValues
 
 /// Every failure this binary can report, as the name a caller branches on.
 ///
