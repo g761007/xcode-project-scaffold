@@ -8,6 +8,67 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
+## [Unreleased]
+
+Three holes in the freeze itself. None of them changes what the binary does:
+the contracts pinned in 0.9.0 are the same contracts, and the output is
+unchanged byte for byte. What changes is that three of the things those
+contracts claim are now held by something that fails when they move.
+
+### Fixed
+
+- **`ScaffoldPhase`'s strings were held by a count rather than by their
+  spelling.** The enum declared no raw values, so the strings on the wire were
+  Swift identifiers: renaming a case — an ordinary refactor, in a file where
+  nothing else about a case name is contract — changed the JSON, which the
+  deprecation policy prices at a major version. What stood between that and a
+  release was `allCases.count == 10`, and six of the ten strings appeared in no
+  test at all. `phasesEncodeAsNames` looks like the missing assertion and is
+  not: it compares `rawValue` against `rawValue`, which proves the encoding and
+  says nothing about any spelling.
+
+  `ScaffoldErrorCode` was thinner still. It has explicit raw values, so a Swift
+  rename is safe, but 21 of its 25 strings were held only by a regex and a
+  count — renaming `POD_INSTALL_FAILED` on purpose passed the whole suite.
+
+  The phase raw values are now spelled out, which makes a rename free rather
+  than dangerous, and both vocabularies are pinned where `ValidationCode`
+  already pins its own: against a document a caller reads.
+  [docs/cli-reference.md](https://github.com/g761007/xcode-project-scaffold/blob/main/docs/cli-reference.md)
+  gains a table of all twenty-five error codes with the exit code and phase each
+  carries, walked in both directions, and that table replaces the ten phase
+  names the prose used to list — so the vocabulary is written once.
+
+- **A field that stated nothing walked straight through the schema freeze.**
+  All three assertions holding the schema read encoded output, and a property
+  that is `Optional` and nil by default encodes to nothing: the goldens
+  round-trip unchanged, neither walk in `goldensCoverTheSchema` sees it, and the
+  frozen path count does not move. The field ships — decodable, usable in a
+  `scaffold.yml` — and no part of the contract knows it exists.
+  `cocoapodsVersion` reached the published JSON Schema three versions late in
+  exactly this way.
+
+  This is the argument 0.9.0's own notes made for the JSON output — "walking the
+  *encoded* output cannot see a key that is `nil` in every fixture, which is
+  exactly how a new optional key would slip past a freeze". It was written down
+  there and not applied here. It is now: the type tree is walked with `Mirror`
+  off a decoded golden, so the frozen map is complete by construction and a new
+  *type* fails as well as a new property. Checked by adding one, at two depths,
+  and confirming the other three assertions stay green while only this one
+  fails.
+
+- **One official template had never been compiled.**
+  `Templates/Shared/UITests/LaunchPerformanceTests.swift` is generated only when
+  `testing.ui.launchPerformanceTest` is on. That field defaults to off, and no
+  e2e case stated it — `production`, the one preset that turns UI tests on at
+  all, sets only `ui.enabled`. So the file was written to disk twice and built
+  neither time: once by a test asserting it appears in a plan, once by the lint
+  job. Linted, planned, never compiled.
+
+  The e2e matrix now states the field on `PresetProductionApp`, which already
+  runs `xcodebuild build` and `test`. Roadmap §25 asks of 1.0 that every
+  official template builds and tests; this was the one that could not answer.
+
 ## [0.9.0] — 2026-07-26
 
 **The three contracts freeze here.** The `scaffold.yml` schema, the CLI and the
