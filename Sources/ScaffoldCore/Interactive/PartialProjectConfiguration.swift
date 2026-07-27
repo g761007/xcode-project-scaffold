@@ -12,6 +12,15 @@ import ScaffoldSchema
 /// means "not asked", and `resolved()` hands a nil straight to the default it
 /// would have taken anyway — so a default run and an advanced run that accepts
 /// every suggestion produce the same configuration.
+///
+/// The line between the two groups is **what it costs to change the answer
+/// after generation.** Every `--advanced` field can be changed afterwards by
+/// editing one file in the generated project — a linter's config, the
+/// organization name, the default branch. The fields above the line cannot:
+/// platform, interface, architecture and dependency mode each decide what gets
+/// written and how the project is driven, so getting one wrong means generating
+/// again. That, and not "does it live in `scaffold.yml`" — they all do — is why
+/// a question belongs above or below.
 public struct PartialProjectConfiguration: Equatable, Sendable {
     public var platform: ApplePlatform
     public var name: String
@@ -20,6 +29,13 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     public var pattern: ArchitecturePattern
     public var includeExample: Bool?
     public var environments: [Environment]
+
+    /// Never `nil`: the question is always asked, or always answered by
+    /// `--dependency-manager`. It sits with the fields that always win over the
+    /// preset base rather than with the `--advanced` ones, and the base it wins
+    /// over is the one `PresetBases` resolved *for this mode* — so nothing
+    /// downstream has to write the mode onto an already-normalized document.
+    public var dependencyMode: DependencyMode
 
     public var organizationName: String?
     public var deploymentTarget: String?
@@ -36,6 +52,10 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         pattern: ArchitecturePattern,
         includeExample: Bool?,
         environments: [Environment],
+        // Defaulted so that a fixture describing a project with no dependencies
+        // — which most are — says so by leaving it out. The prompt never relies
+        // on this: it always has an answer to pass.
+        dependencyMode: DependencyMode = ConfigurationDefaults.dependencyMode,
         organizationName: String? = nil,
         deploymentTarget: String? = nil,
         unitTestFramework: UnitTestFramework? = nil,
@@ -50,6 +70,7 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
         self.pattern = pattern
         self.includeExample = includeExample
         self.environments = environments
+        self.dependencyMode = dependencyMode
         self.organizationName = organizationName
         self.deploymentTarget = deploymentTarget
         self.unitTestFramework = unitTestFramework
@@ -68,6 +89,13 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     ///
     /// Identity, platform and interface always come from the answers — a
     /// preset states none of them.
+    ///
+    /// The dependency mode is the one answer deliberately **not** written here.
+    /// The base arrives from `PresetBases` already resolved for this mode, so
+    /// it carries whatever normalization the mode triggers — Bundler pinned
+    /// under `production`, and so on. Setting the field again would be a no-op
+    /// at best; setting it on a base resolved for some *other* mode is the bug
+    /// this arrangement exists to make impossible.
     public func resolved(over base: ProjectConfiguration?) -> ProjectConfiguration {
         guard var configuration = base else { return resolved() }
 
@@ -115,12 +143,17 @@ public struct PartialProjectConfiguration: Equatable, Sendable {
     /// The full configuration these answers describe, with defaults applied for
     /// every field the prompt did not ask about. The deployment target follows
     /// from the platform (Product's own default), so the prompt need not ask.
+    ///
+    /// This is the no-preset path, so the mode is written straight in: there is
+    /// no preset document for it to have been normalized into, and the one
+    /// overlay that normalization applies belongs to `production`.
     public func resolved() -> ProjectConfiguration {
         ProjectConfiguration(
             project: .init(name: name, organizationName: organizationName, bundleIdentifier: bundleIdentifier),
             product: .init(platform: platform, deploymentTarget: deploymentTarget),
             interface: .init(primary: interface),
             architecture: .init(pattern: pattern, includeExample: includeExample),
+            dependencyManagement: .init(mode: dependencyMode),
             environments: environments,
             quality: .init(swiftlint: swiftlint, swiftformat: swiftformat),
             testing: .init(unit: unitTestFramework),

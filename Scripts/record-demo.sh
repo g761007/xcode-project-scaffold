@@ -27,7 +27,8 @@ cd "$workspace"
 
 # Answers, paced so each question is on screen before its answer arrives:
 # bundle identifier (default), architecture (Minimal), environments (none),
-# menu: 4 (show the file plan), then 2 (save scaffold.yml and exit).
+# dependency manager (the default), then the menu: 4 (show the file plan) and
+# 2 (save scaffold.yml and exit).
 (
     sleep 1
     printf '\n'
@@ -35,6 +36,8 @@ cd "$workspace"
     printf '1\n'
     sleep 0.4
     printf '1\n'
+    sleep 0.4
+    printf '\n'
     sleep 1
     printf '4\n'
     sleep 0.8

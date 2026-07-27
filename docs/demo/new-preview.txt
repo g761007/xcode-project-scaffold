@@ -11,12 +11,19 @@ Build environments:
   1) None — just Debug and Release
   2) Standard — development, staging, production
 1
+Dependency manager [None]:
+  1) None
+  2) Swift Package Manager
+  3) CocoaPods
+  4) SPM and CocoaPods
+
 
 Configuration Preview
 
   Project:       Bookshelf (com.example.bookshelf)
   Platform:      iOS 18.0, SwiftUI
   Architecture:  Minimal
+  Dependencies:  None
   Testing:       swift-testing
   Environments:  none — Debug and Release
   Destination:   ~/work/Bookshelf

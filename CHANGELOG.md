@@ -12,6 +12,34 @@ migration path until `1.0` (see the README).
 
 ### Added
 
+- **`new` asks which dependency manager the project uses.** A seventh question,
+  among the main ones rather than behind `--advanced`, because the line between
+  those two groups is what it costs to change the answer afterwards — and this
+  one cannot be changed afterwards. The mode decides whether there is a Podfile,
+  whether builds go through an `.xcodeproj` or the `.xcworkspace` `pod install`
+  creates, what the generated CI workflow runs, and what `doctor` insists on.
+  Every `--advanced` field, by contrast, is a file you can edit in the generated
+  project. That rule was not written down anywhere; it is now, beside the type
+  that holds the answers.
+
+  Only the mode is asked. A package needs a URL, exactly one of four requirement
+  kinds, and a product-to-target mapping — a file to write, not a line to type
+  while creating a project.
+
+  The offered default is what the preset suggests, so pressing return through
+  the new question leaves a run exactly where it was before it existed, which is
+  asserted for all three presets against the route that never asks. The
+  preview's Edit menu gains a fifth group for it: the mode is the answer whose
+  effect on the plan is most visible, so it is the one most worth being able to
+  take back after seeing it.
+
+  Internally the preset is now resolved once per dependency mode, up front,
+  rather than once with the mode written on afterwards. Under `production` the
+  two are different documents — a mode that reads pods pins Bundler during
+  normalization — and choosing between four already-resolved bases is what keeps
+  that correct through an edit, without putting a failure inside a loop whose
+  only response to one is to re-ask a question.
+
 - **`new` takes `--dependency-manager`.** `config example` has had the flag
   since the mode became worth stating on the command line; `new` did not. So
   the interactive command — the one the README leads with — could only ever

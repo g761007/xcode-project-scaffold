@@ -7,8 +7,9 @@ import Testing
 /// what the seam exists to make testable.
 ///
 /// Answers are consumed in question order: platform, name, bundle identifier,
-/// interface, architecture, [example], environments; the choice questions take a
-/// number.
+/// interface, architecture, [example], environments, dependency manager; the
+/// choice questions take a number, and an empty line takes a question's default
+/// where it offers one.
 @Suite("Collecting answers interactively")
 struct InteractiveConfigurationTests {
     @Test("a full set of answers becomes the configuration they describe")
@@ -20,7 +21,8 @@ struct InteractiveConfigurationTests {
             "2", // interface: SwiftUI
             "2", // architecture: MVVM
             "y", // include the example
-            "1" // environments: none
+            "1", // environments: none
+            "" // dependency manager: the default
         ])
 
         let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
@@ -45,7 +47,8 @@ struct InteractiveConfigurationTests {
             "", // bundle identifier: default
             "3", // interface: AppKit
             "1", // architecture: Minimal
-            "1" // environments: none
+            "1", // environments: none
+            "" // dependency manager: the default
         ])
 
         let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
@@ -70,13 +73,14 @@ struct InteractiveConfigurationTests {
             "", // bundle identifier: default
             "2", // interface: SwiftUI
             "1", // architecture: Minimal — the answer that used to dead-end
-            "1" // environments: none
+            "1", // environments: none
+            "" // dependency manager: whatever the preset suggests
         ])
-        let base = try Variant.baseConfiguration(for: preset)
+        let bases = try PresetBases(preset: preset)
 
-        let answers = try InteractiveConfiguration(presetBase: base)
+        let answers = try InteractiveConfiguration(presetBases: bases)
             .collect(name: nil, using: prompter)
-        let configuration = answers.resolved(over: base)
+        let configuration = bases.configuration(for: answers)
 
         #expect(configuration.architecture.pattern == .minimal)
         #expect(configuration.architecture.generatesExample == false)
@@ -87,12 +91,12 @@ struct InteractiveConfigurationTests {
     /// pattern keeps what the preset said about its example.
     @Test("keeping the preset's architecture keeps its example")
     func presetPatternKeepsItsExample() throws {
-        let prompter = ScriptedPrompter(["1", "Bookshelf", "", "2", "2", "y", "1"])
-        let base = try Variant.baseConfiguration(for: .standard)
+        let prompter = ScriptedPrompter(["1", "Bookshelf", "", "2", "2", "y", "1", ""])
+        let bases = try PresetBases(preset: .standard)
 
-        let answers = try InteractiveConfiguration(presetBase: base)
+        let answers = try InteractiveConfiguration(presetBases: bases)
             .collect(name: nil, using: prompter)
-        let configuration = answers.resolved(over: base)
+        let configuration = bases.configuration(for: answers)
 
         #expect(configuration.architecture.pattern == .mvvm)
         #expect(configuration.architecture.generatesExample)
@@ -100,13 +104,13 @@ struct InteractiveConfigurationTests {
 
     @Test("questions are asked in their documented order")
     func order() throws {
-        let prompter = ScriptedPrompter(["1", "App", "", "1", "2", "y", "2"])
+        let prompter = ScriptedPrompter(["1", "App", "", "1", "2", "y", "2", ""])
 
         _ = try InteractiveConfiguration().collect(name: nil, using: prompter)
 
         let order = [
             "Platform", "Project name", "Bundle identifier", "Interface",
-            "Architecture", "Include the example", "Build environments"
+            "Architecture", "Include the example", "Build environments", "Dependency manager"
         ]
         let indices = order.map { prompter.firstIndex(of: $0) }
         #expect(indices.allSatisfy { $0 != nil })
@@ -121,7 +125,8 @@ struct InteractiveConfigurationTests {
             "Bookshelf", // name
             "", // bundle identifier: default
             "1", // architecture: Minimal
-            "1" // environments: none
+            "1", // environments: none
+            "" // dependency manager: the default
         ])
         let variant = try #require(Variant.named("macos-appkit"))
 
@@ -142,7 +147,8 @@ struct InteractiveConfigurationTests {
             "", // bundle identifier: accept the derived default
             "1", // interface: UIKit
             "1", // architecture: Minimal
-            "2" // environments: standard
+            "2", // environments: standard
+            "" // dependency manager: the default
         ])
 
         let answers = try InteractiveConfiguration().collect(name: "Bookshelf", using: prompter)
@@ -156,12 +162,12 @@ struct InteractiveConfigurationTests {
 
     @Test("the example is asked about only for a pattern that has one")
     func exampleOnlyWhereThereIsOne() throws {
-        let minimal = ScriptedPrompter(["1", "App", "", "1", "1", "1"])
+        let minimal = ScriptedPrompter(["1", "App", "", "1", "1", "1", ""])
         let minimalAnswers = try InteractiveConfiguration().collect(name: nil, using: minimal)
         #expect(minimalAnswers.includeExample == nil)
         #expect(minimal.firstIndex(of: "Include the example") == nil)
 
-        let mvvm = ScriptedPrompter(["1", "App", "", "1", "2", "n", "1"])
+        let mvvm = ScriptedPrompter(["1", "App", "", "1", "2", "n", "1", ""])
         let mvvmAnswers = try InteractiveConfiguration().collect(name: nil, using: mvvm)
         #expect(mvvmAnswers.includeExample == false)
         #expect(mvvm.firstIndex(of: "Include the example") != nil)
@@ -176,6 +182,7 @@ struct InteractiveConfigurationTests {
             "1", // interface
             "1", // architecture: Minimal
             "1", // environments
+            "", // dependency manager: the default
             "com.acme.app" // asked again, now valid
         ])
 
@@ -200,6 +207,7 @@ struct InteractiveConfigurationTests {
             "3", // architecture: MVVM-C  (invalid on SwiftUI)
             "y", // include the example (MVVM-C has one, so it is asked)
             "1", // environments
+            "", // dependency manager: the default
             "2", // asked again: MVVM
             "y" // include the example
         ])
@@ -223,6 +231,7 @@ struct InteractiveConfigurationTests {
             "3", // interface: AppKit  (invalid on iOS)
             "1", // architecture: Minimal
             "1", // environments
+            "", // dependency manager: the default
             "1" // interface asked again: UIKit
         ])
 
@@ -245,6 +254,7 @@ struct InteractiveConfigurationTests {
             "2", // interface: SwiftUI
             "1", // architecture: Minimal
             "1", // environments: none
+            "", // dependency manager: the default
             "Acme Corp", // organization name
             "17.0", // deployment target
             "3", // unit tests: none
@@ -270,7 +280,7 @@ struct InteractiveConfigurationTests {
     @Test("choosing a test framework this version rejects re-asks the question")
     func reasksUnsupportedTestFramework() throws {
         let prompter = ScriptedPrompter([
-            "1", "App", "", "2", "1", "1", // the default set
+            "1", "App", "", "2", "1", "1", "", // the default set, dependency manager last
             "Acme", "18.0", // organization, deployment target
             "2", // unit tests: XCTest (rejected by this version)
             "y", "y", "main", // lint, format, branch
@@ -285,7 +295,7 @@ struct InteractiveConfigurationTests {
 
     @Test("without advanced, the extra questions are not asked and defaults apply")
     func advancedOffByDefault() throws {
-        let prompter = ScriptedPrompter(["1", "App", "", "2", "1", "1"])
+        let prompter = ScriptedPrompter(["1", "App", "", "2", "1", "1", ""])
 
         let answers = try InteractiveConfiguration().collect(name: nil, using: prompter)
         let configuration = answers.resolved()
@@ -304,48 +314,5 @@ struct InteractiveConfigurationTests {
         #expect(throws: InteractivePromptError.cancelled) {
             try InteractiveConfiguration().collect(name: "App", using: prompter)
         }
-    }
-}
-
-/// How `new --dependency-manager` reaches the interactive path (#159).
-///
-/// The flag has no question of its own yet, so it arrives the only way it can:
-/// resolved into the base the answers are laid over. These assert that the base
-/// carries it and that nothing the prompt collects takes it away again.
-@Suite("A dependency mode stated before the questions")
-struct InteractiveDependencyModeTests {
-    /// The prompt asks nothing about dependencies, so every answer it does
-    /// collect must leave the base's mode standing.
-    @Test("answers laid over a base keep the mode the base arrived with",
-          arguments: [DependencyMode.cocoapods, .spm, .mixed])
-    func answersKeepTheBaseMode(mode: DependencyMode) throws {
-        let prompter = ScriptedPrompter(["1", "Bookshelf", "", "2", "2", "y", "1"])
-        let base = try Variant.baseConfiguration(for: nil, dependencyMode: mode)
-
-        let answers = try InteractiveConfiguration(presetBase: base)
-            .collect(name: nil, using: prompter)
-
-        #expect(answers.resolved(over: base).dependencyManagement.mode == mode)
-    }
-
-    /// The normalization ADR-0008 describes runs on the document, so it has to
-    /// have happened before the questions start — there is nothing downstream
-    /// of the prompt that would apply it.
-    @Test("a production base reading pods arrives with Bundler already pinned")
-    func productionBaseIsNormalized() throws {
-        let base = try Variant.baseConfiguration(for: .production, dependencyMode: .cocoapods)
-
-        #expect(base.dependencyManagement.cocoapods?.bundler?.enabled == true)
-        #expect(base.dependencyManagement.cocoapods?.bundler?.cocoapodsVersion != nil)
-    }
-
-    /// The same base without the mode is the run that states no flag: the
-    /// preset's own `spm`, and no CocoaPods settings to inherit.
-    @Test("a production base with no stated mode keeps the preset's own")
-    func productionBaseWithoutAModeIsUnchanged() throws {
-        let base = try Variant.baseConfiguration(for: .production)
-
-        #expect(base.dependencyManagement.mode == .spm)
-        #expect(base.dependencyManagement.cocoapods?.bundler == nil)
     }
 }
