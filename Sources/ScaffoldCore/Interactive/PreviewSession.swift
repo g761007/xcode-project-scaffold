@@ -12,6 +12,11 @@ import ScaffoldSchema
 /// every path, edits included, onto a real directory.
 public struct PreviewSession: Sendable {
     private let executor: PlanExecutor
+    /// Consulted only to say what is missing before anything is written. It
+    /// never decides whether the run may proceed: validation is pure by design
+    /// and must reach the same verdict on every machine, so what is installed
+    /// informs and does not refuse.
+    private let doctor: EnvironmentDoctor
     /// How Generate lands the plan — `PlanExecutor`'s parameter, carried here
     /// because the choice to force was made before the menu ever showed.
     private let force: Bool
@@ -27,6 +32,7 @@ public struct PreviewSession: Sendable {
         presetBases: PresetBases = .none
     ) {
         executor = PlanExecutor(processRunner: processRunner)
+        doctor = EnvironmentDoctor(processRunner: processRunner)
         self.force = force
         self.presetBases = presetBases
     }
@@ -182,6 +188,12 @@ extension PreviewSession {
         }
         for warning in warnings {
             prompter.show("  Warning \(warning.code.rawValue): \(warning.message)")
+        }
+        // No code on these: a `ValidationIssue` is a statement about the
+        // configuration, true or false anywhere, and this is a statement about
+        // this machine. The commands above are what they are about.
+        for missing in doctor.missingTools(calledBy: plan, for: configuration) {
+            prompter.show("  Warning: \(missing.warningLine)")
         }
     }
 

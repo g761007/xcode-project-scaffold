@@ -249,6 +249,12 @@ extension NewCommand {
         let destination = destinationURL(for: configuration)
 
         _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
+        // The preview says this before the menu; this path has no menu, and
+        // `--yes` skips questions rather than information (§4.2). It is also
+        // the path CI takes, which is where the tools are most likely absent.
+        for missing in EnvironmentDoctor().missingTools(calledBy: plan, for: configuration) {
+            reporter.note("Warning: \(missing.warningLine)")
+        }
         try writePlan(plan, to: destination, force: force, for: configuration, reportingTo: reporter)
         try finishGeneration(plan, warnings: warnings, for: configuration,
                              at: destination, reportingTo: reporter)

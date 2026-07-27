@@ -30,6 +30,14 @@ finding it out from the first `xcodebuild`.
 `doctor` requires CocoaPods exactly when the configuration reads pods, and
 requires Bundler instead when the configuration uses it.
 
+You do not have to remember to run it first. `new` says the same thing on its
+way past: if the plan is going to call a tool this machine does not have, the
+Configuration Preview names it and how to install it, before anything is
+written. The warning informs and does not refuse — a machine's contents are not
+part of whether a `scaffold.yml` is valid — so generating anyway is your call,
+and Cancel at that point leaves nothing behind. `--yes`, which has no menu to
+cancel from, prints the same line beside its summary.
+
 ## The project becomes a workspace
 
 This is the part that surprises people coming from an SPM project. Once pods are
