@@ -8,7 +8,23 @@ the `0.x` series makes **no compatibility promise**: the `scaffold.yml` schema,
 the CLI contract, the JSON output and the exit codes may change without a
 migration path until `1.0` (see the README).
 
-## [Unreleased]
+## [0.10.0] — 2026-07-27
+
+**`new` can finally say how the project takes its dependencies.** `config
+example` has taken `--dependency-manager` since the mode became worth stating on
+a command line. `new` — the command the README leads with — never did, so the
+interactive path could only generate the mode its preset supplied, and `none`
+when no preset was named. Reaching any other one meant choosing *Save
+scaffold.yml and exit*, editing the file by hand, and running `generate`: a path
+that works, and that nothing documented as the answer.
+
+It is now a question among the six already there, a flag for the runs that ask
+nothing, a fifth group in the preview's Edit menu, and — because the answer
+decides which external tools the run will call — a line telling you when this
+machine lacks one of them, while nothing has been written yet.
+
+The three fixes are 0.9.0's contract freeze held by assertions that fail when it
+moves, rather than by counts that do not.
 
 ### Added
 
