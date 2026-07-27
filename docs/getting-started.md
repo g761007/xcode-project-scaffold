@@ -50,8 +50,9 @@ xscaffold new Bookshelf
 ```
 
 It asks for the platform, the name, the bundle identifier, the interface, the
-architecture, whether to include that architecture's example, and the build
-environments — then stops at the **Configuration Preview** and waits:
+architecture, whether to include that architecture's example, the build
+environments, and the dependency manager — then stops at the **Configuration
+Preview** and waits:
 
 ```text
 What next?

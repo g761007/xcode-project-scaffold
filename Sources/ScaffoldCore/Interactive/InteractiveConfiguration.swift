@@ -19,12 +19,14 @@ public enum InteractivePromptError: Error, Equatable, Sendable {
 /// question is asked again — which is why the questions are small methods, one
 /// per field, reused by both the first pass and the re-ask.
 public struct InteractiveConfiguration: Sendable {
-    /// The preset already resolved, so that a re-asked section is validated
-    /// against the same configuration the preview will show.
-    private let presetBase: ProjectConfiguration?
+    /// The preset already resolved — one document per dependency mode, so that
+    /// changing that answer changes which base the others are laid over, and a
+    /// re-asked section is validated against the same configuration the preview
+    /// will show.
+    private let presetBases: PresetBases
 
-    public init(presetBase: ProjectConfiguration? = nil) {
-        self.presetBase = presetBase
+    public init(presetBases: PresetBases = .none) {
+        self.presetBases = presetBases
     }
 
     /// Every parameter but the prompter is an answer already given on the
@@ -36,10 +38,14 @@ public struct InteractiveConfiguration: Sendable {
     /// that live in `scaffold.yml` and already have defaults, offered here so
     /// they can be answered without editing the file afterwards.
     ///
+    /// `dependencyMode` is the answer `--dependency-manager` gives, on the same
+    /// terms as the two above: stated on the command line, not asked for.
+    ///
     /// - Throws: `InteractivePromptError`.
     public func collect(
         name initialName: String?,
         variant: Variant? = nil,
+        dependencyMode statedMode: DependencyMode? = nil,
         advanced: Bool = false,
         using prompter: some Prompter
     ) throws -> PartialProjectConfiguration {
@@ -49,6 +55,7 @@ public struct InteractiveConfiguration: Sendable {
         let interface = try variant?.interface ?? askInterface(using: prompter)
         let (pattern, includeExample) = try askArchitecture(using: prompter)
         let environments = try askEnvironments(using: prompter)
+        let dependencyMode = try statedMode ?? askDependencyMode(using: prompter)
 
         var answers = PartialProjectConfiguration(
             platform: platform,
@@ -57,7 +64,8 @@ public struct InteractiveConfiguration: Sendable {
             interface: interface,
             pattern: pattern,
             includeExample: includeExample,
-            environments: environments
+            environments: environments,
+            dependencyMode: dependencyMode
         )
         if advanced {
             try askAdvanced(into: &answers, using: prompter)
@@ -97,6 +105,7 @@ extension InteractiveConfiguration {
         case platform
         case architecture
         case environments
+        case dependencies
 
         /// The label the Edit menu shows.
         public var label: String {
@@ -105,6 +114,7 @@ extension InteractiveConfiguration {
             case .platform: "Platform and interface"
             case .architecture: "Architecture"
             case .environments: "Build environments"
+            case .dependencies: "Dependency manager"
             }
         }
     }
@@ -128,6 +138,8 @@ extension InteractiveConfiguration {
             (answers.pattern, answers.includeExample) = try askArchitecture(using: prompter)
         case .environments:
             answers.environments = try askEnvironments(using: prompter)
+        case .dependencies:
+            answers.dependencyMode = try askDependencyMode(using: prompter)
         }
     }
 
@@ -166,7 +178,7 @@ extension InteractiveConfiguration {
     }
 
     private func firstError(in answers: PartialProjectConfiguration) -> ValidationIssue? {
-        ConfigurationValidator().validate(answers.resolved(over: presetBase)).first { $0.severity == .error }
+        ConfigurationValidator().validate(presetBases.configuration(for: answers)).first { $0.severity == .error }
     }
 
     private func reask(
@@ -257,6 +269,25 @@ extension InteractiveConfiguration {
         ], using: prompter)
     }
 
+    /// The mode only, never the packages. A package needs a URL, exactly one of
+    /// four requirement kinds, and a product-to-target mapping — that is a file
+    /// to write, not a line to type while creating a project. The mode is asked
+    /// because it decides the project's shape: whether there is a Podfile,
+    /// whether the `ProjectContainer` is an `.xcodeproj` or the `.xcworkspace`
+    /// `pod install` makes, and what the generated CI workflow runs. Packages
+    /// can be added the next day; that cannot.
+    ///
+    /// The default is what the preset suggests, so pressing return through this
+    /// question leaves the run exactly where it was before it was asked.
+    private func askDependencyMode(using prompter: some Prompter) throws -> DependencyMode {
+        try choice(
+            "Dependency manager",
+            DependencyMode.allCases.map { (label: $0.displayName, value: $0) },
+            default: presetBases.suggestedMode,
+            using: prompter
+        )
+    }
+
     private func askEnvironments(using prompter: some Prompter) throws -> [Environment] {
         try choice("Build environments", [
             ("None — just Debug and Release", [Environment]()),
@@ -282,19 +313,29 @@ extension InteractiveConfiguration {
     /// Loops until the answer names one of the options. That is answer parsing,
     /// not a compatibility rule — every option shown is a choice the user is
     /// allowed to make.
-    private func choice<Value>(
+    ///
+    /// A question with a default shows it the way `freeText` does, in brackets
+    /// after the label, and takes an empty line as choosing it. Without one, an
+    /// empty line is just not an option number, and the question comes again.
+    private func choice<Value: Equatable>(
         _ label: String,
         _ options: [(label: String, value: Value)],
+        default fallback: Value? = nil,
         using prompter: some Prompter
     ) throws -> Value {
+        let fallbackLabel = fallback.flatMap { value in options.first { $0.value == value }?.label }
         while true {
-            prompter.show("\(label):")
+            prompter.show(fallbackLabel.map { "\(label) [\($0)]:" } ?? "\(label):")
             for (index, option) in options.enumerated() {
                 prompter.show("  \(index + 1)) \(option.label)")
             }
 
             guard let line = prompter.readLine() else { throw InteractivePromptError.cancelled }
-            if let number = Int(line.trimmingCharacters(in: .whitespaces)), options.indices.contains(number - 1) {
+            let answer = line.trimmingCharacters(in: .whitespaces)
+            if answer.isEmpty, let fallback, fallbackLabel != nil {
+                return fallback
+            }
+            if let number = Int(answer), options.indices.contains(number - 1) {
                 return options[number - 1].value
             }
             prompter.show("Enter a number from 1 to \(options.count).")

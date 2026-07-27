@@ -152,20 +152,19 @@ struct NewCommand: ParsableCommand {
         dependencyManagerName.flatMap(DependencyMode.init(rawValue:))
     }
 
-    /// What the stated preset and dependency mode resolve to, before a single
-    /// question is asked: the base the interactive answers are laid over.
+    /// What the stated preset resolves to, before a single question is asked:
+    /// the bases the interactive answers are laid over, one per dependency mode
+    /// because that answer chooses between them.
     ///
-    /// Nil when neither was stated, which asks for the schema's own defaults —
-    /// what `resolved()` applies with no base at all.
+    /// Empty when no preset was named, which asks for the schema's own defaults
+    /// — what `resolved()` applies with no base at all.
     ///
     /// One resolution per run, rather than the three this command used to do.
     /// The document path is where a mode is normalized into a preset, and three
     /// separate trips through it are three chances for one of them to be given
     /// different arguments and come out different.
-    private func resolvedPresetBase() throws -> ProjectConfiguration? {
-        guard preset != nil || dependencyMode != nil else { return nil }
-
-        return try Variant.baseConfiguration(for: preset, dependencyMode: dependencyMode)
+    private func resolvedPresetBases() throws -> PresetBases {
+        try PresetBases(preset: preset, variant: variantName.flatMap(Variant.named) ?? .iOSSwiftUI)
     }
 
     func run() throws {
@@ -173,14 +172,14 @@ struct NewCommand: ParsableCommand {
         let prompter = SystemPrompter()
         let variant = variantName.flatMap(Variant.named)
         // Resolved once, here, so the interactive loop stays a pure overlay.
-        let presetBase = try resolvedPresetBase()
+        let presetBases = try resolvedPresetBases()
 
         // --yes answered the menu in advance: no preview stop, straight to
         // generation once the answers exist. The summary still shows — the
         // flag skips questions, never information (§4.2).
         if assumeYes {
             return try generateWithoutPreview(
-                variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
+                variant: variant, presetBases: presetBases, using: prompter, reportingTo: reporter
             )
         }
 
@@ -192,7 +191,7 @@ struct NewCommand: ParsableCommand {
             ))
         }
         let answers = try collect(
-            variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
+            variant: variant, presetBases: presetBases, using: prompter, reportingTo: reporter
         )
 
         // The preview loop (§4.2): resolve, validate, plan, preview, menu —
@@ -200,7 +199,7 @@ struct NewCommand: ParsableCommand {
         // code it chose, the same mapping `writePlan` performs.
         let outcome = try mappingGenerationFailure(reportingTo: reporter) {
             do {
-                return try PreviewSession(force: force, presetBase: presetBase).run(
+                return try PreviewSession(force: force, presetBases: presetBases).run(
                     answers: answers,
                     destination: { destinationURL(for: $0) },
                     makePlan: { try makePlan(for: $0, options: runOptions.generationOptions,
@@ -236,12 +235,12 @@ extension NewCommand {
     /// here can send the run back to a question.
     private func generateWithoutPreview(
         variant: Variant?,
-        presetBase: ProjectConfiguration?,
+        presetBases: PresetBases,
         using prompter: some Prompter,
         reportingTo reporter: Reporter
     ) throws {
         let configuration = try assumedConfiguration(
-            variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
+            variant: variant, presetBases: presetBases, using: prompter, reportingTo: reporter
         )
         let (validated, warnings) = try checkConfiguration(
             configuration, describedAs: "The answers", reportingTo: reporter
@@ -260,7 +259,7 @@ extension NewCommand {
     /// questions as usual with only the menu pre-answered.
     private func assumedConfiguration(
         variant: Variant?,
-        presetBase: ProjectConfiguration?,
+        presetBases: PresetBases,
         using prompter: some Prompter,
         reportingTo reporter: Reporter
     ) throws -> ProjectConfiguration {
@@ -286,8 +285,9 @@ extension NewCommand {
                     + "generate --config <file>, or new <name> --variant <name> --yes."
             ))
         }
-        return try collect(variant: nil, presetBase: presetBase, using: prompter, reportingTo: reporter)
-            .resolved(over: presetBase)
+        return try presetBases.configuration(
+            for: collect(variant: nil, presetBases: presetBases, using: prompter, reportingTo: reporter)
+        )
     }
 
     /// Everything after the files are down, shared by the --yes path and the
@@ -317,13 +317,16 @@ extension NewCommand {
 
     private func collect(
         variant: Variant?,
-        presetBase: ProjectConfiguration?,
+        presetBases: PresetBases,
         using prompter: some Prompter,
         reportingTo reporter: Reporter
     ) throws -> PartialProjectConfiguration {
         do {
-            return try InteractiveConfiguration(presetBase: presetBase)
-                .collect(name: name, variant: variant, advanced: advanced, using: prompter)
+            return try InteractiveConfiguration(presetBases: presetBases)
+                .collect(
+                    name: name, variant: variant, dependencyMode: dependencyMode,
+                    advanced: advanced, using: prompter
+                )
         } catch InteractivePromptError.cancelled {
             throw cancelled(using: prompter, reportingTo: reporter)
         } catch let InteractivePromptError.unresolvable(issue) {

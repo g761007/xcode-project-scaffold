@@ -3,43 +3,6 @@ import Foundation
 import ScaffoldSchema
 import Testing
 
-// MARK: - Fixtures
-
-/// The answers a `new` run would arrive with: valid, minimal, iOS + SwiftUI.
-private func makeAnswers() -> PartialProjectConfiguration {
-    PartialProjectConfiguration(
-        platform: .iOS,
-        name: "Bookshelf",
-        bundleIdentifier: "com.example.bookshelf",
-        interface: .swiftUI,
-        pattern: .minimal,
-        includeExample: nil,
-        environments: []
-    )
-}
-
-/// Drives one whole session the way `new` does: destination follows the
-/// project name (so an edit that renames the project moves the destination),
-/// and the plan comes from the real builder.
-private func runSession(
-    answering prompter: ScriptedPrompter,
-    runner: FakeProcessRunner = FakeProcessRunner(),
-    in root: URL,
-    answers: PartialProjectConfiguration = makeAnswers()
-) throws -> PreviewSession.Outcome {
-    try PreviewSession(processRunner: runner).run(
-        answers: answers,
-        destination: { root.appendingPathComponent($0.project.name) },
-        makePlan: {
-            try GenerationPlanBuilder().makePlan(
-                for: $0,
-                options: GenerationOptions(initializeGit: true, runGenerator: true)
-            )
-        },
-        using: prompter
-    )
-}
-
 private func withTemporaryDirectory(_ body: (URL) throws -> Void) throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("xscaffold-preview-tests-\(UUID().uuidString)")

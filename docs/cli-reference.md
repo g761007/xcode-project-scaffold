@@ -38,14 +38,22 @@ confirmation. `new` needs a terminal unless both `--variant` and `--yes` are
 given; without one it exits `2` and says so rather than hanging on a prompt
 nobody can see.
 
-`--dependency-manager` is the same flag [`config example`](#config-example)
-takes, and the two produce the same document from the same arguments. It is
-worth stating at creation rather than editing afterwards, because the mode
-decides the project's shape: whether there is a Podfile, whether builds go
+The dependency manager is one of the questions `new` asks, and
+`--dependency-manager` answers it from the command line — the same relationship
+`--variant` has with the platform and interface questions. The offered default
+is whatever the preset says, so pressing return keeps it. Only the mode is
+asked; packages and pods are written into the `scaffold.yml` afterwards, or
+added through Xcode and the Podfile once the project exists.
+
+It is worth stating at creation rather than changing afterwards, because the
+mode decides the project's shape: whether there is a Podfile, whether builds go
 through an `.xcodeproj` or the `.xcworkspace` `pod install` creates, and what
 the generated CI workflow runs. Under `--preset production`, choosing
 `cocoapods` or `mixed` also pins Bundler and a CocoaPods version — see
 [dependencies](dependencies.md).
+
+The flag is named and valued exactly as [`config example`](#config-example)'s
+is, and the two produce the same document from the same arguments.
 
 The interactive flow stops at a **Configuration Preview** with a menu:
 generate, save the `scaffold.yml` and exit, edit an answer, show the complete

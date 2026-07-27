@@ -15,19 +15,20 @@ public struct PreviewSession: Sendable {
     /// How Generate lands the plan — `PlanExecutor`'s parameter, carried here
     /// because the choice to force was made before the menu ever showed.
     private let force: Bool
-    /// The preset already resolved, or nil when none was named. Resolved once
-    /// by the caller rather than here: the loop re-resolves on every edit and
-    /// has nowhere to put a failure.
-    private let presetBase: ProjectConfiguration?
+    /// The preset already resolved, one document per dependency mode, or empty
+    /// when none was named. Resolved by the caller rather than here: the loop
+    /// re-resolves on every edit and has nowhere to put a failure — which is
+    /// also why every mode is resolved up front rather than when one is chosen.
+    private let presetBases: PresetBases
 
     public init(
         processRunner: any ProcessRunner = SystemProcessRunner(),
         force: Bool = false,
-        presetBase: ProjectConfiguration? = nil
+        presetBases: PresetBases = .none
     ) {
         executor = PlanExecutor(processRunner: processRunner)
         self.force = force
-        self.presetBase = presetBase
+        self.presetBases = presetBases
     }
 
     public enum Outcome: Sendable {
@@ -53,7 +54,7 @@ public struct PreviewSession: Sendable {
         makePlan: (ValidatedConfiguration) throws -> GenerationPlan,
         using prompter: some Prompter
     ) throws -> Outcome {
-        let interactive = InteractiveConfiguration(presetBase: presetBase)
+        let interactive = InteractiveConfiguration(presetBases: presetBases)
         var answers = answers
 
         while true {
@@ -134,7 +135,7 @@ public struct PreviewSession: Sendable {
     /// cannot come back invalid; the compiler cannot know that, and the next
     /// reader should.
     private func checked(_ answers: PartialProjectConfiguration) -> (ValidatedConfiguration, [ValidationIssue]) {
-        let outcome = ConfigurationValidator().check(answers.resolved(over: presetBase))
+        let outcome = ConfigurationValidator().check(presetBases.configuration(for: answers))
         guard case let .valid(validated, warnings) = outcome else {
             preconditionFailure("resolveAnswers returned answers that do not validate")
         }
@@ -162,6 +163,7 @@ extension PreviewSession {
         prompter.show("  Platform:      \(configuration.product.platform.displayName) "
             + "\(configuration.product.deploymentTarget), \(configuration.interface.primary.displayName)")
         prompter.show("  Architecture:  \(architectureLine(for: configuration.architecture))")
+        prompter.show("  Dependencies:  \(configuration.dependencyManagement.mode.displayName)")
         prompter.show("  Testing:       \(configuration.testing.unit.rawValue)")
         prompter.show("  Environments:  \(environmentsLine(for: configuration.environments))")
         prompter.show("  Destination:   \(destination.path)")
