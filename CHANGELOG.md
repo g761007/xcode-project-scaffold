@@ -12,6 +12,27 @@ migration path until `1.0` (see the README).
 
 ### Added
 
+- **`new` says what is missing before it writes anything.** Choosing
+  `cocoapods` on a machine without CocoaPods used to generate every file, run
+  the generator, and only then fail at `pod install` — with the project already
+  on disk. `doctor` knew the whole time; nobody thinks to run it first. The
+  Configuration Preview now names any tool the plan is about to call and this
+  machine does not have, along with how to install it, while nothing has been
+  written and Cancel still leaves nothing behind. `--yes`, which has no menu to
+  cancel from, prints the same line beside its summary — that path is CI, where
+  the tools are likeliest to be absent, and `--yes` skips questions rather than
+  information.
+
+  Read off the **plan**, not the configuration: a run passing `--skip-generate`
+  is not warned about a generator it will never call. The check itself is
+  `EnvironmentDoctor`'s, including which of `pod` and `bundle` a configuration
+  actually needs, so that rule is not written a second time.
+
+  It is not a `ValidationIssue` and is not carried in `--output json`.
+  Validation is pure by design — the same `scaffold.yml` reaches the same
+  verdict on every machine — and the JSON contract is frozen. The warning
+  informs; it never refuses.
+
 - **`new` asks which dependency manager the project uses.** A seventh question,
   among the main ones rather than behind `--advanced`, because the line between
   those two groups is what it costs to change the answer afterwards — and this

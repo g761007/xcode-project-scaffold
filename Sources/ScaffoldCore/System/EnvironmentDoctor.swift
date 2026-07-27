@@ -18,15 +18,50 @@ public struct EnvironmentDoctor: Sendable {
     /// with Bundler, `bundle` is required and provides pod itself; without,
     /// `pod` is. Everything else is the same on every machine.
     public func check(for configuration: ProjectConfiguration? = nil) -> [EnvironmentCheck] {
+        tools(for: configuration).map(check)
+    }
+
+    /// Which tools matter, and which of them this configuration cannot do
+    /// without. Separate from checking them because not every caller wants the
+    /// versions: finding one is a `locate`, and reporting its version is a
+    /// subprocess per tool.
+    private func tools(for configuration: ProjectConfiguration?) -> [Tool] {
         let usesPods = configuration.map {
             $0.dependencyManagement.mode == .cocoapods || $0.dependencyManagement.mode == .mixed
         } ?? false
         let usesBundler = configuration?.dependencyManagement.cocoapods?.bundler?.enabled == true
 
-        return (Tool.all + [
+        return Tool.all + [
             Tool.pod(required: usesPods && !usesBundler),
             Tool.bundle(required: usesPods && usesBundler)
-        ]).map(check)
+        ]
+    }
+
+    /// The tools a plan is about to call and this machine does not have.
+    ///
+    /// Read off the plan's commands rather than off the configuration, because
+    /// the configuration cannot know what this run will skip: `--skip-generate`
+    /// means no generator is called, and warning about a missing one would be
+    /// telling the truth about the machine and a lie about the run. What the
+    /// plan lists is exactly what will be executed.
+    ///
+    /// The configuration still decides *which* CocoaPods tool matters — with
+    /// Bundler it is `bundle`, without it `pod` — which is why it arrives here
+    /// rather than that rule being written a second time.
+    ///
+    /// Only `locate` is asked, never `--version`. This runs while the preview
+    /// is being drawn, before the user has chosen anything, and a preview that
+    /// spawned a subprocess per known tool to render one warning line would be
+    /// paying for an answer it does not use — a tool that is missing has no
+    /// version to report.
+    public func missingTools(
+        calledBy plan: GenerationPlan,
+        for configuration: ProjectConfiguration
+    ) -> [EnvironmentCheck] {
+        let called = Set(plan.commands.map(\.executable))
+        return tools(for: configuration)
+            .filter { called.contains($0.name) && processRunner.locate($0.name) == nil }
+            .map { EnvironmentCheck(name: $0.name, required: $0.required, found: false, detail: $0.purpose) }
     }
 
     private func check(_ tool: Tool) -> EnvironmentCheck {
@@ -142,5 +177,17 @@ extension [EnvironmentCheck] {
     /// reporting and not worth failing over.
     public var meetsRequirements: Bool {
         allSatisfy { !$0.required || $0.found }
+    }
+}
+
+extension EnvironmentCheck {
+    /// One line, said before anything is written, as distinct from the column
+    /// `doctor` prints when it was asked.
+    ///
+    /// It carries the tool's `detail` because that is where the install command
+    /// lives: "pod is not installed" leaves a reader exactly where they were,
+    /// and the whole reason to say this early is to hand them the next step.
+    public var warningLine: String {
+        "\(name) is not installed.\(detail.map { " \($0)" } ?? "")"
     }
 }
