@@ -215,11 +215,47 @@ $ xscaffold generate --yes --output json | jq '{phase, error}'
 `command` appears when an external command failed and `path` when the failure is
 about a file or directory.
 
-`phase` says how far the run got — `invocation`, `configuration`, `validation`,
-`planning`, `confirmation`, `generation`, `projectGeneration`,
-`dependencyInstallation`, `buildValidation` or `environmentCheck`. Everything up
-to and including `confirmation` happens before anything is written. See
+`phase` says how far the run got. Everything up to and including `confirmation`
+happens before anything is written. See
 [ADR-0009](adr/0009-a-failure-reports-the-stage-it-was-in.md).
+
+### Every code
+
+The three frozen strings of a failure, together. `phase` is the stage the code
+alone settles; `UNEXPECTED_FAILURE` is what is left when nothing fits, so it
+names none.
+
+| `error.code` | `exitCode` | `phase` |
+|---|---|---|
+| `INVALID_ARGUMENTS` | `2` | `invocation` |
+| `CONFIGURATION_UNREADABLE` | `3` | `configuration` |
+| `CONFIGURATION_MALFORMED` | `3` | `configuration` |
+| `SCHEMA_VERSION_UNSUPPORTED` | `3` | `configuration` |
+| `CONFIGURATION_INVALID` | `4` | `validation` |
+| `TEMPLATE_CONFLICT` | `5` | `planning` |
+| `TEMPLATE_RESOLUTION_FAILED` | `5` | `planning` |
+| `OUTPUT_DIRECTORY_NOT_EMPTY` | `6` | `generation` |
+| `OUTPUT_DIRECTORY_HAS_PROJECT` | `6` | `generation` |
+| `OUTPUT_PATH_NOT_A_DIRECTORY` | `6` | `generation` |
+| `OUTPUT_PATH_BLOCKED_BY_DIRECTORY` | `6` | `generation` |
+| `UNSAFE_PLANNED_PATH` | `7` | `generation` |
+| `XCODEGEN_NOT_INSTALLED` | `10` | `projectGeneration` |
+| `COCOAPODS_NOT_INSTALLED` | `10` | `dependencyInstallation` |
+| `BUNDLER_NOT_INSTALLED` | `10` | `dependencyInstallation` |
+| `EXECUTABLE_NOT_FOUND` | `10` | `generation` |
+| `ENVIRONMENT_REQUIREMENT_MISSING` | `10` | `environmentCheck` |
+| `XCODEGEN_FAILED` | `8` | `projectGeneration` |
+| `POD_INSTALL_FAILED` | `8` | `dependencyInstallation` |
+| `COMMAND_FAILED` | `8` | `generation` |
+| `WORKSPACE_NOT_GENERATED` | `7` | `dependencyInstallation` |
+| `GENERATION_FAILED` | `7` | `generation` |
+| `BUILD_VALIDATION_FAILED` | `9` | `buildValidation` |
+| `GENERATION_CANCELLED` | `130` | `confirmation` |
+| `UNEXPECTED_FAILURE` | `1` | — |
+
+`EXECUTABLE_NOT_FOUND` is the one code that arrives from more than one stage —
+which stage was missing its tool depends on which tool — so a failure may carry
+a phase other than the one above.
 
 In text mode the same facts arrive on stderr:
 
@@ -241,7 +277,8 @@ Try: Choose an empty destination, or pass --force to write into this one anyway.
 
 Branch on the exit code for *what kind* of failure, and on `error.code` when
 that is too coarse: `XCODEGEN_NOT_INSTALLED` and `COCOAPODS_NOT_INSTALLED` are
-both `10` and two different things to install.
+both `10` and two different things to install. [Every code](#every-code) pairs
+each with the number it exits with.
 
 ## Where generation may land
 
