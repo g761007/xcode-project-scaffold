@@ -14,6 +14,7 @@ Create a project by answering a few questions.
 xscaffold new MyApp
 xscaffold new MyApp --variant ios-uikit --yes
 xscaffold new MyApp --variant ios-swiftui --preset standard --yes
+xscaffold new MyApp --variant ios-swiftui --preset production --dependency-manager cocoapods --yes
 ```
 
 | Flag | Meaning |
@@ -22,6 +23,7 @@ xscaffold new MyApp --variant ios-swiftui --preset standard --yes
 | `--destination <path>` | Where to create it. Defaults to `./<name>`. |
 | `--variant <name>` | `ios-uikit`, `ios-swiftui`, `macos-swiftui`, `macos-appkit` — answers the platform and interface questions. |
 | `--preset <name>` | `minimal`, `standard`, `production` — how much project comes with it. |
+| `--dependency-manager <name>` | `none`, `spm`, `cocoapods`, `mixed` — what reads the packages. Defaults to whatever the preset says. |
 | `--yes`, `-y` | Skip the final confirmation. With `--variant`, skip the questions too. |
 | `--advanced` | Also ask about the fields most projects leave at their defaults. |
 | `--open` | Open the generated project when generation succeeds. |
@@ -35,6 +37,15 @@ Without `--variant`, `--yes` still asks the questions — it only skips the
 confirmation. `new` needs a terminal unless both `--variant` and `--yes` are
 given; without one it exits `2` and says so rather than hanging on a prompt
 nobody can see.
+
+`--dependency-manager` is the same flag [`config example`](#config-example)
+takes, and the two produce the same document from the same arguments. It is
+worth stating at creation rather than editing afterwards, because the mode
+decides the project's shape: whether there is a Podfile, whether builds go
+through an `.xcodeproj` or the `.xcworkspace` `pod install` creates, and what
+the generated CI workflow runs. Under `--preset production`, choosing
+`cocoapods` or `mixed` also pins Bundler and a CocoaPods version — see
+[dependencies](dependencies.md).
 
 The interactive flow stops at a **Configuration Preview** with a menu:
 generate, save the `scaffold.yml` and exit, edit an answer, show the complete
