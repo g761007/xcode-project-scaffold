@@ -306,3 +306,46 @@ struct InteractiveConfigurationTests {
         }
     }
 }
+
+/// How `new --dependency-manager` reaches the interactive path (#159).
+///
+/// The flag has no question of its own yet, so it arrives the only way it can:
+/// resolved into the base the answers are laid over. These assert that the base
+/// carries it and that nothing the prompt collects takes it away again.
+@Suite("A dependency mode stated before the questions")
+struct InteractiveDependencyModeTests {
+    /// The prompt asks nothing about dependencies, so every answer it does
+    /// collect must leave the base's mode standing.
+    @Test("answers laid over a base keep the mode the base arrived with",
+          arguments: [DependencyMode.cocoapods, .spm, .mixed])
+    func answersKeepTheBaseMode(mode: DependencyMode) throws {
+        let prompter = ScriptedPrompter(["1", "Bookshelf", "", "2", "2", "y", "1"])
+        let base = try Variant.baseConfiguration(for: nil, dependencyMode: mode)
+
+        let answers = try InteractiveConfiguration(presetBase: base)
+            .collect(name: nil, using: prompter)
+
+        #expect(answers.resolved(over: base).dependencyManagement.mode == mode)
+    }
+
+    /// The normalization ADR-0008 describes runs on the document, so it has to
+    /// have happened before the questions start — there is nothing downstream
+    /// of the prompt that would apply it.
+    @Test("a production base reading pods arrives with Bundler already pinned")
+    func productionBaseIsNormalized() throws {
+        let base = try Variant.baseConfiguration(for: .production, dependencyMode: .cocoapods)
+
+        #expect(base.dependencyManagement.cocoapods?.bundler?.enabled == true)
+        #expect(base.dependencyManagement.cocoapods?.bundler?.cocoapodsVersion != nil)
+    }
+
+    /// The same base without the mode is the run that states no flag: the
+    /// preset's own `spm`, and no CocoaPods settings to inherit.
+    @Test("a production base with no stated mode keeps the preset's own")
+    func productionBaseWithoutAModeIsUnchanged() throws {
+        let base = try Variant.baseConfiguration(for: .production)
+
+        #expect(base.dependencyManagement.mode == .spm)
+        #expect(base.dependencyManagement.cocoapods?.bundler == nil)
+    }
+}

@@ -71,7 +71,7 @@ public struct Variant: Equatable, Sendable {
         )
     }
 
-    /// The same, with a preset's defaults applied.
+    /// The same, with a preset's defaults and a stated dependency mode applied.
     ///
     /// Routed through a document rather than through values, because that is
     /// where a preset can tell a stated field from an unstated one. It also
@@ -80,22 +80,42 @@ public struct Variant: Equatable, Sendable {
     ///
     /// The document states only what a variant knows — identity, platform,
     /// interface — so everything else is the preset's to fill.
-    public func configuration(projectName: String, preset: Preset?) throws -> ProjectConfiguration {
-        guard let preset else { return configuration(projectName: projectName) }
+    ///
+    /// A stated mode sends this down the document path even with no preset,
+    /// because the mode is not one word in the document: `production` reading
+    /// pods pins Bundler and a CocoaPods version during normalization
+    /// (ADR-0008), and setting the mode as a value afterwards would skip that.
+    public func configuration(
+        projectName: String,
+        preset: Preset?,
+        dependencyMode: DependencyMode? = nil
+    ) throws -> ProjectConfiguration {
+        guard preset != nil || dependencyMode != nil else {
+            return configuration(projectName: projectName)
+        }
 
         return try PresetResolution.configuration(
             projectName: projectName,
             bundleIdentifier: Self.bundleIdentifier(for: projectName),
             preset: preset,
-            variant: self
+            variant: self,
+            dependencyMode: dependencyMode
         )
     }
 
     /// The configuration a preset resolves to on its own, for the interactive
     /// flow: it collects answers rather than parsing a document, so it needs
     /// the preset applied once up front and then overlaid with what was asked.
-    public static func baseConfiguration(for preset: Preset) throws -> ProjectConfiguration {
-        try PresetResolution.baseConfiguration(for: preset)
+    ///
+    /// The preset is optional for the same reason the mode is: a run that
+    /// states only a dependency mode still needs a base for that mode to have
+    /// been normalized into, and no preset asks for the schema's own defaults
+    /// rather than for nothing.
+    public static func baseConfiguration(
+        for preset: Preset?,
+        dependencyMode: DependencyMode? = nil
+    ) throws -> ProjectConfiguration {
+        try PresetResolution.baseConfiguration(for: preset, dependencyMode: dependencyMode)
     }
 
     /// `com.example` because there is nothing to infer a real organisation from,

@@ -63,6 +63,22 @@ struct NewCommand: ParsableCommand {
     )
     var presetName: String?
 
+    /// The flag `config example` already takes, named and valued identically
+    /// so that one vocabulary covers both. It is worth a flag rather than "edit
+    /// the one word afterwards" for the reason that command gives: the mode is
+    /// not one word in the document — `production` reading pods pins Bundler
+    /// and a CocoaPods version during normalization (ADR-0008) — so it is
+    /// stated where the preset can still normalize around it.
+    ///
+    /// It is also the only way a `--yes` run reaches a mode its preset does not
+    /// supply, which is the run CI makes.
+    @Option(
+        name: .customLong("dependency-manager"),
+        help: "What reads the packages: \(DependencyMode.allowedValues.joined(separator: ", ")).",
+        completion: .list(DependencyMode.allowedValues)
+    )
+    var dependencyManagerName: String?
+
     @OptionGroup var runOptions: RunOptions
 
     @OptionGroup var output: OutputOptions
@@ -107,6 +123,10 @@ struct NewCommand: ParsableCommand {
             let known = Variant.all.map(\.name).joined(separator: ", ")
             throw ValidationError("There is no variant named '\(variantName)'. Try one of: \(known).")
         }
+        if let dependencyManagerName, DependencyMode(rawValue: dependencyManagerName) == nil {
+            throw ValidationError("There is no dependency manager named '\(dependencyManagerName)'. "
+                + "Try one of: \(DependencyMode.allowedValues.joined(separator: ", ")).")
+        }
         guard output.format != .json else {
             throw ValidationError("--output json is not available for new, which is interactive. "
                 + "Use generate --config <file> for a machine-readable run.")
@@ -127,28 +147,41 @@ struct NewCommand: ParsableCommand {
         presetName.flatMap(Preset.init(rawValue:))
     }
 
+    /// The dependency mode the flags name, on the same terms.
+    private var dependencyMode: DependencyMode? {
+        dependencyManagerName.flatMap(DependencyMode.init(rawValue:))
+    }
+
+    /// What the stated preset and dependency mode resolve to, before a single
+    /// question is asked: the base the interactive answers are laid over.
+    ///
+    /// Nil when neither was stated, which asks for the schema's own defaults —
+    /// what `resolved()` applies with no base at all.
+    ///
+    /// One resolution per run, rather than the three this command used to do.
+    /// The document path is where a mode is normalized into a preset, and three
+    /// separate trips through it are three chances for one of them to be given
+    /// different arguments and come out different.
+    private func resolvedPresetBase() throws -> ProjectConfiguration? {
+        guard preset != nil || dependencyMode != nil else { return nil }
+
+        return try Variant.baseConfiguration(for: preset, dependencyMode: dependencyMode)
+    }
+
     func run() throws {
         let reporter = Reporter(for: Self.self, format: .text)
         let prompter = SystemPrompter()
         let variant = variantName.flatMap(Variant.named)
         // Resolved once, here, so the interactive loop stays a pure overlay.
-        let presetBase = try preset.map(Variant.baseConfiguration(for:))
+        let presetBase = try resolvedPresetBase()
 
         // --yes answered the menu in advance: no preview stop, straight to
         // generation once the answers exist. The summary still shows — the
         // flag skips questions, never information (§4.2).
         if assumeYes {
-            let configuration = try assumedConfiguration(variant: variant, using: prompter, reportingTo: reporter)
-            let (validated, warnings) = try checkConfiguration(
-                configuration, describedAs: "The answers", reportingTo: reporter
+            return try generateWithoutPreview(
+                variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
             )
-            let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
-            let destination = destinationURL(for: configuration)
-
-            _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
-            try writePlan(plan, to: destination, force: force, for: configuration, reportingTo: reporter)
-            return try finishGeneration(plan, warnings: warnings, for: configuration,
-                                        at: destination, reportingTo: reporter)
         }
 
         guard prompter.isInteractive else {
@@ -158,7 +191,9 @@ struct NewCommand: ParsableCommand {
                     + "generate --config <file>, or new <name> --variant <name> --yes."
             ))
         }
-        let answers = try collect(variant: variant, using: prompter, reportingTo: reporter)
+        let answers = try collect(
+            variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
+        )
 
         // The preview loop (§4.2): resolve, validate, plan, preview, menu —
         // and around again after every edit. A generation failure maps to the
@@ -195,11 +230,37 @@ struct NewCommand: ParsableCommand {
 }
 
 extension NewCommand {
+    /// The whole `--yes` run: the same resolve, validate, plan and write the
+    /// preview loop performs, with the menu already answered. It is its own
+    /// path rather than a branch of the loop because there is no loop — nothing
+    /// here can send the run back to a question.
+    private func generateWithoutPreview(
+        variant: Variant?,
+        presetBase: ProjectConfiguration?,
+        using prompter: some Prompter,
+        reportingTo reporter: Reporter
+    ) throws {
+        let configuration = try assumedConfiguration(
+            variant: variant, presetBase: presetBase, using: prompter, reportingTo: reporter
+        )
+        let (validated, warnings) = try checkConfiguration(
+            configuration, describedAs: "The answers", reportingTo: reporter
+        )
+        let plan = try makePlan(for: validated, options: runOptions.generationOptions, reportingTo: reporter)
+        let destination = destinationURL(for: configuration)
+
+        _ = confirmed(plan, at: destination, using: prompter, assumeYes: true)
+        try writePlan(plan, to: destination, force: force, for: configuration, reportingTo: reporter)
+        try finishGeneration(plan, warnings: warnings, for: configuration,
+                             at: destination, reportingTo: reporter)
+    }
+
     /// The configuration a `--yes` run generates from: the one-line
     /// variant-and-name path (no terminal needed, none consulted), or the
     /// questions as usual with only the menu pre-answered.
     private func assumedConfiguration(
         variant: Variant?,
+        presetBase: ProjectConfiguration?,
         using prompter: some Prompter,
         reportingTo reporter: Reporter
     ) throws -> ProjectConfiguration {
@@ -211,7 +272,11 @@ extension NewCommand {
                         + "Try: xscaffold new MyApp --variant \(variant.name) --yes"
                 ))
             }
-            return try variant.configuration(projectName: name, preset: preset)
+            // Not the base above: that one has a placeholder identity and this
+            // path has a real name, so the document is built once with both.
+            return try variant.configuration(
+                projectName: name, preset: preset, dependencyMode: dependencyMode
+            )
         }
 
         guard prompter.isInteractive else {
@@ -221,8 +286,8 @@ extension NewCommand {
                     + "generate --config <file>, or new <name> --variant <name> --yes."
             ))
         }
-        return try collect(variant: nil, using: prompter, reportingTo: reporter)
-            .resolved(over: preset.map(Variant.baseConfiguration(for:)))
+        return try collect(variant: nil, presetBase: presetBase, using: prompter, reportingTo: reporter)
+            .resolved(over: presetBase)
     }
 
     /// Everything after the files are down, shared by the --yes path and the
@@ -252,11 +317,12 @@ extension NewCommand {
 
     private func collect(
         variant: Variant?,
+        presetBase: ProjectConfiguration?,
         using prompter: some Prompter,
         reportingTo reporter: Reporter
     ) throws -> PartialProjectConfiguration {
         do {
-            return try InteractiveConfiguration(presetBase: preset.map(Variant.baseConfiguration(for:)))
+            return try InteractiveConfiguration(presetBase: presetBase)
                 .collect(name: name, variant: variant, advanced: advanced, using: prompter)
         } catch InteractivePromptError.cancelled {
             throw cancelled(using: prompter, reportingTo: reporter)

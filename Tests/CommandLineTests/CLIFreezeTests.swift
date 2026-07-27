@@ -25,16 +25,22 @@ private let commandPaths: [[String]] = [
 /// flags each takes, which are positional, which have short forms, and what an
 /// omitted flag defaults to. All of that is in the `USAGE` line and the option
 /// declarations; none of it is in the prose beside them.
+///
+/// `new` is the one command whose `USAGE` says `[<options>]` rather than
+/// listing them: ArgumentParser collapses the line once a command carries
+/// enough flags, which `new` began doing at twelve. Nothing is lost, because
+/// the flags are read from the option declarations below it and appear on the
+/// `options:` line either way — but a reader comparing the two shapes should
+/// know the difference is the parser's, not this project's.
 private let frozenSurface = """
 xscaffold
   USAGE: xscaffold <subcommand>
   options: --help --version -h
   defaults:
 xscaffold new
-  USAGE: xscaffold new [<name>] [--destination <destination>] [--variant <variant>] [--preset <preset>] \
-[--skip-git] [--skip-generate] [--output <output>] [--yes] [--force] [--validate-build] [--advanced] [--open]
-  options: --advanced --destination --force --help --open --output --preset --skip-generate --skip-git \
---validate-build --variant --version --yes -h -y
+  USAGE: xscaffold new [<options>] [<name>]
+  options: --advanced --dependency-manager --destination --force --help --open --output --preset \
+--skip-generate --skip-git --validate-build --variant --version --yes -h -y
   defaults: text
 xscaffold generate
   USAGE: xscaffold generate [--config <config>] [--destination <destination>] [--skip-git] [--skip-generate] \

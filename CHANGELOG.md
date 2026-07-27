@@ -10,12 +10,37 @@ migration path until `1.0` (see the README).
 
 ## [Unreleased]
 
+### Added
+
+- **`new` takes `--dependency-manager`.** `config example` has had the flag
+  since the mode became worth stating on the command line; `new` did not. So
+  the interactive command — the one the README leads with — could only ever
+  generate the mode its preset supplied, and `none` when no preset was named.
+  Reaching any other mode meant choosing *Save scaffold.yml and exit* at the
+  preview, editing the file and running `generate`, which nothing documented as
+  the answer to that question.
+
+  The flag is named and valued identically to the one `config example` takes,
+  and the two now produce the same document from the same arguments — asserted
+  by comparing them, rather than assumed. That assertion is the point: the mode
+  is not one word in the document. Under `production`, `cocoapods` or `mixed`
+  pins Bundler and a CocoaPods version during normalization, and a mode applied
+  as a plain value after the preset resolved would skip that and generate a
+  project subtly unlike the one `config example` describes.
+
+  Stating no mode changes nothing — every preset keeps the mode it had.
+
+  One visible side effect: `new` now carries enough flags that ArgumentParser
+  collapses its `USAGE` line to `[<options>]` instead of listing them. The flags
+  are unchanged and still listed under `OPTIONS`; anything reading the usage
+  line itself should read that section instead.
+
+### Fixed
+
 Three holes in the freeze itself. None of them changes what the binary does:
 the contracts pinned in 0.9.0 are the same contracts, and the output is
 unchanged byte for byte. What changes is that three of the things those
 contracts claim are now held by something that fails when they move.
-
-### Fixed
 
 - **`ScaffoldPhase`'s strings were held by a count rather than by their
   spelling.** The enum declared no raw values, so the strings on the wire were
