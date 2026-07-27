@@ -235,6 +235,31 @@ private func paths(inDocument node: Node, prefix: String = "") -> Set<String> {
     return found
 }
 
+/// Every type in the schema tree, and the stored properties it declares.
+///
+/// Walked off a decoded golden rather than listed by hand, so the map is
+/// complete by construction: a type the schema grows appears as a key the frozen
+/// map below does not have, and a property it grows appears inside one.
+///
+/// Enums are descended into but never registered. `PackageRequirement` and
+/// `PodSource` carry their wire keys in `CodingKeys` rather than in properties,
+/// and those keys are pinned by `alternativesDocument`, which states every one
+/// of them and round-trips byte for byte.
+private func declaredProperties(of value: Any, into map: inout [String: Set<String>]) {
+    let mirror = Mirror(reflecting: value)
+    let qualified = String(reflecting: type(of: value))
+    let module = "ScaffoldSchema."
+
+    if mirror.displayStyle == .struct, qualified.hasPrefix(module) {
+        map[String(qualified.dropFirst(module.count)), default: []]
+            .formUnion(mirror.children.compactMap(\.label))
+    }
+
+    for child in mirror.children {
+        declaredProperties(of: child.value, into: &map)
+    }
+}
+
 /// The schema freeze, as something a test can fail rather than a label.
 ///
 /// Freezing means every element of the contract is pinned by an assertion that
@@ -286,5 +311,71 @@ struct SchemaFreezeTests {
         let schema = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         #expect(paths(inJSONSchema: schema).count == 83)
+    }
+
+    /// The half the three assertions above cannot do, and the hole they shared.
+    ///
+    /// All three read encoded output. A property that is `Optional` and left
+    /// unstated encodes to nothing, so the goldens round-trip unchanged, neither
+    /// walk in `goldensCoverTheSchema` sees it, and 83 does not move — the field
+    /// ships, usable in a `scaffold.yml`, in none of the contract.
+    /// `cocoapodsVersion` reached the published schema three versions late
+    /// exactly this way.
+    ///
+    /// `Mirror` reads the declaration instead, so the frozen surface is decided
+    /// by the types rather than by what three documents happen to state.
+    /// `JSONFreezeTests.declaredPropertiesAreFrozen` does this for the output
+    /// contract; this is the same assertion for the input one.
+    @Test("no type in the schema has grown a property")
+    func declaredPropertiesAreFrozen() throws {
+        let frozen: [String: Set<String>] = [
+            "ProjectConfiguration": [
+                "schemaVersion", "preset", "project", "product", "language", "interface",
+                "architecture", "generator", "dependencyManagement", "environments", "secrets",
+                "localization", "quality", "testing", "git", "ci", "extensions"
+            ],
+            "ProjectConfiguration.Project": ["name", "organizationName", "bundleIdentifier"],
+            "ProjectConfiguration.Product": ["platform", "type", "deploymentTarget"],
+            "ProjectConfiguration.Language": ["primary", "languageMode"],
+            "ProjectConfiguration.Interface": ["primary", "lifecycle"],
+            "ProjectConfiguration.Architecture": ["pattern", "includeExample"],
+            "ProjectConfiguration.Generator": ["type"],
+            "ProjectConfiguration.Quality": ["swiftlint", "swiftformat"],
+            "ProjectConfiguration.Testing": ["unit", "ui"],
+            "ProjectConfiguration.UITesting": ["enabled", "framework", "launchPerformanceTest"],
+            "ProjectConfiguration.Git": ["defaultBranch"],
+            "Environment": [
+                "name", "configuration", "bundleIdentifierSuffix", "displayNameSuffix", "values"
+            ],
+            "Localization": ["developmentLanguage", "languages"],
+            "DependencyManagement": ["mode", "spm", "cocoapods"],
+            "SwiftPackageDependencies": ["packages"],
+            "SwiftPackage": ["name", "url", "requirement", "products"],
+            "PackageProduct": ["name", "targets"],
+            "CocoaPodsDependencies": ["sources", "pods", "bundler"],
+            "CocoaPodsDependencies.Bundler": ["enabled", "cocoapodsVersion"],
+            "Pod": ["name", "source", "subspecs"],
+            "Secrets": ["keys"],
+            "Secrets.SecretKey": ["name", "example"],
+            "ContinuousIntegration": ["provider", "workflows"],
+            "ContinuousIntegration.Workflows": ["build", "test", "lint"],
+            "AppExtensions": ["widget", "notificationService"],
+            "AppExtensions.Widget": ["enabled"],
+            "AppExtensions.NotificationService": ["enabled"]
+        ]
+
+        // The maximal document states every optional section and every list, so
+        // decoding it reaches every type in the tree. A section it stopped
+        // stating would take its type out of the walk, which the assertion on
+        // the key sets below reports as a missing type rather than as silence.
+        var declared: [String: Set<String>] = [:]
+        try declaredProperties(of: coder.decode(maximalDocument), into: &declared)
+
+        #expect(Set(frozen.keys).subtracting(declared.keys).isEmpty, "frozen, and not in the tree")
+        #expect(Set(declared.keys).subtracting(frozen.keys).isEmpty, "in the tree, and not frozen")
+
+        for (type, expected) in frozen where declared[type] != nil {
+            #expect(declared[type] == expected, "\(type)")
+        }
     }
 }
