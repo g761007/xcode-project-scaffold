@@ -485,6 +485,11 @@ interface:
 YML
 check PresetStandardApp --config "$root/preset-standard.yml"
 
+# `launchPerformanceTest` is stated here and nowhere else in this file, which
+# makes this the only case that compiles Shared/UITests/LaunchPerformanceTests.
+# It is off by default — a baseline is only useful to a project that intends to
+# watch one — so `production`, the only preset that turns UI tests on at all,
+# is where the last unbuilt template gets built.
 cat > "$root/preset-production.yml" <<'YML'
 preset: production
 project:
@@ -494,18 +499,26 @@ product:
   deploymentTarget: "15.0"
 interface:
   primary: uikit
+testing:
+  ui:
+    launchPerformanceTest: true
 YML
 check PresetProductionApp --config "$root/preset-production.yml"
 
 # production brings UI tests, three environments with values, the xcconfigs
 # those imply, a secrets example and CI. The build above proves they compile
 # together; these say the files a user was promised are actually there.
+#
+# LaunchPerformanceTests is here for a second reason: if it ever stops being
+# generated, the build above still passes — it would simply compile one file
+# fewer — and the coverage would go back to being absent without saying so.
 for expected in \
     Configurations/Debug.xcconfig \
     Configurations/Staging.xcconfig \
     Configurations/Release.xcconfig \
     Configurations/Secrets.example.xcconfig \
     Resources/en.lproj/Localizable.strings \
+    UITests/LaunchPerformanceTests.swift \
     .github/workflows/build.yml
 do
     test -f "$root/PresetProductionApp/$expected" \
